@@ -1,7 +1,9 @@
 // js/ocr.js
 import { saveExpense } from "./firebase.js";
 
-// ==== Helpers UI ====
+/* ===========================
+   Helpers UI / Logs
+=========================== */
 const $ = (id) => document.getElementById(id);
 const log = (m) => {
   const out = $("out");
@@ -9,7 +11,9 @@ const log = (m) => {
   out.textContent += (typeof m === "string" ? m : JSON.stringify(m, null, 2)) + "\n";
 };
 
-// ==== API Key handling ====
+/* ===========================
+   API Key (localStorage)
+=========================== */
 function getApiKey() {
   let k = localStorage.getItem("gkey");
   if (!k) {
@@ -24,13 +28,14 @@ function getApiKey() {
   return k.trim();
 }
 
-// ==== File -> base64 (para Gemini Vision) ====
+/* ===========================
+   File -> base64
+=========================== */
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
     reader.onload = () => {
-      // reader.result es dataURL; quitamos el prefijo "data:...;base64,"
       const base64 = String(reader.result).split(",")[1] || "";
       resolve(base64);
     };
@@ -38,19 +43,75 @@ function fileToBase64(file) {
   });
 }
 
-// ==== Llamada a Gemini Vision (con fallback de modelos) ====
+/* ===========================
+   Sanitizar y parsear JSON texto
+=========================== */
+function safeParseJSON(text) {
+  if (!text) throw new Error("Salida vacía de la IA");
+  let cleaned = text.trim();
+
+  // El modelo a veces responde con bloques de código ```json ... ```
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  }
+
+  // El modelo a veces añade frases antes/después: intentamos extraer el primer objeto { ... }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  return JSON.parse(cleaned);
+}
+
+/* ===========================
+   Normalizadores
+=========================== */
+function normalizeAmount(val) {
+  if (val == null) return 0;
+  let s = String(val).trim();
+  // Cambiar coma decimal por punto, quitar símbolos
+  s = s.replace(/[€$]/g, "").replace(/\s/g, "").replace(",", ".");
+  // Quitar multiplicadores raros
+  s = s.replace(/[^\d.\-]/g, "");
+  const n = Number(s);
+  return isFinite(n) ? n : 0;
+}
+
+function normalizeDate(val) {
+  if (!val) return new Date();
+  // Si ya parece YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const d = new Date(val + "T00:00:00");
+    if (!isNaN(d)) return d;
+  }
+  // Intentar parsear genérico
+  const d2 = new Date(val);
+  if (!isNaN(d2)) return d2;
+
+  return new Date();
+}
+
+/* ===========================
+   Llamada a Gemini Vision (compatible con tu key)
+=========================== */
 async function callGeminiVision(base64, mime) {
   const key = getApiKey();
 
-  const prompt = `Extrae JSON del ticket con esta estructura exacta:
+  const prompt = `
+Extrae JSON del ticket con esta estructura exacta:
+
 {
   "date": "YYYY-MM-DD",
   "provider": "Nombre del local o concepto",
   "amount": 0.00
 }
+
+Reglas:
+- No añadas texto fuera del JSON.
 - Usa punto como decimal.
-- Si falta un dato, invéntalo NO: deja vacío o 0.00.
-- No escribas texto adicional, solo JSON.
+- Si falta un dato, déjalo vacío ("") o 0.00.
 `;
 
   const body = {
@@ -59,80 +120,59 @@ async function callGeminiVision(base64, mime) {
         role: "user",
         parts: [
           { text: prompt },
-          { inlineData: { mimeType: mime || "image/jpeg", data: base64 } },
-        ],
-      },
-    ],
-    generationConfig: {
-      responseMimeType: "application/json",
-    },
+          { inlineData: { mimeType: mime || "image/jpeg", data: base64 } }
+        ]
+      }
+    ]
   };
 
-  const attempts = [
-    // Prioriza v1 + 2.0 flash
-    ["https://generativelanguage.googleapis.com/v1", "gemini-2.0-flash"],
-    ["https://generativelanguage.googleapis.com/v1", "gemini-1.5-flash"],
-    // Fallback v1beta por si tu key lo requiere
-    ["https://generativelanguage.googleapis.com/v1beta", "gemini-1.5-flash"],
-  ];
+  // 👉 Tu API key actual acepta este endpoint/modelo:
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro-vision:generateContent?key=${encodeURIComponent(key)}`;
 
-  let lastErr;
-  for (const [base, model] of attempts) {
-    try {
-      const url = `${base}/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const text = await res.text();
-      let json; try { json = JSON.parse(text); } catch { json = null; }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
 
-      if (!res.ok) {
-        lastErr = new Error(`HTTP ${res.status} ${res.statusText} @ ${model}`);
-        lastErr.responseJSON = json || text;
-        log({ endpoint: url, status: res.status, body: json || text });
-        continue;
-      }
+  const rawText = await res.text();
+  let jsonResponse = null;
+  try { jsonResponse = JSON.parse(rawText); } catch {}
 
-      // Para responseMimeType application/json, la API ya devuelve JSON directo
-      // Algunos despliegues devuelven envoltorio; por eso contemplamos ambas
-      const out = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (out) {
-        return JSON.parse(out);
-      } else if (json && json.date) {
-        // caso en que el JSON ya es directo
-        return json;
-      } else {
-        lastErr = new Error("Respuesta IA sin contenido utilizable");
-        lastErr.responseJSON = json || text;
-      }
-    } catch (e) {
-      lastErr = e;
-      log({ falloModelo: model, error: e.message || String(e) });
-    }
+  if (!res.ok) {
+    log({ endpoint: url, status: res.status, body: jsonResponse || rawText });
+    throw new Error(jsonResponse?.error?.message || `HTTP ${res.status}`);
   }
-  throw lastErr || new Error("Fallo IA desconocido");
+
+  // A veces viene como candidates->content->parts->text, otras ya plano
+  const rawOut = jsonResponse?.candidates?.[0]?.content?.parts?.[0]?.text
+              ?? jsonResponse?.text
+              ?? rawText;
+
+  return safeParseJSON(rawOut);
 }
 
-// ==== Captura cámara (modo A: foto) ====
+/* ===========================
+   Cámara (modo A: foto)
+=========================== */
 let hiddenInput;
 function ensureCameraInput() {
   if (hiddenInput) return hiddenInput;
   hiddenInput = document.createElement("input");
   hiddenInput.type = "file";
   hiddenInput.accept = "image/*";
-  hiddenInput.capture = "environment"; // cámara trasera en móvil
+  hiddenInput.capture = "environment"; // cámara trasera
   hiddenInput.style.display = "none";
   document.body.appendChild(hiddenInput);
   return hiddenInput;
 }
 
-// ==== Flujo principal: Capturar -> OCR -> Guardar ====
+/* ===========================
+   Flujo principal: Capturar -> IA -> Guardar
+=========================== */
 async function handleScan() {
   try {
     const input = ensureCameraInput();
-    // Espera a que el usuario escoja/capture
     const file = await new Promise((resolve, reject) => {
       const onChange = () => {
         input.removeEventListener("change", onChange);
@@ -143,39 +183,38 @@ async function handleScan() {
       input.click();
     });
 
-    // Mostrar tamaño para depurar
     log(`📷 Imagen: ${file.name || "captura"} (${Math.round(file.size / 1024)} KB)`);
 
     // A base64
     const b64 = await fileToBase64(file);
 
-    // Llamar a IA
+    // IA (Gemini)
     const result = await callGeminiVision(b64, file.type);
     log({ IA: result });
 
-    // Parseo seguro
-    const provider = (result?.provider || "").toString().trim().slice(0, 80);
-    const amount = Number(result?.amount || 0);
-    const dateStr = (result?.date || "").toString().trim();
+    // Normalizar campos
+    const provider = (result?.provider || "").toString().trim().slice(0, 80) || "Ticket";
+    const amount = normalizeAmount(result?.amount);
+    const dateObj = normalizeDate(result?.date);
+    const yyyy_mm_dd = dateObj.toISOString().slice(0, 10);
 
-    if (!provider || !amount || amount <= 0) {
-      alert("La IA no pudo extraer datos suficientes (proveedor o importe). Revísalo manualmente.");
+    if (!amount || amount <= 0) {
+      alert("La IA no pudo extraer un importe válido. Puedes editar luego en la lista.");
     }
 
-    // Guardar en Firestore + subir foto a Storage
-    const saveResp = await saveExpense({
-      date: dateStr || new Date(),
+    // Guardar en Firestore + subir foto
+    const resp = await saveExpense({
+      date: yyyy_mm_dd,
       category: "varios",
-      provider: provider || "Ticket",
+      provider,
       notes: "",
-      amount: amount || 0,
-      file,
+      amount,
+      file
     });
 
     log("✅ Gasto guardado con foto");
-    if (saveResp?.photoURL) log({ photoURL: saveResp.photoURL });
+    if (resp?.photoURL) log({ photoURL: resp.photoURL });
     alert("Ticket escaneado y guardado ✅");
-
   } catch (e) {
     console.error(e);
     log({ error: e.message || String(e), details: e.responseJSON || "" });
@@ -183,5 +222,7 @@ async function handleScan() {
   }
 }
 
-// ==== Hook al botón de la UI ====
+/* ===========================
+   Hook a botón
+=========================== */
 $("scanBtn")?.addEventListener("click", handleScan);
