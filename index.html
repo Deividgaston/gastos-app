@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gastos 2N • Escaneo IA</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <style>
     body { background:#f6f8fb; }
-    .btn { @apply px-3 py-2 rounded font-medium; }
+    .btn { padding:.5rem .75rem; border-radius:.5rem; font-weight:600; }
   </style>
 </head>
 <body class="min-h-screen">
   <div class="max-w-xl mx-auto p-4 space-y-4">
-    <!-- Header -->
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-extrabold leading-tight">Gestión de Registros</h1>
@@ -25,7 +27,6 @@
       </div>
     </header>
 
-    <!-- Resumen -->
     <section class="grid grid-cols-3 gap-3">
       <div class="bg-white rounded-xl p-3 border">
         <p class="text-xs text-gray-500">Total Gastos</p>
@@ -41,7 +42,6 @@
       </div>
     </section>
 
-    <!-- Formulario -->
     <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold">Nuevo registro</h2>
@@ -97,7 +97,6 @@
       </div>
     </section>
 
-    <!-- Últimos -->
     <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold">Últimos 5 Registros</h2>
@@ -106,7 +105,6 @@
       <div id="lista" class="space-y-2 text-sm"></div>
     </section>
 
-    <!-- Console -->
     <section>
       <h3 class="text-xs font-semibold text-gray-500 mb-1">Salida / Depuración</h3>
       <pre id="out" class="text-[11px] bg-white border rounded-xl p-3 overflow-x-auto whitespace-pre-wrap"></pre>
@@ -123,7 +121,7 @@
 
       <div class="space-y-2">
         <label class="text-sm font-medium">🔑 Gemini API Key</label>
-        <input id="apiKeyInput" type="password" class="w-full border rounded px-3 py-2" placeholder="Pega aquí tu API Key (AIza...)" />
+        <input id="apiKeyInput" type="password" class="w-full border rounded px-3 py-2" placeholder="Pega aquí tu API Key (AI...)" />
         <div class="flex gap-2">
           <button id="saveApiKey" class="btn bg-indigo-600 text-white flex-1">Guardar clave</button>
           <button id="clearApiKey" class="btn border flex-1">Borrar</button>
@@ -144,15 +142,12 @@
     </div>
   </div>
 
-  <!-- App Script -->
   <script type="module">
-    // ===== Firebase (CDN) =====
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, Timestamp, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-    // === TU CONFIG ===
     const firebaseConfig = {
       apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
       authDomain: "gastos-2n.firebaseapp.com",
@@ -161,50 +156,37 @@
       messagingSenderId: "55010048795",
       appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
     };
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app"); // <- bucket que me diste
+    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
 
-    // ===== Helpers UI =====
-    const $ = (id) => document.getElementById(id);
+    const $ = (id)=>document.getElementById(id);
     const out = $("out");
-    const log = (msg,obj) => {
-      const line = (new Date()).toLocaleTimeString()+" — "+msg+(obj?(" "+JSON.stringify(obj,null,2)):"");
-      out.textContent = (out.textContent + "\\n" + line).slice(-4000);
-    };
+    const log = (msg,obj)=>{ out.textContent += (new Date()).toLocaleTimeString()+" — "+msg+(obj?(" "+JSON.stringify(obj,null,2)):"")+"\n"; };
 
-    // Set defaults
     $("fFecha").value = new Date().toISOString().slice(0,10);
     $("fCategoria").value = "comida";
 
-    // Preview imagen
-    $("fFile").addEventListener("change", (e)=>{
-      const f = e.target.files?.[0];
+    $("fFile").addEventListener("change",(e)=>{
+      const f=e.target.files?.[0];
       if(!f){ $("preview").classList.add("hidden"); return; }
       $("preview").src = URL.createObjectURL(f);
       $("preview").classList.remove("hidden");
     });
 
-    // ===== Ajustes modal =====
     const modal = $("modalSettings");
     $("btnSettings").onclick = ()=> modal.classList.remove("hidden");
     $("closeSettings").onclick = ()=> modal.classList.add("hidden");
-    $("saveApiKey").onclick = ()=> {
+    $("saveApiKey").onclick = ()=>{
       const key = $("apiKeyInput").value.trim();
-      if(!key) return alert("Introduce una API Key válida (empieza por AIza...)");
-      localStorage.setItem("geminiKey", key);
-      alert("✅ Clave guardada en este navegador");
+      if(!key) return alert("Introduce una API Key válida.");
+      localStorage.setItem("geminiKey",key);
+      alert("✅ Clave guardada");
       modal.classList.add("hidden");
     };
-    $("clearApiKey").onclick = ()=> {
-      localStorage.removeItem("geminiKey");
-      $("apiKeyInput").value = "";
-      alert("🧹 Clave eliminada de este navegador");
-    };
+    $("clearApiKey").onclick = ()=>{ localStorage.removeItem("geminiKey"); $("apiKeyInput").value=""; alert("🧹 Clave borrada"); };
 
-    // ===== Login visible en header y en Ajustes =====
     const btnLogin = $("btnLogin");
     const btnLogout = $("btnLogout");
     const loginSettings = $("loginSettings");
@@ -213,30 +195,24 @@
     const sessionInfo = $("sessionInfo");
 
     function updateAuthButtons(user){
-      const logged = !!user;
-      btnLogin.classList.toggle("hidden", logged);
-      btnLogout.classList.toggle("hidden", !logged);
-      loginSettings.classList.toggle("hidden", logged);
-      logoutSettings.classList.toggle("hidden", !logged);
-      whoami.textContent = logged ? `Conectado: ${user.email || user.uid}` : "No autenticado";
-      sessionInfo.textContent = logged ? `UID: ${user.uid}` : "Sin sesión";
+      const on = !!user;
+      btnLogin.classList.toggle("hidden", on);
+      btnLogout.classList.toggle("hidden", !on);
+      loginSettings.classList.toggle("hidden", on);
+      logoutSettings.classList.toggle("hidden", !on);
+      whoami.textContent = on ? `Conectado: ${user.email||user.uid}` : "No autenticado";
+      sessionInfo.textContent = on ? `UID: ${user.uid}` : "Sin sesión";
     }
-
     async function doLogin(){
       try{
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
         await signInWithPopup(auth, provider);
-      }catch(e){ alert("Error al iniciar sesión: "+(e.message||e)); log("login error", e); }
+      }catch(e){ alert("Error login: "+(e.message||e)); }
     }
-    async function doLogout(){
-      try{ await signOut(auth); }catch(e){ log("logout error", e); }
-    }
-
-    btnLogin.onclick = doLogin;
-    loginSettings.onclick = doLogin;
-    btnLogout.onclick = doLogout;
-    logoutSettings.onclick = doLogout;
+    async function doLogout(){ try{ await signOut(auth); }catch(e){ alert("Error logout"); } }
+    btnLogin.onclick = doLogin; loginSettings.onclick = doLogin;
+    btnLogout.onclick = doLogout; logoutSettings.onclick = doLogout;
 
     onAuthStateChanged(auth, (user)=>{
       updateAuthButtons(user);
@@ -244,38 +220,30 @@
       else { $("lista").innerHTML=""; $("totGastos").textContent="-€0,00"; $("totIngresos").textContent="+€0,00"; $("totBalance").textContent="€0,00"; }
     });
 
-    // ===== Guardar registro =====
-    $("btnGuardar").onclick = async ()=> {
+    $("btnGuardar").onclick = async()=>{
       const user = auth.currentUser;
-      if(!user){ alert("Inicia sesión con Google primero."); return; }
-
-      const fecha = $("fFecha").value || new Date().toISOString().slice(0,10);
+      if(!user) return alert("Inicia sesión primero.");
+      const fecha = $("fFecha").value;
       const categoria = $("fCategoria").value;
       const proveedor = $("fProveedor").value.trim();
       const nota = $("fNota").value.trim();
-      const cantidad = parseFloat(($("fCantidad").value || "0").replace(",", "."));
+      const cantidad = parseFloat(($("fCantidad").value||"0").replace(",", "."));
+      if(!proveedor || !cantidad || cantidad<=0) return alert("Completa proveedor e importe.");
+      $("statusMsg").textContent="Guardando...";
 
-      if(!proveedor || !cantidad || cantidad<=0){
-        alert("Completa proveedor e importe (> 0).");
-        return;
-      }
-
-      $("statusMsg").textContent = "Guardando...";
-
-      // Subir foto si hay
-      let photoURL = "";
-      const f = $("fFile").files?.[0];
+      let photoURL="";
+      const f=$("fFile").files?.[0];
       if(f){
-        const y = fecha.slice(0,7); // YYYY-MM
-        const safe = proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-        const ext = (f.name.split('.').pop()||"jpg").toLowerCase();
-        const fileName = `${fecha}_${safe}_${Date.now()}.${ext}`;
-        const rr = ref(storage, `tickets/${user.uid}/${y}/${fileName}`);
-        await uploadBytes(rr, f);
-        photoURL = await getDownloadURL(rr);
+        const y=fecha.slice(0,7);
+        const safe=proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+        const ext=(f.name.split('.').pop()||"jpg").toLowerCase();
+        const fileName=`${fecha}_${safe}_${Date.now()}.${ext}`;
+        const r=ref(storage,`tickets/${user.uid}/${y}/${fileName}`);
+        await uploadBytes(r,f);
+        photoURL=await getDownloadURL(r);
       }
 
-      await addDoc(collection(db, `users/${user.uid}/entries`), {
+      await addDoc(collection(db,`users/${user.uid}/entries`),{
         date: Timestamp.fromDate(new Date(fecha)),
         category: categoria,
         provider: proveedor,
@@ -286,23 +254,19 @@
         createdAt: Timestamp.now()
       });
 
-      $("statusMsg").textContent = "✅ Guardado";
-      $("fProveedor").value = ""; $("fNota").value=""; $("fCantidad").value=""; $("fFile").value=""; $("preview").classList.add("hidden");
+      $("statusMsg").textContent="✅ Guardado";
+      $("fProveedor").value=""; $("fNota").value=""; $("fCantidad").value=""; $("fFile").value=""; $("preview").classList.add("hidden");
       cargarUltimos(); calcularTotales();
-      setTimeout(()=>$("statusMsg").textContent="",1500);
+      setTimeout(()=>{$("statusMsg").textContent="";},1500);
     };
 
-    // ===== Listado últimos =====
-    $("btnRefrescar").onclick = ()=> { cargarUltimos(); calcularTotales(); };
+    $("btnRefrescar").onclick = ()=>{ cargarUltimos(); calcularTotales(); };
 
     async function cargarUltimos(){
-      const user = auth.currentUser; if(!user) return;
-      const refCol = collection(db, `users/${user.uid}/entries`);
-      const q = query(refCol, orderBy("createdAt","desc"), limit(5));
-      const snap = await getDocs(q);
-      const c = [];
-      snap.forEach(d=> c.push({id:d.id, ...d.data()}));
-      const html = c.map(d=>{
+      const user=auth.currentUser; if(!user) return;
+      const qSnap=await getDocs(query(collection(db,`users/${user.uid}/entries`),orderBy("createdAt","desc"),limit(5)));
+      const list=[]; qSnap.forEach(d=>list.push(d.data()));
+      $("lista").innerHTML = list.map(d=>{
         const fecha = d.date?.toDate ? d.date.toDate().toISOString().slice(0,10) : "";
         const euros = (d.amount||0).toLocaleString("es-ES",{minimumFractionDigits:2});
         return `<div class="flex items-center justify-between border rounded p-2">
@@ -315,73 +279,67 @@
             ${d.photoURL?`<a class="text-xs underline text-indigo-600" href="${d.photoURL}" target="_blank">ticket</a>`:""}
           </div>
         </div>`;
-      }).join("");
-      $("lista").innerHTML = html || `<p class="text-center text-gray-400 text-sm">¡Aún no hay registros!</p>`;
+      }).join("") || `<p class="text-center text-gray-400 text-sm">¡Aún no hay registros!</p>`;
     }
 
     async function calcularTotales(){
-      const user = auth.currentUser; if(!user) return;
-      // sumar (rápido: pedimos últimos 100; para informes mensuales haremos query por mes)
-      const refCol = collection(db, `users/${user.uid}/entries`);
-      const q = query(refCol, orderBy("createdAt","desc"), limit(100));
-      const snap = await getDocs(q);
+      const user=auth.currentUser; if(!user) return;
+      const qSnap=await getDocs(query(collection(db,`users/${user.uid}/entries`),orderBy("createdAt","desc"),limit(100)));
       let gastos=0, ingresos=0;
-      snap.forEach(d=>{
-        const x=d.data();
-        if(x.category==="ingreso") ingresos += (x.amount||0); else gastos += (x.amount||0);
-      });
-      $("totGastos").textContent = "-€"+gastos.toLocaleString("es-ES",{minimumFractionDigits:2});
-      $("totIngresos").textContent = "+€"+ingresos.toLocaleString("es-ES",{minimumFractionDigits:2});
-      $("totBalance").textContent = "€"+(ingresos-gastos).toLocaleString("es-ES",{minimumFractionDigits:2});
+      qSnap.forEach(d=>{ const x=d.data(); if(x.category==="ingreso") ingresos+=(x.amount||0); else gastos+=(x.amount||0); });
+      $("totGastos").textContent="-€"+gastos.toLocaleString("es-ES",{minimumFractionDigits:2});
+      $("totIngresos").textContent="+€"+ingresos.toLocaleString("es-ES",{minimumFractionDigits:2});
+      $("totBalance").textContent="€"+(ingresos-gastos).toLocaleString("es-ES",{minimumFractionDigits:2});
     }
 
-    // ===== Escaneo con Gemini (v1 + modelo -latest) =====
-    $("scanAI").onclick = async () => {
-      const apiKey = localStorage.getItem("geminiKey");
-      if(!apiKey){ alert("Ve a ⚙️ Ajustes y pega tu API Key de Gemini."); return; }
+    // ===== Gemini con fallback para Chrome móvil =====
+    async function callGeminiWithFallback({b64, mime, key, prompt}){
+      const apis=["v1","v1beta"];
+      const models=["gemini-1.5-flash-latest","gemini-1.5-flash","gemini-1.5-flash-001"];
+      const body=()=>({ contents:[{ role:"user", parts:[ {text:prompt}, {inline_data:{mime_type:mime||"image/jpeg", data:b64}} ] }] });
+      for(const api of apis){
+        for(const model of models){
+          const url=`https://generativelanguage.googleapis.com/${api}/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+          try{
+            const res=await fetch(url,{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body()) });
+            const data=await res.json();
+            if(!data.error) return {api,model,data};
+            if(res.status===404 || data?.error?.status==="NOT_FOUND"){ continue; }
+            throw new Error(data?.error?.message || `HTTP ${res.status}`);
+          }catch(e){ console.warn(`Falló ${api}/${model}:`, e.message); }
+        }
+      }
+      throw new Error("No encontré un modelo compatible para tu clave. Revisa permisos en Google AI Studio.");
+    }
+
+    $("scanAI").onclick = async ()=>{
+      const key = localStorage.getItem("geminiKey");
+      if(!key) return alert("Ve a ⚙️ Ajustes y pega tu API Key de Gemini.");
       const file = $("fFile").files?.[0];
-      if(!file){ alert("Selecciona una foto del ticket primero."); return; }
+      if(!file) return alert("Selecciona una foto del ticket primero.");
 
       const buf = await file.arrayBuffer();
       const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
       const mime = file.type || "image/jpeg";
 
-      const prompt = `Extrae la siguiente información del ticket y responde SOLO en este formato exacto (sin texto adicional):
-Proveedor: <nombre>
+      const prompt = `Extrae del ticket y responde EXACTAMENTE:
+Proveedor: <texto>
 Importe: <número con punto decimal>
 Fecha: <YYYY-MM-DD>`;
 
-      const body = {
-        contents: [{
-          role: "user",
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mime, data: b64 } }
-          ]
-        }]
-      };
-
-      const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key="+encodeURIComponent(apiKey);
-      const res = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
-      const data = await res.json();
-      log("Gemini respuesta", data);
-
-      if(data.error){
-        alert("Error IA: "+(data.error.message || data.error.status));
-        return;
-      }
-
       try{
-        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const {api,model,data} = await callGeminiWithFallback({ b64, mime, key, prompt });
+        console.log("Gemini usado:", api, model);
+        const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const prov = /Proveedor:\s*(.*)/i.exec(txt)?.[1]?.trim();
-        const imp = /Importe:\s*([0-9]+[.,]?[0-9]*)/.exec(txt)?.[1]?.trim();
-        const fec = /Fecha:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(txt)?.[1]?.trim();
+        const imp  = /Importe:\s*([0-9]+[.,]?[0-9]*)/.exec(txt)?.[1]?.trim();
+        const fec  = /Fecha:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(txt)?.[1]?.trim();
         if(prov) $("fProveedor").value = prov;
-        if(imp) $("fCantidad").value = imp.replace(",", ".");
-        if(fec) $("fFecha").value = fec;
-        if(!prov && !imp) alert("No se pudieron extraer campos. Prueba con otra foto o ajusta la iluminación.");
+        if(imp)  $("fCantidad").value  = imp.replace(",", ".");
+        if(fec)  $("fFecha").value     = fec;
+        if(!prov && !imp) alert("No se pudieron extraer campos. Prueba con otra foto o mejor iluminación.");
       }catch(e){
-        alert("No pude interpretar la salida de la IA.");
+        alert("Error IA: "+e.message);
       }
     };
   </script>
