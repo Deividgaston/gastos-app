@@ -1,10 +1,52 @@
-<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>Gastos 2N</title><link rel='stylesheet' href='css/ui.css'>
-<script defer src='js/ui.js'></script><script defer src='js/firebase.js'></script>
-<script defer src='js/ocr.js'></script><script defer src='js/voice.js'></script>
-<script defer src='js/export.js'></script></head><body>
-<header class='topbar'><img src='assets/2n-logo.svg' class='logo'><h1>Gastos 2N</h1></header>
-<div class='metric-card'><h2 id='totalMes'>0 €</h2><p>Total del mes</p></div>
-<button class='primary-btn' id='scanBtn'>📸 Escanear ticket</button>
-<button class='secondary-btn' id='voiceBtn'>🎤 Añadir por voz</button>
-</body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gastos 2N</title>
+  <link rel="stylesheet" href="css/ui.css" />
+</head>
+<body>
+  <header class="topbar">
+    <img src="assets/2n-logo.svg" class="logo" alt="2N" />
+    <h1>Gastos 2N</h1>
+    <div class="auth-controls">
+      <button id="btnLogin" class="btn small">Entrar</button>
+      <button id="btnLogout" class="btn small outline">Salir</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="metric-card">
+      <h2 id="totalMes">0 €</h2>
+      <p>Total del mes</p>
+    </section>
+
+    <section class="actions">
+      <button class="btn primary" id="scanBtn">📸 Escanear ticket</button>
+      <button class="btn" id="voiceBtn">🎤 Añadir por voz</button>
+    </section>
+
+    <section class="panel">
+      <h3>Estado</h3>
+      <p id="whoami" class="muted">No autenticado</p>
+      <pre id="out" class="log"></pre>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" id="tabHome">🏠</button>
+    <button class="tab" id="tabScan">📷</button>
+    <button class="tab" id="tabList">🧾</button>
+    <button class="tab" id="tabExport">📁</button>
+    <button class="tab" id="tabSettings">⚙️</button>
+  </nav>
+
+  <!-- Carga de módulos -->
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/firebase.js"></script>
+  <script type="module" src="js/ocr.js"></script>
+  <script type="module" src="js/voice.js"></script>
+  <script type="module" src="js/export.js"></script>
+</body>
+</html>
