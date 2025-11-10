@@ -3,203 +3,387 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N - AI Scan</title>
+  <title>Gastos 2N • Escaneo IA</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style> body { background:#f9fbfc; } </style>
+  <style>
+    body { background:#f6f8fb; }
+    .btn { @apply px-3 py-2 rounded font-medium; }
+  </style>
 </head>
-
 <body class="min-h-screen">
-<div class="max-w-xl mx-auto p-4 space-y-4">
+  <div class="max-w-xl mx-auto p-4 space-y-4">
+    <!-- Header -->
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-extrabold leading-tight">Gestión de Registros</h1>
+        <p id="whoami" class="text-xs text-gray-500 mt-1">No autenticado</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnLogin" class="btn bg-indigo-600 text-white hidden">Entrar con Google</button>
+        <button id="btnLogout" class="btn border hidden">Salir</button>
+        <button id="btnSettings" class="btn border">⚙️ Ajustes</button>
+      </div>
+    </header>
 
-<header class="flex items-center justify-between">
-  <h1 class="text-2xl font-bold">Gastos 2N</h1>
-  <button id="btnSettings" class="px-3 py-2 rounded bg-gray-200 text-sm">⚙️ Ajustes</button>
-</header>
+    <!-- Resumen -->
+    <section class="grid grid-cols-3 gap-3">
+      <div class="bg-white rounded-xl p-3 border">
+        <p class="text-xs text-gray-500">Total Gastos</p>
+        <p id="totGastos" class="text-lg font-extrabold text-red-600">-€0,00</p>
+      </div>
+      <div class="bg-white rounded-xl p-3 border">
+        <p class="text-xs text-gray-500">Total Ingresos</p>
+        <p id="totIngresos" class="text-lg font-extrabold text-green-600">+€0,00</p>
+      </div>
+      <div class="bg-white rounded-xl p-3 border">
+        <p class="text-xs text-gray-500">Balance</p>
+        <p id="totBalance" class="text-lg font-extrabold text-emerald-700">€0,00</p>
+      </div>
+    </section>
 
-<p id="whoami" class="text-sm text-gray-600">No autenticado</p>
+    <!-- Formulario -->
+    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Nuevo registro</h2>
+        <span id="statusMsg" class="text-xs text-gray-400"></span>
+      </div>
 
-<div id="modalSettings" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center">
-  <div class="bg-white p-4 rounded-xl w-80 space-y-3">
-    <h2 class="text-lg font-bold">Ajustes</h2>
-    <label class="text-sm font-medium">Gemini API Key</label>
-    <input id="apiKeyInput" type="password" class="w-full border rounded px-3 py-2" placeholder="Pegue aquí su API Key" />
-    <button id="saveApiKey" class="w-full py-2 bg-indigo-600 text-white rounded">Guardar</button>
-    <button id="closeSettings" class="w-full py-2 bg-gray-300 rounded">Cerrar</button>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium">Fecha</label>
+          <input id="fFecha" type="date" class="w-full border rounded px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium">Categoría</label>
+          <select id="fCategoria" class="w-full border rounded px-3 py-2">
+            <option value="comida">Comida/Mercado</option>
+            <option value="transporte">Otros Transportes</option>
+            <option value="servicios">Servicios/Varios</option>
+            <option value="ocio">Ocio/Invitaciones</option>
+            <option value="gasolina">Gasolina</option>
+            <option value="peajes">Peajes/Parking</option>
+            <option value="alojamiento">Alojamiento/Hotel</option>
+            <option value="varios">Varios</option>
+            <option value="ingreso">Ingreso</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium">Proveedor / Local</label>
+        <input id="fProveedor" placeholder="Ej: Repsol, Restaurante X" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium">Importe (€)</label>
+          <input id="fCantidad" type="number" step="0.01" min="0.01" placeholder="0,00" class="w-full border rounded px-3 py-2"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium">Notas</label>
+          <input id="fNota" placeholder="Opcional" class="w-full border rounded px-3 py-2"/>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium">Foto del ticket</label>
+        <input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
+        <img id="preview" class="mt-2 max-h-44 hidden rounded border" />
+      </div>
+
+      <div class="flex gap-3">
+        <button id="scanAI" class="flex-1 btn bg-purple-600 text-white">📸 Escanear ticket con IA</button>
+        <button id="btnGuardar" class="flex-1 btn bg-green-600 text-white">💾 Guardar gasto</button>
+      </div>
+    </section>
+
+    <!-- Últimos -->
+    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Últimos 5 Registros</h2>
+        <button id="btnRefrescar" class="btn border text-sm">↻</button>
+      </div>
+      <div id="lista" class="space-y-2 text-sm"></div>
+    </section>
+
+    <!-- Console -->
+    <section>
+      <h3 class="text-xs font-semibold text-gray-500 mb-1">Salida / Depuración</h3>
+      <pre id="out" class="text-[11px] bg-white border rounded-xl p-3 overflow-x-auto whitespace-pre-wrap"></pre>
+    </section>
   </div>
-</div>
 
-<section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
-  <h2 class="font-semibold">Nuevo gasto</h2>
+  <!-- Modal Ajustes -->
+  <div id="modalSettings" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md p-4 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold">Ajustes</h2>
+        <button id="closeSettings" class="btn border">✖</button>
+      </div>
 
-  <input id="fFecha" type="date" class="w-full border rounded px-3 py-2" />
-  <input id="fProveedor" placeholder="Proveedor / Local" class="w-full border rounded px-3 py-2"/>
-  <input id="fCantidad" type="number" step="0.01" placeholder="Importe (€)" class="w-full border rounded px-3 py-2"/>
-  <textarea id="fNota" rows="2" class="w-full border rounded px-3 py-2" placeholder="Notas"></textarea>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">🔑 Gemini API Key</label>
+        <input id="apiKeyInput" type="password" class="w-full border rounded px-3 py-2" placeholder="Pega aquí tu API Key (AIza...)" />
+        <div class="flex gap-2">
+          <button id="saveApiKey" class="btn bg-indigo-600 text-white flex-1">Guardar clave</button>
+          <button id="clearApiKey" class="btn border flex-1">Borrar</button>
+        </div>
+        <p class="text-xs text-gray-500">Se guarda en este navegador (localStorage). No se sube a Firebase.</p>
+      </div>
 
-  <input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
-  <img id="preview" class="mt-2 max-h-40 hidden rounded border" />
+      <hr class="my-2"/>
 
-  <button id="scanAI" class="w-full py-2 bg-purple-600 text-white font-semibold rounded">📸 Escanear ticket con IA</button>
-  <button id="btnGuardar" class="w-full py-2 bg-green-600 text-white font-semibold rounded">💾 Guardar gasto</button>
-</section>
-
-<section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
-  <div class="flex justify-between">
-    <h2 class="font-semibold">Últimos gastos</h2>
-    <button id="btnRefrescar" class="px-2 py-1 rounded border text-sm">↻</button>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">👤 Sesión</label>
+        <div class="flex gap-2">
+          <button id="loginSettings" class="btn border flex-1">Entrar con Google</button>
+          <button id="logoutSettings" class="btn border flex-1">Salir</button>
+        </div>
+        <p id="sessionInfo" class="text-xs text-gray-500"></p>
+      </div>
+    </div>
   </div>
-  <div id="lista" class="space-y-2"></div>
-</section>
 
-<pre id="out" class="text-xs text-gray-600 whitespace-pre-wrap"></pre>
-</div>
+  <!-- App Script -->
+  <script type="module">
+    // ===== Firebase (CDN) =====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, Timestamp, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, Timestamp, query, limit, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+    // === TU CONFIG ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
 
-const config = {
-  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-  authDomain: "gastos-2n.firebaseapp.com",
-  projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
-  messagingSenderId: "55010048795",
-  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-};
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app"); // <- bucket que me diste
 
-const app = initializeApp(config);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
+    // ===== Helpers UI =====
+    const $ = (id) => document.getElementById(id);
+    const out = $("out");
+    const log = (msg,obj) => {
+      const line = (new Date()).toLocaleTimeString()+" — "+msg+(obj?(" "+JSON.stringify(obj,null,2)):"");
+      out.textContent = (out.textContent + "\\n" + line).slice(-4000);
+    };
 
-const whoami = document.getElementById("whoami");
-const fFecha = document.getElementById("fFecha");
-const fProveedor = document.getElementById("fProveedor");
-const fCantidad = document.getElementById("fCantidad");
-const fNota = document.getElementById("fNota");
-const fFile = document.getElementById("fFile");
-const preview = document.getElementById("preview");
-const out = document.getElementById("out");
+    // Set defaults
+    $("fFecha").value = new Date().toISOString().slice(0,10);
+    $("fCategoria").value = "comida";
 
-document.getElementById("btnSettings").onclick=()=>modalSettings.classList.remove("hidden");
-document.getElementById("closeSettings").onclick=()=>modalSettings.classList.add("hidden");
-document.getElementById("saveApiKey").onclick=()=>{
-  const key=document.getElementById("apiKeyInput").value.trim();
-  if(!key)return alert("Introduce clave");
-  localStorage.setItem("geminiKey",key);
-  alert("✅ API Key guardada");
-  modalSettings.classList.add("hidden");
-};
+    // Preview imagen
+    $("fFile").addEventListener("change", (e)=>{
+      const f = e.target.files?.[0];
+      if(!f){ $("preview").classList.add("hidden"); return; }
+      $("preview").src = URL.createObjectURL(f);
+      $("preview").classList.remove("hidden");
+    });
 
-fFecha.value=new Date().toISOString().slice(0,10);
+    // ===== Ajustes modal =====
+    const modal = $("modalSettings");
+    $("btnSettings").onclick = ()=> modal.classList.remove("hidden");
+    $("closeSettings").onclick = ()=> modal.classList.add("hidden");
+    $("saveApiKey").onclick = ()=> {
+      const key = $("apiKeyInput").value.trim();
+      if(!key) return alert("Introduce una API Key válida (empieza por AIza...)");
+      localStorage.setItem("geminiKey", key);
+      alert("✅ Clave guardada en este navegador");
+      modal.classList.add("hidden");
+    };
+    $("clearApiKey").onclick = ()=> {
+      localStorage.removeItem("geminiKey");
+      $("apiKeyInput").value = "";
+      alert("🧹 Clave eliminada de este navegador");
+    };
 
-fFile.addEventListener("change",e=>{
-  const f=e.target.files?.[0];
-  if(!f)return preview.classList.add("hidden");
-  preview.src=URL.createObjectURL(f);
-  preview.classList.remove("hidden");
-});
+    // ===== Login visible en header y en Ajustes =====
+    const btnLogin = $("btnLogin");
+    const btnLogout = $("btnLogout");
+    const loginSettings = $("loginSettings");
+    const logoutSettings = $("logoutSettings");
+    const whoami = $("whoami");
+    const sessionInfo = $("sessionInfo");
 
-onAuthStateChanged(auth, user=>{
-  if(user){
-    whoami.textContent="Sesión: "+user.email;
-    cargarUltimos();
-  } else {
-    const provider=new GoogleAuthProvider();
-    signInWithPopup(auth,provider).catch(()=>{});
-  }
-});
+    function updateAuthButtons(user){
+      const logged = !!user;
+      btnLogin.classList.toggle("hidden", logged);
+      btnLogout.classList.toggle("hidden", !logged);
+      loginSettings.classList.toggle("hidden", logged);
+      logoutSettings.classList.toggle("hidden", !logged);
+      whoami.textContent = logged ? `Conectado: ${user.email || user.uid}` : "No autenticado";
+      sessionInfo.textContent = logged ? `UID: ${user.uid}` : "Sin sesión";
+    }
 
-document.getElementById("btnGuardar").onclick=async()=>{
-  const user=auth.currentUser;
-  if(!user)return alert("Login...");
+    async function doLogin(){
+      try{
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        await signInWithPopup(auth, provider);
+      }catch(e){ alert("Error al iniciar sesión: "+(e.message||e)); log("login error", e); }
+    }
+    async function doLogout(){
+      try{ await signOut(auth); }catch(e){ log("logout error", e); }
+    }
 
-  const fecha=fFecha.value;
-  const proveedor=fProveedor.value;
-  const nota=fNota.value;
-  const cantidad=parseFloat(fCantidad.value);
-  if(!proveedor||!cantidad)return alert("Completa proveedor e importe");
+    btnLogin.onclick = doLogin;
+    loginSettings.onclick = doLogin;
+    btnLogout.onclick = doLogout;
+    logoutSettings.onclick = doLogout;
 
-  let photoURL="";
-  const file=fFile.files?.[0];
-  if(file){
-    const fname=fecha+"_"+proveedor.replace(/\W+/g,"_")+"_"+Date.now()+".jpg";
-    const r=ref(storage,`tickets/${user.uid}/${fname}`);
-    await uploadBytes(r,file);
-    photoURL=await getDownloadURL(r);
-  }
+    onAuthStateChanged(auth, (user)=>{
+      updateAuthButtons(user);
+      if(user){ cargarUltimos(); calcularTotales(); }
+      else { $("lista").innerHTML=""; $("totGastos").textContent="-€0,00"; $("totIngresos").textContent="+€0,00"; $("totBalance").textContent="€0,00"; }
+    });
 
-  await addDoc(collection(db,`users/${user.uid}/entries`),{
-    date:Timestamp.fromDate(new Date(fecha)),
-    provider:proveedor,
-    notes:nota,
-    amount:cantidad,
-    isExpense:true,
-    photoURL,
-    createdAt:Timestamp.now()
-  });
+    // ===== Guardar registro =====
+    $("btnGuardar").onclick = async ()=> {
+      const user = auth.currentUser;
+      if(!user){ alert("Inicia sesión con Google primero."); return; }
 
-  alert("✅ Guardado");
-  fProveedor.value=""; fNota.value=""; fCantidad.value=""; fFile.value=""; preview.classList.add("hidden");
-  cargarUltimos();
-};
+      const fecha = $("fFecha").value || new Date().toISOString().slice(0,10);
+      const categoria = $("fCategoria").value;
+      const proveedor = $("fProveedor").value.trim();
+      const nota = $("fNota").value.trim();
+      const cantidad = parseFloat(($("fCantidad").value || "0").replace(",", "."));
 
-async function cargarUltimos(){
-  const user=auth.currentUser; if(!user)return;
-  const qSnap=await getDocs(query(collection(db,`users/${user.uid}/entries`),orderBy("createdAt","desc"),limit(10)));
-  const list=document.getElementById("lista");
-  list.innerHTML="";
-  qSnap.forEach(doc=>{
-    const d=doc.data();
-    const dstr=d.date.toDate().toISOString().slice(0,10);
-    list.innerHTML+=`
-      <div class="flex justify-between border p-2 rounded">
-        <div><b>${d.provider}</b><br><small>${dstr}</small></div>
-        <div>${d.amount} €<br>${d.photoURL?`<a href="${d.photoURL}" target="_blank">ticket</a>`:""}</div>
-      </div>`;
-  });
-}
-document.getElementById("btnRefrescar").onclick=cargarUltimos;
+      if(!proveedor || !cantidad || cantidad<=0){
+        alert("Completa proveedor e importe (> 0).");
+        return;
+      }
 
-document.getElementById("scanAI").onclick=async()=>{
-  const key=localStorage.getItem("geminiKey");
-  if(!key)return alert("Guarda tu API Key");
+      $("statusMsg").textContent = "Guardando...";
 
-  const file=fFile.files[0];
-  if(!file)return alert("Sube ticket primero");
+      // Subir foto si hay
+      let photoURL = "";
+      const f = $("fFile").files?.[0];
+      if(f){
+        const y = fecha.slice(0,7); // YYYY-MM
+        const safe = proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+        const ext = (f.name.split('.').pop()||"jpg").toLowerCase();
+        const fileName = `${fecha}_${safe}_${Date.now()}.${ext}`;
+        const rr = ref(storage, `tickets/${user.uid}/${y}/${fileName}`);
+        await uploadBytes(rr, f);
+        photoURL = await getDownloadURL(rr);
+      }
 
-  const buf=await file.arrayBuffer();
-  const b64=btoa(String.fromCharCode(...new Uint8Array(buf)));
-  const prompt="Extrae proveedor e importe del ticket.";
+      await addDoc(collection(db, `users/${user.uid}/entries`), {
+        date: Timestamp.fromDate(new Date(fecha)),
+        category: categoria,
+        provider: proveedor,
+        notes: nota,
+        amount: cantidad,
+        isExpense: categoria!=="ingreso",
+        photoURL,
+        createdAt: Timestamp.now()
+      });
 
-  const body={
-    contents:[{
-      role:"user",
-      parts:[
-        {text:prompt},
-        {inline_data:{mime_type:"image/jpeg",data:b64}}
-      ]
-    }]
-  };
+      $("statusMsg").textContent = "✅ Guardado";
+      $("fProveedor").value = ""; $("fNota").value=""; $("fCantidad").value=""; $("fFile").value=""; $("preview").classList.add("hidden");
+      cargarUltimos(); calcularTotales();
+      setTimeout(()=>$("statusMsg").textContent="",1500);
+    };
 
-  const res=await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(body)
-  });
-  const data=await res.json();
-  out.textContent=JSON.stringify(data,null,2);
+    // ===== Listado últimos =====
+    $("btnRefrescar").onclick = ()=> { cargarUltimos(); calcularTotales(); };
 
-  try{
-    const txt=data.candidates[0].content.parts[0].text;
-    const prov=txt.match(/Proveedor:? (.*)/i)?.[1];
-    const amt=txt.match(/Importe:? ([0-9.,]+)/i)?.[1];
-    if(prov)fProveedor.value=prov;
-    if(amt)fCantidad.value=amt.replace(",",".");
-  }catch{}
-};
-</script>
+    async function cargarUltimos(){
+      const user = auth.currentUser; if(!user) return;
+      const refCol = collection(db, `users/${user.uid}/entries`);
+      const q = query(refCol, orderBy("createdAt","desc"), limit(5));
+      const snap = await getDocs(q);
+      const c = [];
+      snap.forEach(d=> c.push({id:d.id, ...d.data()}));
+      const html = c.map(d=>{
+        const fecha = d.date?.toDate ? d.date.toDate().toISOString().slice(0,10) : "";
+        const euros = (d.amount||0).toLocaleString("es-ES",{minimumFractionDigits:2});
+        return `<div class="flex items-center justify-between border rounded p-2">
+          <div class="min-w-0">
+            <p class="text-sm font-medium truncate">${d.provider||"-"} · <span class="text-gray-500">${d.category}</span></p>
+            <p class="text-xs text-gray-500">${fecha}${d.notes?(" · "+d.notes):""}</p>
+          </div>
+          <div class="text-right ml-2">
+            <p class="text-sm font-semibold ${d.isExpense?'text-red-600':'text-green-600'}">${d.isExpense?'-':'+'}${euros} €</p>
+            ${d.photoURL?`<a class="text-xs underline text-indigo-600" href="${d.photoURL}" target="_blank">ticket</a>`:""}
+          </div>
+        </div>`;
+      }).join("");
+      $("lista").innerHTML = html || `<p class="text-center text-gray-400 text-sm">¡Aún no hay registros!</p>`;
+    }
+
+    async function calcularTotales(){
+      const user = auth.currentUser; if(!user) return;
+      // sumar (rápido: pedimos últimos 100; para informes mensuales haremos query por mes)
+      const refCol = collection(db, `users/${user.uid}/entries`);
+      const q = query(refCol, orderBy("createdAt","desc"), limit(100));
+      const snap = await getDocs(q);
+      let gastos=0, ingresos=0;
+      snap.forEach(d=>{
+        const x=d.data();
+        if(x.category==="ingreso") ingresos += (x.amount||0); else gastos += (x.amount||0);
+      });
+      $("totGastos").textContent = "-€"+gastos.toLocaleString("es-ES",{minimumFractionDigits:2});
+      $("totIngresos").textContent = "+€"+ingresos.toLocaleString("es-ES",{minimumFractionDigits:2});
+      $("totBalance").textContent = "€"+(ingresos-gastos).toLocaleString("es-ES",{minimumFractionDigits:2});
+    }
+
+    // ===== Escaneo con Gemini (v1 + modelo -latest) =====
+    $("scanAI").onclick = async () => {
+      const apiKey = localStorage.getItem("geminiKey");
+      if(!apiKey){ alert("Ve a ⚙️ Ajustes y pega tu API Key de Gemini."); return; }
+      const file = $("fFile").files?.[0];
+      if(!file){ alert("Selecciona una foto del ticket primero."); return; }
+
+      const buf = await file.arrayBuffer();
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const mime = file.type || "image/jpeg";
+
+      const prompt = `Extrae la siguiente información del ticket y responde SOLO en este formato exacto (sin texto adicional):
+Proveedor: <nombre>
+Importe: <número con punto decimal>
+Fecha: <YYYY-MM-DD>`;
+
+      const body = {
+        contents: [{
+          role: "user",
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mime, data: b64 } }
+          ]
+        }]
+      };
+
+      const url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key="+encodeURIComponent(apiKey);
+      const res = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      log("Gemini respuesta", data);
+
+      if(data.error){
+        alert("Error IA: "+(data.error.message || data.error.status));
+        return;
+      }
+
+      try{
+        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const prov = /Proveedor:\s*(.*)/i.exec(txt)?.[1]?.trim();
+        const imp = /Importe:\s*([0-9]+[.,]?[0-9]*)/.exec(txt)?.[1]?.trim();
+        const fec = /Fecha:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(txt)?.[1]?.trim();
+        if(prov) $("fProveedor").value = prov;
+        if(imp) $("fCantidad").value = imp.replace(",", ".");
+        if(fec) $("fFecha").value = fec;
+        if(!prov && !imp) alert("No se pudieron extraer campos. Prueba con otra foto o ajusta la iluminación.");
+      }catch(e){
+        alert("No pude interpretar la salida de la IA.");
+      }
+    };
+  </script>
 </body>
 </html>
