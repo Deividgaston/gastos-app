@@ -1,504 +1,233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestor de Registros Móvil · XLSX + Fotos</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gastos 2N</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="preload" as="style" onload="this.rel='stylesheet'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
-  <!-- SheetJS for XLSX generation -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
-  <!-- JSZip for zipping Excel + photos -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-    .mobile-frame{ width:95vw; max-width:480px; min-height:88vh; border-radius:40px; border:4px solid #1f2937;
-      box-shadow:0 25px 50px -12px rgba(0,0,0,.25); }
-    .notch{ height:40px; width:112px; background-color:#000; border-radius:0 0 15px 15px; }
-    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button{ -webkit-appearance: none; margin:0; }
-    input[type="month"]{ appearance:none; background-color:white; padding-right:1.5rem; }
-    .btn { width:100%; padding:1rem; border-radius:1.5rem; font-weight:800; font-size:1.1rem; box-shadow:0 10px 20px -8px rgba(0,0,0,.2); transition:.15s; }
-    .btn:active { transform: scale(.98); }
-    .chip { font-size:.75rem; padding:.25rem .5rem; border-radius:9999px; border:1px solid #e5e7eb; }
+    body { background: #f7f7fb; }
   </style>
 </head>
-<body class="flex justify-center items-start pt-6 pb-10">
-  <div class="mobile-frame bg-white mx-auto overflow-hidden flex flex-col relative">
-    <!-- Status bar -->
-    <div class="bg-gray-800 h-10 flex items-center justify-center relative">
-      <div class="notch absolute top-0"></div>
-      <span id="status-time" class="text-xs text-white font-semibold absolute left-5 top-2.5"></span>
-      <span id="status-auth" class="text-xs text-white font-semibold absolute right-5 top-2.5">⏳ Cargando...</span>
-    </div>
-
-    <!-- App content -->
-    <div id="app-content" class="flex-1 overflow-y-auto p-4">
-      <div class="flex items-center justify-center h-full text-gray-500">Cargando aplicación...</div>
-    </div>
-
-    <!-- Modal -->
-    <div id="modal-container" class="hidden fixed inset-0 z-50 bg-black/70 items-center justify-center p-4">
-      <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all duration-300">
-        <h3 class="text-xl font-bold mb-3 text-indigo-700">Notificación</h3>
-        <p id="modal-message" class="text-gray-700 mb-6 whitespace-pre-wrap"></p>
-        <button onclick="closeModal()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-semibold hover:bg-indigo-700 transition">Aceptar</button>
+<body class="min-h-screen">
+  <div class="max-w-xl mx-auto p-4 space-y-4">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Gastos 2N</h1>
+      <div class="flex items-center gap-2">
+        <button id="btnLogin" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Entrar con Google</button>
+        <button id="btnLogout" class="px-3 py-2 rounded border text-sm">Salir</button>
       </div>
-    </div>
+    </header>
+    <p id="whoami" class="text-sm text-gray-600">No autenticado</p>
 
-    <!-- Hidden file inputs -->
-    <input type="file" id="file-input" accept="image/*" capture="environment" class="hidden">
-    <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden">
+    <!-- Formulario gasto -->
+    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+      <h2 class="font-semibold">Nuevo gasto</h2>
+      <div>
+        <label class="block text-sm font-medium">Fecha</label>
+        <input id="fFecha" type="date" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Categoría</label>
+        <select id="fCategoria" class="w-full border rounded px-3 py-2">
+          <option value="comida">Comida/Mercado</option>
+          <option value="transporte">Otros Transportes</option>
+          <option value="servicios">Servicios/Varios</option>
+          <option value="ocio">Ocio/Invitaciones</option>
+          <option value="gasolina">Gasolina</option>
+          <option value="peajes">Peajes/Parking</option>
+          <option value="alojamiento">Alojamiento/Hotel</option>
+          <option value="varios">Varios</option>
+          <option value="ingreso">Ingreso</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Proveedor / Local</label>
+        <input id="fProveedor" type="text" placeholder="Ej: Repsol, Restaurante X" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Notas</label>
+        <textarea id="fNota" rows="2" class="w-full border rounded px-3 py-2" placeholder="Opcional"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Importe (€)</label>
+        <input id="fCantidad" type="number" min="0.01" step="0.01" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Foto del ticket (opcional)</label>
+        <input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
+        <img id="preview" class="mt-2 max-h-40 hidden rounded border" />
+      </div>
+      <button id="btnGuardar" class="w-full py-3 rounded bg-green-600 text-white font-semibold">Guardar gasto</button>
+      <p class="text-xs text-gray-500">Las fotos se guardan en <code>tickets/&lt;uid&gt;/YYYY-MM/archivo</code>.</p>
+    </section>
+
+    <!-- Últimos movimientos -->
+    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Últimos gastos</h2>
+        <button id="btnRefrescar" class="text-sm px-3 py-1 rounded border">Refrescar</button>
+      </div>
+      <div id="lista" class="space-y-2"></div>
+    </section>
+
+    <section>
+      <pre id="out" class="text-xs text-gray-600 whitespace-pre-wrap"></pre>
+    </section>
   </div>
 
-<script type="module">
-/** ========== CONFIG BÁSICA (local + escaneo) ========== */
-let GOOGLE_API_KEY = localStorage.getItem("grm_api_key") || "PEGAR_API_KEY_AQUI"; // Para escaneo (Gemini Vision)
-let firebaseConfig = null; // Opcional: activar Firebase si quieres sincronizar en la nube
+  <script type="module">
+    // --- Firebase imports (CDN) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { 
+      getStorage, ref, uploadBytes, getDownloadURL 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-// ====== Estado global ======
-let db = null, auth = null;
-let userId = null;
-let isProcessing = false;
-let view = "home";
-let entryMode = "manual";
-let entries = []; // [{... , photoB64?, photoType?, photoName? }]
-let HAS_FIREBASE = false;
+    // --- Config Firebase (tuya) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app", // correcto en tu proyecto
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
 
-// Estado formulario
-let formData = { date: new Date().toISOString().slice(0,10), category: "comida", provider: "", notes: "", amount: "", photoB64: "", photoType: "", photoName: "" };
+    // --- Inicializar Firebase ---
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app"); // forzamos bucket
 
-// Categorías y columnas CSV/XLSX
-const CATEGORIES = [
-  { value: 'comida', label: 'Comida/Mercado', column: 'MEALS' },
-  { value: 'transporte', label: 'Otros Transportes', column: 'OTHER TRANSPORTS (Taxi)' },
-  { value: 'servicios', label: 'Servicios/Varios', column: 'VARIOUS' },
-  { value: 'ocio', label: 'Ocio/Invitaciones', column: 'INVITATIONS' },
-  { value: 'ingreso', label: 'Ingreso', column: null },
-  { value: 'gasolina', label: 'Gasolina', column: 'GASOLINE' },
-  { value: 'peajes', label: 'Peajes/Parking', column: 'TOLLS & PARKINGS' },
-  { value: 'alojamiento', label: 'Alojamiento/Hotel', column: 'HOTEL' },
-  { value: 'varios', label: 'Varios', column: 'VARIOUS' },
-];
-const CSV_COLUMNS = ['DATE','CLIENT / PROVIDER','TOLLS & PARKINGS','HOTEL','GASOLINE','TICKETS TRAVELING','OTHER TRANSPORTS (Taxi)','INVITATIONS','MEALS','VARIOUS','TOTAL','DESCRIPTION'];
+    // --- Helpers UI ---
+    const log = (msg) => { document.getElementById('out').textContent += msg + "\n"; };
+    const whoami = document.getElementById('whoami');
 
-// ====== Utilidades UI ======
-window.showModal = (msg) => { document.getElementById('modal-message').textContent = msg; const m=document.getElementById('modal-container'); m.classList.remove('hidden'); m.classList.add('flex'); };
-window.closeModal = () => { const m=document.getElementById('modal-container'); m.classList.remove('flex'); m.classList.add('hidden'); };
-const updateStatus = (text) => { document.getElementById('status-auth').textContent = text; };
-document.getElementById('status-time').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+    // Fecha por defecto hoy
+    document.getElementById('fFecha').value = new Date().toISOString().slice(0,10);
 
-// ====== LocalStorage Modo ======
-const LS_KEY = "grm_entries_v2_photos";
-const LS_USER = "grm_user_id";
-function loadLocal() {
-  const id = localStorage.getItem(LS_USER) || crypto.randomUUID();
-  localStorage.setItem(LS_USER, id);
-  userId = id;
-  const raw = localStorage.getItem(LS_KEY);
-  entries = raw ? JSON.parse(raw) : [];
-}
-function saveLocal() {
-  localStorage.setItem(LS_KEY, JSON.stringify(entries));
-}
-
-// ====== Gemini Vision (escaneo) ======
-async function fileToBase64(file) {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = ""; for (let i=0;i<bytes.byteLength;i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-async function fetchWithRetry(url, options, retries=3) {
-  for (let i=0;i<retries;i++){
-    try{
-      const res = await fetch(url, options);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res;
-    }catch(err){
-      if (i===retries-1) throw err;
-      await new Promise(r=>setTimeout(r, Math.pow(2,i)*1000));
-    }
-  }
-}
-async function callGeminiVision(base64Image, mimeType) {
-  if (!GOOGLE_API_KEY || GOOGLE_API_KEY === "PEGAR_API_KEY_AQUI") {
-    throw new Error("Falta la API key de Google AI Studio. Toca ⚙️ Ajustes para guardarla.");
-  }
-  const prompt = `Extrae la siguiente información de la imagen (recibo/factura o texto a mano) y devuélvela SOLO como JSON:
-{
-  "date": "YYYY-MM-DD",
-  "provider": "Nombre del local o concepto (máx. 20 palabras)",
-  "amount": 0.00
-}`;
-  const payload = {
-    contents:[{ role:"user", parts:[ {text:prompt}, { inlineData:{ mimeType, data: base64Image }} ] }],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type:"OBJECT",
-        properties:{ date:{type:"STRING"}, provider:{type:"STRING"}, amount:{type:"NUMBER"} },
-        propertyOrdering:["date","provider","amount"]
-      }
-    }
-  };
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${encodeURIComponent(GOOGLE_API_KEY)}`;
-  const res = await fetchWithRetry(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
-  const data = await res.json();
-  const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!jsonText) throw new Error("Respuesta inválida de la API.");
-  return JSON.parse(jsonText);
-}
-
-// ====== Eventos de archivos ======
-document.getElementById("file-input").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file || entryMode !== "scan") return;
-  isProcessing = true; renderEntryScreen(); showModal("Escaneando imagen...");
-  try {
-    const b64 = await fileToBase64(file);
-    const extracted = await callGeminiVision(b64, file.type);
-    formData.date = extracted.date || formData.date;
-    formData.provider = extracted.provider || formData.provider;
-    formData.amount = String(extracted.amount ?? "").replace(",", ".");
-    showModal("Datos extraídos. Revísalos y guarda.");
-  } catch (err) {
-    console.error(err);
-    showModal("Error al escanear: " + (err?.message || err));
-    entryMode = "manual";
-  } finally {
-    isProcessing = false; e.target.value = null; renderEntryScreen();
-  }
-});
-
-document.getElementById("photo-input").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  try {
-    const b64 = await fileToBase64(file);
-    formData.photoB64 = b64;
-    formData.photoType = file.type || "image/jpeg";
-    // Nombre sugerido
-    const d = (formData.date || new Date().toISOString().slice(0,10));
-    const safeProv = (formData.provider||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-    formData.photoName = `${d}_${safeProv}.jpg`;
-    renderEntryScreen();
-  } catch (err) {
-    console.error(err);
-    showModal("No se pudo cargar la foto.");
-  } finally {
-    e.target.value = null;
-  }
-});
-
-// ====== Acciones UI ======
-window.setView = (v) => { view = v; renderApp(); };
-window.handleStartEntry = (mode) => {
-  entryMode = mode;
-  formData = { date: new Date().toISOString().slice(0,10), category: CATEGORIES[0].value, provider:"", notes:"", amount:"", photoB64:"", photoType:"", photoName:"" };
-  setView("entry");
-  if (mode === "scan") setTimeout(()=> document.getElementById("file-input").click(), 120);
-};
-window.handleChange = (e) => { formData[e.target.name] = e.target.value; };
-
-window.pickPhoto = () => document.getElementById("photo-input").click();
-
-window.handleSave = async () => {
-  // Validación
-  const { date, category, provider, notes, amount, photoB64, photoType, photoName } = formData;
-  const numericAmount = parseFloat(String(amount).replace(",", "."));
-  if (!date || !category || !provider || isNaN(numericAmount) || numericAmount<=0){
-    showModal("Completa Fecha, Categoría, Proveedor y un Monto válido (>0).");
-    return;
-  }
-  isProcessing = true; renderEntryScreen();
-
-  const newEntry = {
-    id: crypto.randomUUID(),
-    date, category, provider, notes, amount: numericAmount,
-    isExpense: category !== "ingreso",
-    createdAt: new Date().toISOString(),
-    // Foto (opcional)
-    photoB64: photoB64 || "",
-    photoType: photoType || "",
-    photoName: photoName || ""
-  };
-
-  try {
-    // Guardamos local (más estable y suficiente para exportar).
-    entries.unshift(newEntry);
-    entries.sort((a,b)=> new Date(b.date)-new Date(a.date));
-    saveLocal();
-    renderApp();
-    showModal("Registro guardado.");
-    setView("home");
-  } catch (e) {
-    console.error("Save error:", e);
-    showModal("Error al guardar: " + e.message);
-  } finally {
-    isProcessing = false;
-  }
-};
-
-// ====== Exportar: XLSX + Fotos en ZIP ======
-let exportMonth = new Date().toISOString().slice(0,7);
-let exportReportData = []; let exportMessage = '';
-
-window.handleMonthChange = (e) => { exportMonth = e.target.value; renderExportScreen(); };
-
-function toReportRecords(month){
-  const filtered = entries.filter(en => en.category !== "ingreso" && en.date?.startsWith(month)).map(entry => {
-    const catMap = CATEGORIES.find(c=>c.value===entry.category);
-    const columnName = catMap ? catMap.column : 'VARIOUS';
-    const rec = CSV_COLUMNS.reduce((acc,col)=>{ acc[col]=0.00; return acc; }, {});
-    rec['DATE'] = new Date(entry.date).toLocaleDateString('es-ES');
-    rec['CLIENT / PROVIDER'] = entry.provider || '';
-    rec['DESCRIPTION'] = entry.notes || '';
-    const amount = entry.amount || 0;
-    if (columnName && CSV_COLUMNS.includes(columnName)) rec[columnName] = amount;
-    else rec['VARIOUS'] = amount;
-    let total=0; for (let i=2;i<=9;i++){ total += rec[CSV_COLUMNS[i]] || 0; }
-    rec['TOTAL'] = total;
-    return rec;
-  });
-  return filtered;
-}
-
-async function downloadXLSXAndPhotosZip(records){
-  if (!records.length){ showModal("No hay datos para exportar."); return; }
-  const monthDate = new Date(exportMonth + "-01");
-  const monthYear = monthDate.toLocaleDateString('es-ES',{ month:'long', year:'numeric' });
-  const today = new Date().toLocaleDateString('es-ES');
-  const zip = new JSZip();
-
-  // 1) Crear hoja Excel con plantilla 2N
-  const rows = [];
-  rows.push(["","","","","","   EXPENSES REPORT","","","","","",""]);
-  rows.push(["NOM","","Gaston Ortigosa","","","","","","","DATE:","","",today]);
-  rows.push(["PRENOM:","David","COST CENTER:","7420","","","MONTH/YEAR:","",monthYear,"","","",""]);
-  rows.push(["","","","","","","","","","","","",""]);
-  rows.push(CSV_COLUMNS);
-  rows.push(["","", "PARKINGS ", "", "", "", "", "TRAVELING", "", "", "", ""]);
-
-  for (const rec of records){
-    const row = CSV_COLUMNS.map(col => {
-      if (col==='DATE' || col==='CLIENT / PROVIDER' || col==='DESCRIPTION') return rec[col] || "";
-      return typeof rec[col] === 'number' ? Number(rec[col].toFixed(2)) : (rec[col] || 0);
+    // Preview imagen
+    const fileInput = document.getElementById('fFile');
+    const preview = document.getElementById('preview');
+    fileInput.addEventListener('change', (e) => {
+      const f = e.target.files?.[0];
+      if (!f) { preview.classList.add('hidden'); return; }
+      const url = URL.createObjectURL(f);
+      preview.src = url; preview.classList.remove('hidden');
     });
-    rows.push(row);
-  }
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [
-    { wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 10 }, { wch: 10 },
-    { wch: 18 }, { wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 40 },
-  ];
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for (let R = 6; R <= range.e.r; ++R){
-    for (let C = 2; C <= 10; ++C){
-      const cell = ws[XLSX.utils.encode_cell({r:R, c:C})];
-      if (cell && typeof cell.v === 'number'){ cell.z = "0.00"; }
-    }
-  }
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "EXPENSES");
-
-  const wbArray = XLSX.write(wb, { bookType:'xlsx', type:'array' });
-  zip.file(`Informe_Gastos_${exportMonth}.xlsx`, wbArray);
-
-  // 2) Añadir fotos del mes (/tickets/)
-  const photos = entries.filter(e => e.date?.startsWith(exportMonth) && e.photoB64);
-  if (photos.length){
-    const folder = zip.folder("tickets");
-    for (const p of photos){
+    // Login/Logout
+    document.getElementById('btnLogin').onclick = async () => {
       try {
-        const base64 = p.photoB64;
-        const data = base64.replace(/^data:[^;]+;base64,/, "");
-        const nameSuggest = p.photoName || `${p.date}_${(p.provider||'ticket').replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_")}.jpg`;
-        folder.file(nameSuggest, data, { base64:true });
-      } catch (err){
-        console.warn("No se pudo añadir foto:", err);
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        log("❌ Login error: " + (e.code || e.message)); console.error(e);
       }
-    }
-  }
+    };
+    document.getElementById('btnLogout').onclick = async () => { await signOut(auth); };
 
-  const blob = await zip.generateAsync({ type:"blob" });
-  const a = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  a.href = url;
-  a.download = `Informe_Gastos_${exportMonth}.zip`;
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        whoami.textContent = `Conectado como ${user.email || user.uid}`;
+        cargarUltimos();
+      } else {
+        whoami.textContent = "No autenticado";
+        document.getElementById('lista').innerHTML = "";
+      }
+    });
 
-  showModal(`Exportado: Excel + ${photos.length} foto(s).`);
-}
+    // Guardar gasto (con foto opcional)
+    document.getElementById('btnGuardar').onclick = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) { alert("Haz login primero"); return; }
 
-// ====== Render ======
-function renderEntryScreen(){
-  const opts = CATEGORIES.map(c=>`<option value="${c.value}" ${formData.category===c.value?'selected':''}>${c.label}</option>`).join('');
-  const photoPreview = formData.photoB64 ? `<img src="data:${formData.photoType||'image/jpeg'};base64,${formData.photoB64}" alt="ticket" class="w-full max-h-48 object-contain rounded-lg border" />` : `<div class="text-xs text-gray-400">Sin foto adjunta</div>`;
-  const content = `
-    <div class="p-4 space-y-6">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-gray-800">Entrada ${entryMode==='scan'?'Escaneada':'Manual'}</h2>
-        <button onclick="openSettings()" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-50">⚙️ Ajustes</button>
-      </div>
-      <p class="text-sm text-gray-500">Revise y complete los datos antes de guardar.</p>
+        const fecha = document.getElementById('fFecha').value || new Date().toISOString().slice(0,10);
+        const categoria = document.getElementById('fCategoria').value;
+        const proveedor = document.getElementById('fProveedor').value.trim();
+        const nota = document.getElementById('fNota').value.trim();
+        const cantidad = parseFloat(document.getElementById('fCantidad').value);
+        if (!proveedor || !cantidad || cantidad <= 0) { alert("Proveedor e importe > 0"); return; }
 
-      <label class="block"><span class="text-gray-700 font-medium">Fecha</span>
-        <input type="date" name="date" value="${formData.date}" onchange="handleChange(event)" required class="mt-1 block w-full p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm"/>
-      </label>
+        // 1) Subir foto si existe
+        let photoURL = "";
+        const f = fileInput.files?.[0];
+        if (f) {
+          const y = fecha.slice(0,7); // YYYY-MM
+          const safeProv = proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+          const ext = (f.name.split('.').pop()||'jpg').toLowerCase();
+          const filename = `${fecha}_${safeProv}_${Date.now()}.${ext}`;
+          const path = `tickets/${user.uid}/${y}/${filename}`;
+          const r = ref(storage, path);
+          await uploadBytes(r, f);
+          photoURL = await getDownloadURL(r);
+          log("📸 Foto subida: " + path);
+        }
 
-      <label class="block"><span class="text-gray-700 font-medium">Categoría</span>
-        <div class="relative mt-1">
-          <select name="category" onchange="handleChange(event)" required class="block w-full p-3 border border-gray-300 rounded-xl bg-white text-lg shadow-sm appearance-none pr-10 focus:ring-indigo-500 focus:border-indigo-500">${opts}</select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-            <svg class="fill-current h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+        // 2) Guardar documento en Firestore
+        const refCol = collection(db, `users/${user.uid}/entries`);
+        await addDoc(refCol, {
+          date: Timestamp.fromDate(new Date(fecha)),
+          category: categoria,
+          provider: proveedor,
+          notes: nota,
+          amount: cantidad,
+          photoURL,
+          createdAt: Timestamp.now(),
+          isExpense: categoria !== 'ingreso'
+        });
+
+        log("✅ Gasto guardado");
+        alert("Gasto guardado correctamente");
+        // reset
+        document.getElementById('fProveedor').value = "";
+        document.getElementById('fNota').value = "";
+        document.getElementById('fCantidad').value = "";
+        fileInput.value = ""; preview.classList.add('hidden');
+        cargarUltimos();
+      } catch (e) {
+        console.error(e);
+        alert("Error al guardar: " + (e.code || e.message));
+        log("❌ Error al guardar: " + (e.code || e.message));
+      }
+    };
+
+    // Listar últimos 10
+    async function cargarUltimos() {
+      const user = auth.currentUser; if (!user) return;
+      const refCol = collection(db, `users/${user.uid}/entries`);
+      const q = query(refCol, orderBy('createdAt','desc'), limit(10));
+      const snap = await getDocs(q);
+      const lista = document.getElementById('lista');
+      lista.innerHTML = '';
+      snap.forEach(doc => {
+        const d = doc.data();
+        const fecha = d.date?.toDate ? d.date.toDate() : new Date();
+        const euros = (d.amount||0).toLocaleString('es-ES', { minimumFractionDigits: 2 });
+        const li = document.createElement('div');
+        li.className = "flex items-center justify-between border rounded p-2";
+        li.innerHTML = `
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">${d.provider||'-'} · <span class="text-gray-500">${d.category}</span></p>
+            <p class="text-xs text-gray-500">${fecha.toISOString().slice(0,10)} ${d.notes?('· '+d.notes):''}</p>
           </div>
-        </div>
-      </label>
+          <div class="ml-3 text-right">
+            <p class="text-sm font-semibold ${d.isExpense? 'text-red-600':'text-green-600'}">${d.isExpense?'-':'+'}${euros} €</p>
+            ${d.photoURL? `<a href="${d.photoURL}" target="_blank" class="text-xs text-indigo-600 underline">ticket</a>`: ''}
+          </div>`;
+        lista.appendChild(li);
+      });
+    }
 
-      <label class="block"><span class="text-gray-700 font-medium">Local/Proveedor</span>
-        <input type="text" name="provider" value="${formData.provider}" onchange="handleChange(event)" required placeholder="Ej: Gasolinera Repsol" class="mt-1 block w-full p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm"/>
-      </label>
-
-      <label class="block"><span class="text-gray-700 font-medium">Observaciones</span>
-        <textarea name="notes" onchange="handleChange(event)" placeholder="Ej: Comida de trabajo con cliente X" rows="3" class="mt-1 block w-full p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm">${formData.notes||""}</textarea>
-      </label>
-
-      <label class="block"><span class="text-gray-700 font-medium">Monto (€) (positivo)</span>
-        <input type="number" name="amount" value="${formData.amount}" onchange="handleChange(event)" required step="0.01" min="0.01" placeholder="0.00" class="mt-1 block w-full p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm"/>
-      </label>
-
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-gray-700 font-medium">Foto del ticket (opcional)</span>
-          ${formData.photoB64 ? `<span class="chip">📸 Adjunta</span>` : ``}
-        </div>
-        <div class="bg-gray-50 p-3 rounded-xl border">${photoPreview}</div>
-        <div class="flex gap-3">
-          <button onclick="pickPhoto()" class="btn bg-sky-600 text-white hover:bg-sky-700">Tomar/Seleccionar foto</button>
-          ${formData.photoB64 ? `<button onclick="formData.photoB64='';formData.photoType='';formData.photoName='';renderEntryScreen()" class="btn bg-gray-200 text-gray-700 hover:bg-gray-300">Quitar foto</button>` : ``}
-        </div>
-      </div>
-
-      <button onclick="handleSave()" ${isProcessing?'disabled':''} class="btn bg-green-600 text-white hover:bg-green-700">${isProcessing?'Guardando...':'Guardar Registro'}</button>
-      <button onclick="setView('home')" class="w-full text-indigo-600 border border-indigo-600 p-3 rounded-3xl font-bold text-lg hover:bg-indigo-50 transition">Cancelar</button>
-    </div>`;
-  document.getElementById("app-content").innerHTML = content;
-}
-
-function renderExportScreen(){
-  const recs = toReportRecords(exportMonth);
-  exportReportData = recs;
-  exportMessage = recs.length ? `Informe listo: ${recs.length} gastos.` : `Sin gastos en ${exportMonth}.`;
-  const content = `
-    <div class="p-4 space-y-6">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-gray-800">Exportar Informe</h2>
-        <button onclick="openSettings()" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-50">⚙️ Ajustes</button>
-      </div>
-      <p class="text-sm text-gray-500">Genera **Excel (plantilla 2N)** + **fotos del mes** en un ZIP.</p>
-
-      <label class="block"><span class="text-gray-700 font-medium">Mes y Año</span>
-        <input type="month" id="month-select" value="${exportMonth}" onchange="handleMonthChange(event)" required class="mt-1 block w-full p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm"/>
-      </label>
-
-      <div class="p-3 rounded-lg text-sm ${exportMessage.includes('Sin gastos') ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">${exportMessage}</div>
-
-      <button onclick="downloadXLSXAndPhotosZip(exportReportData)" ${exportReportData.length===0?'disabled':''} class="btn bg-orange-600 text-white hover:bg-orange-700 flex items-center justify-center space-x-3">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-        <span>Descargar ZIP (Excel + fotos)</span>
-      </button>
-
-      <button onclick="setView('home')" class="w-full text-indigo-600 border border-indigo-600 p-3 rounded-3xl font-bold text-lg hover:bg-indigo-50 transition">Volver</button>
-
-      <h3 class="text-lg font-semibold mt-6 text-gray-800">Vista previa</h3>
-      <div class="bg-gray-50 p-3 rounded-xl max-h-48 overflow-y-auto text-xs font-mono text-gray-700 shadow-inner"><pre>${JSON.stringify(exportReportData,null,2)}</pre></div>
-    </div>`;
-  document.getElementById("app-content").innerHTML = content;
-}
-
-function renderHomeScreen(){
-  const last5 = entries.slice(0,5).map(entry => {
-    const catLabel = CATEGORIES.find(c=>c.value===entry.category)?.label || entry.category;
-    const isIncome = entry.category === "ingreso";
-    const amountFormatted = (entry.amount||0).toLocaleString('es-ES', { minimumFractionDigits: 2 });
-    const providerText = entry.provider || 'Sin proveedor';
-    const hasPhoto = entry.photoB64 ? `<span class="chip ml-2">📸</span>` : ``;
-    return `<div class="flex justify-between items-center border-b pb-2 last:border-b-0">
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium truncate text-gray-900">${providerText} ${hasPhoto}</p>
-        <p class="text-xs text-gray-500">${entry.date?.slice(5,10)} - ${catLabel}</p>
-        ${entry.notes ? `<p class="text-xs italic text-gray-400 truncate mt-0.5">Nota: ${entry.notes}</p>` : ''}
-      </div>
-      <p class="text-base font-extrabold ml-4 ${isIncome?'text-green-600':'text-red-600'}">${isIncome?'+':'-'}€${amountFormatted}</p>
-    </div>`;
-  }).join('');
-
-  const totalGastos = entries.filter(e=>e.category!=="ingreso").reduce((s,e)=> s+(e.amount||0), 0);
-  const totalIngresos = entries.filter(e=>e.category==="ingreso").reduce((s,e)=> s+(e.amount||0), 0);
-  const balance = totalIngresos - totalGastos;
-
-  const content = `
-    <div class="p-4 space-y-6 flex flex-col h-full justify-center">
-      <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-extrabold text-gray-800">Gestión de Registros</h1>
-        <button onclick="openSettings()" class="text-sm px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-50">⚙️ Ajustes</button>
-      </div>
-      <p class="text-xs text-center text-gray-500 -mt-2 mb-2">ID de Usuario: ${userId||'...'}</p>
-
-      <div class="bg-gray-100 p-4 rounded-xl shadow-md space-y-2">
-        <div class="flex justify-between"><span class="text-sm text-gray-600">Total Gastos:</span><span class="font-bold text-red-600">-€${totalGastos.toLocaleString('es-ES',{minimumFractionDigits:2})}</span></div>
-        <div class="flex justify-between"><span class="text-sm text-gray-600">Total Ingresos:</span><span class="font-bold text-green-600">+€${totalIngresos.toLocaleString('es-ES',{minimumFractionDigits:2})}</span></div>
-        <div class="flex justify-between border-t pt-2 mt-2"><span class="text-lg font-extrabold">Balance:</span><span class="text-lg font-extrabold ${balance>=0?'text-green-700':'text-red-700'}">€${balance.toLocaleString('es-ES',{minimumFractionDigits:2})}</span></div>
-      </div>
-
-      <button onclick="handleStartEntry('scan')" ${isProcessing ? 'disabled':''} class="btn bg-indigo-600 text-white hover:bg-indigo-700 flex items-center justify-center space-x-3">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 5.5l-2.73 2.72c-.17.17-.38.3-.61.37"/><path d="M6 19.5L8.73 16.78c.17-.17.38-.3.61-.37"/><path d="M10 2H8a2 2 0 0 0-2 2v2"/><path d="M14 2h2a2 2 0 0 1 2 2v2"/><path d="M10 22h-2a2 2 0 0 1-2-2v-2"/><path d="M14 22h2a2 2 0 0 0 2-2v-2"/></svg>
-        <span>${isProcessing?'Preparando...':'Escanear (cámara)'}</span>
-      </button>
-
-      <div class="text-center text-sm text-gray-400">O</div>
-
-      <button onclick="handleStartEntry('manual')" ${isProcessing ? 'disabled':''} class="btn bg-teal-600 text-white hover:bg-teal-700">Ingreso Manual</button>
-
-      <div class="mt-6 pt-4 border-t border-gray-100">
-        <h3 class="text-xl font-semibold mb-3 text-gray-800">Últimos 5 Registros</h3>
-        <div class="bg-white p-4 rounded-2xl shadow-inner max-h-48 overflow-y-auto space-y-3 border border-gray-200">
-          ${last5 || '<p class="text-center text-sm text-gray-400">¡Aún no hay registros!</p>'}
-        </div>
-        <button onclick="setView('export')" class="w-full mt-4 text-sm text-gray-600 bg-gray-100 p-3 rounded-xl font-semibold hover:bg-gray-200 transition">Exportar (${entries.length} totales)</button>
-      </div>
-    </div>`;
-  document.getElementById("app-content").innerHTML = content;
-}
-
-function renderApp(){
-  switch (view){
-    case "entry": renderEntryScreen(); break;
-    case "export": renderExportScreen(); break;
-    default: renderHomeScreen(); break;
-  }
-}
-
-// ====== Ajustes rápidos ======
-window.openSettings = () => {
-  const val = prompt("Pega tu API Key de Google AI Studio.\nSe guarda solo en este dispositivo. Deja vacío para borrar.", "");
-  if (val !== null) {
-    const v = (val||"").trim();
-    if (v) { GOOGLE_API_KEY = v; localStorage.setItem("grm_api_key", v); showModal("API Key guardada."); }
-    else { GOOGLE_API_KEY = "PEGAR_API_KEY_AQUI"; localStorage.removeItem("grm_api_key"); showModal("API Key eliminada."); }
-  }
-};
-
-// ====== Inicio ======
-(function start(){
-  updateStatus("⏳ Iniciando...");
-  loadLocal();
-  updateStatus(GOOGLE_API_KEY && GOOGLE_API_KEY!=="PEGAR_API_KEY_AQUI" ? "✅ Modo local (AI OK)" : "✅ Modo local");
-  renderApp();
-})();
-</script>
+    document.getElementById('btnRefrescar').onclick = cargarUltimos;
+  </script>
 </body>
 </html>
