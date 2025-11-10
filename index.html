@@ -3,72 +3,149 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N</title>
+  <title>Gastos 2N · Scanner & Export</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background: #f7f7fb; }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.1/dist/xlsx.full.min.js"></script>
+  <style>body{background:#f7f7fb}</style>
 </head>
 <body class="min-h-screen">
   <div class="max-w-xl mx-auto p-4 space-y-4">
+    <!-- Top bar -->
     <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Gastos 2N</h1>
-      <div class="flex items-center gap-2">
-        <button id="btnLogin" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Entrar con Google</button>
-        <button id="btnLogout" class="px-3 py-2 rounded border text-sm">Salir</button>
+      <h1 class="text-3xl font-extrabold leading-tight">Gestión de<br/>Registros</h1>
+      <div class="relative">
+        <button id="btnAjustes" class="px-4 py-2 rounded-full border shadow-sm text-sm flex items-center gap-2">
+          <span>⚙️</span> Ajustes
+        </button>
+        <!-- Panel Ajustes -->
+        <div id="ajustesPanel" class="hidden absolute right-0 mt-2 w-80 bg-white border rounded-2xl shadow-xl p-4 space-y-3 z-10">
+          <div class="flex items-center justify-between">
+            <p class="font-semibold">Ajustes</p>
+            <button id="btnCerrarAjustes" class="text-sm px-2 py-1 rounded border">Cerrar</button>
+          </div>
+          <div class="border-t pt-3 space-y-3">
+            <div class="text-sm text-gray-600">Autenticación</div>
+            <div class="flex gap-2">
+              <button id="btnLogin" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Entrar con Google</button>
+              <button id="btnLogout" class="px-3 py-2 rounded border text-sm">Salir</button>
+            </div>
+            <p id="whoami" class="text-xs text-gray-500">No autenticado</p>
+          </div>
+          <div class="border-t pt-3 space-y-2">
+            <div class="text-sm text-gray-600">Google AI (escaneo de tickets)</div>
+            <input id="gaiKey" type="password" placeholder="AIza..." class="w-full border rounded px-3 py-2 text-sm" />
+            <div class="flex gap-2">
+              <button id="btnSaveKey" class="px-3 py-2 rounded bg-gray-800 text-white text-sm">Guardar clave</button>
+              <button id="btnClearKey" class="px-3 py-2 rounded border text-sm">Borrar</button>
+            </div>
+            <p class="text-[11px] text-gray-500">La clave se guarda solo en tu navegador (localStorage).</p>
+          </div>
+        </div>
       </div>
     </header>
-    <p id="whoami" class="text-sm text-gray-600">No autenticado</p>
 
-    <!-- Formulario gasto -->
-    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
-      <h2 class="font-semibold">Nuevo gasto</h2>
-      <div>
-        <label class="block text-sm font-medium">Fecha</label>
-        <input id="fFecha" type="date" class="w-full border rounded px-3 py-2" />
+    <!-- HOME SCREEN -->
+    <section id="screen-home" class="space-y-5">
+      <p id="uidInfo" class="text-xs text-gray-500 break-all"></p>
+
+      <!-- Resumen -->
+      <div class="bg-white rounded-2xl border shadow-sm p-4 space-y-2">
+        <div class="flex justify-between text-sm"><span>Total Gastos:</span><span id="totalGastos" class="font-bold text-red-600">-€0,00</span></div>
+        <div class="flex justify-between text-sm"><span>Total Ingresos:</span><span id="totalIngresos" class="font-bold text-green-600">+€0,00</span></div>
+        <div class="flex justify-between items-center border-t pt-2 mt-2">
+          <span class="text-lg font-extrabold">Balance:</span>
+          <span id="balance" class="text-lg font-extrabold text-green-700">€0,00</span>
+        </div>
       </div>
-      <div>
-        <label class="block text-sm font-medium">Categoría</label>
-        <select id="fCategoria" class="w-full border rounded px-3 py-2">
-          <option value="comida">Comida/Mercado</option>
-          <option value="transporte">Otros Transportes</option>
-          <option value="servicios">Servicios/Varios</option>
-          <option value="ocio">Ocio/Invitaciones</option>
-          <option value="gasolina">Gasolina</option>
-          <option value="peajes">Peajes/Parking</option>
-          <option value="alojamiento">Alojamiento/Hotel</option>
-          <option value="varios">Varios</option>
-          <option value="ingreso">Ingreso</option>
-        </select>
+
+      <!-- Acciones principales -->
+      <div class="space-y-3">
+        <button id="btnScanOpen" class="w-full bg-indigo-700 text-white font-semibold rounded-xl py-3 flex items-center justify-center gap-2">
+          <span>🖼️</span> Escanear (cámara)
+        </button>
+        <div class="text-center text-gray-400">O</div>
+        <button id="btnOpenManual" class="w-full bg-emerald-700 text-white font-semibold rounded-xl py-3 flex items-center justify-center gap-2">
+          <span>✍️</span> Ingreso Manual
+        </button>
       </div>
-      <div>
-        <label class="block text-sm font-medium">Proveedor / Local</label>
-        <input id="fProveedor" type="text" placeholder="Ej: Repsol, Restaurante X" class="w-full border rounded px-3 py-2" />
+
+      <!-- Últimos 5 -->
+      <div class="space-y-3">
+        <h2 class="text-xl font-semibold">Últimos 5 Registros</h2>
+        <div id="ultimosBox" class="bg-white p-4 rounded-2xl shadow-inner border space-y-3"></div>
       </div>
-      <div>
-        <label class="block text-sm font-medium">Notas</label>
-        <textarea id="fNota" rows="2" class="w-full border rounded px-3 py-2" placeholder="Opcional"></textarea>
+
+      <!-- Export -->
+      <div class="bg-white rounded-2xl border shadow-sm p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+          <label class="flex-1 text-sm">
+            <span class="block mb-1">Mes y Año</span>
+            <input id="expMonth" type="month" class="w-full border rounded px-3 py-2" />
+          </label>
+          <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button id="btnExportCSV" class="px-3 py-2 rounded bg-orange-600 text-white font-semibold">CSV</button>
+            <button id="btnExportXLSX" class="px-3 py-2 rounded bg-emerald-600 text-white font-semibold">Excel</button>
+            <button id="btnExportZIP" class="px-3 py-2 rounded bg-indigo-600 text-white font-semibold">ZIP Fotos</button>
+          </div>
+        </div>
+        <p id="expInfo" class="text-xs text-gray-500"></p>
       </div>
-      <div>
-        <label class="block text-sm font-medium">Importe (€)</label>
-        <input id="fCantidad" type="number" min="0.01" step="0.01" class="w-full border rounded px-3 py-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Foto del ticket (opcional)</label>
-        <input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
-        <img id="preview" class="mt-2 max-h-40 hidden rounded border" />
-      </div>
-      <button id="btnGuardar" class="w-full py-3 rounded bg-green-600 text-white font-semibold">Guardar gasto</button>
-      <p class="text-xs text-gray-500">Las fotos se guardan en <code>tickets/&lt;uid&gt;/YYYY-MM/archivo</code>.</p>
+
+      <!-- Input oculto para escaneo -->
+      <input id="scanInput" type="file" accept="image/*" capture="environment" class="hidden" />
     </section>
 
-    <!-- Últimos movimientos -->
-    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+    <!-- ENTRY SCREEN -->
+    <section id="screen-entry" class="hidden space-y-3 bg-white border rounded-2xl p-4 shadow-sm">
       <div class="flex items-center justify-between">
-        <h2 class="font-semibold">Últimos gastos</h2>
-        <button id="btnRefrescar" class="text-sm px-3 py-1 rounded border">Refrescar</button>
+        <h2 class="font-semibold">Nuevo gasto</h2>
+        <button id="btnBackHome" class="text-sm px-3 py-1 rounded border">Volver</button>
       </div>
-      <div id="lista" class="space-y-2"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block">
+          <span class="block text-sm">Fecha</span>
+          <input id="fFecha" type="date" class="w-full border rounded px-3 py-2" />
+        </label>
+        <label class="block">
+          <span class="block text-sm">Categoría</span>
+          <select id="fCategoria" class="w-full border rounded px-3 py-2">
+            <option value="comida">Comida/Mercado</option>
+            <option value="transporte">Otros Transportes</option>
+            <option value="servicios">Servicios/Varios</option>
+            <option value="ocio">Ocio/Invitaciones</option>
+            <option value="gasolina">Gasolina</option>
+            <option value="peajes">Peajes/Parking</option>
+            <option value="alojamiento">Alojamiento/Hotel</option>
+            <option value="varios">Varios</option>
+            <option value="ingreso">Ingreso</option>
+          </select>
+        </label>
+      </div>
+      <label class="block">
+        <span class="block text-sm">Proveedor / Local</span>
+        <input id="fProveedor" type="text" class="w-full border rounded px-3 py-2" placeholder="Ej: Repsol, Restaurante X" />
+      </label>
+      <label class="block">
+        <span class="block text-sm">Notas</span>
+        <textarea id="fNota" rows="2" class="w-full border rounded px-3 py-2" placeholder="Opcional"></textarea>
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block">
+          <span class="block text-sm">Importe (€)</span>
+          <input id="fCantidad" type="number" min="0.01" step="0.01" class="w-full border rounded px-3 py-2" />
+        </label>
+        <label class="block">
+          <span class="block text-sm">Ticket (foto)</span>
+          <input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
+        </label>
+      </div>
+      <img id="preview" class="mt-2 max-h-40 hidden rounded border" />
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button id="btnScan" class="w-full py-3 rounded bg-amber-600 text-white font-semibold">Escanear desde foto (IA)</button>
+        <button id="btnGuardar" class="w-full py-3 rounded bg-green-600 text-white font-semibold">Guardar</button>
+      </div>
+      <p class="text-xs text-gray-500">Las fotos se guardan en <code>tickets/&lt;uid&gt;/YYYY-MM/&lt;archivo&gt;</code>.</p>
     </section>
 
     <section>
@@ -77,157 +154,309 @@
   </div>
 
   <script type="module">
-    // --- Firebase imports (CDN) ---
+    // --- Firebase ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { 
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { 
-      getStorage, ref, uploadBytes, getDownloadURL 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-    // --- Config Firebase (tuya) ---
+    // Config (tu proyecto)
     const firebaseConfig = {
       apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
       authDomain: "gastos-2n.firebaseapp.com",
       projectId: "gastos-2n",
-      storageBucket: "gastos-2n.firebasestorage.app", // correcto en tu proyecto
+      storageBucket: "gastos-2n.firebasestorage.app",
       messagingSenderId: "55010048795",
       appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
     };
 
-    // --- Inicializar Firebase ---
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app"); // forzamos bucket
+    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
 
-    // --- Helpers UI ---
-    const log = (msg) => { document.getElementById('out').textContent += msg + "\n"; };
-    const whoami = document.getElementById('whoami');
+    // Helpers
+    const $ = (id)=>document.getElementById(id);
+    const out = $("out");
+    const log=(m)=>{ out.textContent += m+"\\n"; }
 
-    // Fecha por defecto hoy
-    document.getElementById('fFecha').value = new Date().toISOString().slice(0,10);
+    // Simple nav
+    function show(screen){
+      $("screen-home").classList.toggle("hidden", screen!=="home");
+      $("screen-entry").classList.toggle("hidden", screen!=="entry");
+    }
+    $("btnOpenManual").onclick = ()=>{ resetForm(); show("entry"); };
+    $("btnBackHome").onclick = ()=> show("home");
 
-    // Preview imagen
-    const fileInput = document.getElementById('fFile');
-    const preview = document.getElementById('preview');
-    fileInput.addEventListener('change', (e) => {
-      const f = e.target.files?.[0];
-      if (!f) { preview.classList.add('hidden'); return; }
-      const url = URL.createObjectURL(f);
-      preview.src = url; preview.classList.remove('hidden');
-    });
+    // Ajustes
+    $("btnAjustes").onclick = ()=> $("ajustesPanel").classList.toggle("hidden");
+    $("btnCerrarAjustes").onclick = ()=> $("ajustesPanel").classList.add("hidden");
 
-    // Login/Logout
-    document.getElementById('btnLogin').onclick = async () => {
-      try {
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        await signInWithPopup(auth, provider);
-      } catch (e) {
-        log("❌ Login error: " + (e.code || e.message)); console.error(e);
-      }
+    // Defaults
+    $("fFecha").value = new Date().toISOString().slice(0,10);
+    $("expMonth").value = new Date().toISOString().slice(0,7);
+
+    // Auth
+    $("btnLogin").onclick = async()=>{
+      try{ await signInWithPopup(auth, new GoogleAuthProvider()); }
+      catch(e){ alert("Login: "+(e.code||e.message)); }
     };
-    document.getElementById('btnLogout').onclick = async () => { await signOut(auth); };
+    $("btnLogout").onclick = async()=>{ await signOut(auth); };
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        whoami.textContent = `Conectado como ${user.email || user.uid}`;
-        cargarUltimos();
-      } else {
-        whoami.textContent = "No autenticado";
-        document.getElementById('lista').innerHTML = "";
-      }
+    onAuthStateChanged(auth, (user)=>{
+      $("whoami").textContent = user? `Conectado: ${user.email||user.uid}` : "No autenticado";
+      $("uidInfo").textContent = user? `ID de Usuario: ${user.uid}`: "";
+      if(user){ cargarUltimos(); cargarResumen(); }
+      else { $("ultimosBox").innerHTML = '<div class="text-center text-sm text-gray-400">¡Aún no hay registros!</div>'; updateResumen(0,0); }
     });
 
-    // Guardar gasto (con foto opcional)
-    document.getElementById('btnGuardar').onclick = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) { alert("Haz login primero"); return; }
+    // Preview de imagen
+    $("fFile").addEventListener("change", (e)=>{
+      const f = e.target.files?.[0]; const p = $("preview");
+      if(!f){ p.classList.add("hidden"); return; }
+      p.src = URL.createObjectURL(f); p.classList.remove("hidden");
+    });
 
-        const fecha = document.getElementById('fFecha').value || new Date().toISOString().slice(0,10);
-        const categoria = document.getElementById('fCategoria').value;
-        const proveedor = document.getElementById('fProveedor').value.trim();
-        const nota = document.getElementById('fNota').value.trim();
-        const cantidad = parseFloat(document.getElementById('fCantidad').value);
-        if (!proveedor || !cantidad || cantidad <= 0) { alert("Proveedor e importe > 0"); return; }
-
-        // 1) Subir foto si existe
-        let photoURL = "";
-        const f = fileInput.files?.[0];
-        if (f) {
-          const y = fecha.slice(0,7); // YYYY-MM
-          const safeProv = proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-          const ext = (f.name.split('.').pop()||'jpg').toLowerCase();
-          const filename = `${fecha}_${safeProv}_${Date.now()}.${ext}`;
-          const path = `tickets/${user.uid}/${y}/${filename}`;
-          const r = ref(storage, path);
-          await uploadBytes(r, f);
+    // Guardar
+    $("btnGuardar").onclick = async()=>{
+      try{
+        const u = auth.currentUser; if(!u) return alert("Haz login");
+        const fecha = $("fFecha").value || new Date().toISOString().slice(0,10);
+        const categoria = $("fCategoria").value;
+        const proveedor = $("fProveedor").value.trim();
+        const nota = $("fNota").value.trim();
+        const cantidad = parseFloat($("fCantidad").value);
+        if(!proveedor || !cantidad || cantidad<=0) return alert("Proveedor e importe > 0");
+        let photoURL=""; const file = $("fFile").files?.[0];
+        if(file){
+          const y = fecha.slice(0,7);
+          const safeProv = proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
+          const ext=(file.name.split('.').pop()||"jpg").toLowerCase();
+          const path=`tickets/${u.uid}/${y}/${fecha}_${safeProv}_${Date.now()}.${ext}`;
+          const r=ref(storage,path); await uploadBytes(r,file);
           photoURL = await getDownloadURL(r);
-          log("📸 Foto subida: " + path);
         }
-
-        // 2) Guardar documento en Firestore
-        const refCol = collection(db, `users/${user.uid}/entries`);
-        await addDoc(refCol, {
-          date: Timestamp.fromDate(new Date(fecha)),
-          category: categoria,
-          provider: proveedor,
-          notes: nota,
-          amount: cantidad,
-          photoURL,
-          createdAt: Timestamp.now(),
-          isExpense: categoria !== 'ingreso'
-        });
-
-        log("✅ Gasto guardado");
-        alert("Gasto guardado correctamente");
-        // reset
-        document.getElementById('fProveedor').value = "";
-        document.getElementById('fNota').value = "";
-        document.getElementById('fCantidad').value = "";
-        fileInput.value = ""; preview.classList.add('hidden');
-        cargarUltimos();
-      } catch (e) {
-        console.error(e);
-        alert("Error al guardar: " + (e.code || e.message));
-        log("❌ Error al guardar: " + (e.code || e.message));
-      }
+        const col = collection(db, `users/${u.uid}/entries`);
+        await addDoc(col, { date: Timestamp.fromDate(new Date(fecha)), category: categoria, provider: proveedor, notes: nota, amount: cantidad, photoURL, createdAt: Timestamp.now(), isExpense: categoria!=="ingreso" });
+        alert("✅ Guardado"); resetForm(); show("home"); cargarUltimos(); cargarResumen();
+      }catch(e){ console.error(e); alert("Error: "+(e.code||e.message)); }
     };
 
-    // Listar últimos 10
-    async function cargarUltimos() {
-      const user = auth.currentUser; if (!user) return;
-      const refCol = collection(db, `users/${user.uid}/entries`);
-      const q = query(refCol, orderBy('createdAt','desc'), limit(10));
-      const snap = await getDocs(q);
-      const lista = document.getElementById('lista');
-      lista.innerHTML = '';
-      snap.forEach(doc => {
-        const d = doc.data();
-        const fecha = d.date?.toDate ? d.date.toDate() : new Date();
-        const euros = (d.amount||0).toLocaleString('es-ES', { minimumFractionDigits: 2 });
-        const li = document.createElement('div');
-        li.className = "flex items-center justify-between border rounded p-2";
-        li.innerHTML = `
-          <div class="min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">${d.provider||'-'} · <span class="text-gray-500">${d.category}</span></p>
-            <p class="text-xs text-gray-500">${fecha.toISOString().slice(0,10)} ${d.notes?('· '+d.notes):''}</p>
-          </div>
-          <div class="ml-3 text-right">
-            <p class="text-sm font-semibold ${d.isExpense? 'text-red-600':'text-green-600'}">${d.isExpense?'-':'+'}${euros} €</p>
-            ${d.photoURL? `<a href="${d.photoURL}" target="_blank" class="text-xs text-indigo-600 underline">ticket</a>`: ''}
-          </div>`;
-        lista.appendChild(li);
+    function resetForm(){ $("fProveedor").value=""; $("fNota").value=""; $("fCantidad").value=""; $("fFile").value=""; $("preview").classList.add("hidden"); $("fFecha").value = new Date().toISOString().slice(0,10); $("fCategoria").value="comida"; }
+
+    // Últimos 5 y resumen
+    async function cargarUltimos(){
+      const u = auth.currentUser; if(!u) return;
+      const col = collection(db, `users/${u.uid}/entries`);
+      const snap = await getDocs(query(col, orderBy("createdAt","desc"), limit(5)));
+      const box = $("ultimosBox"); box.innerHTML="";
+      if(snap.empty){ box.innerHTML = '<div class="text-center text-sm text-gray-400">¡Aún no hay registros!</div>'; return; }
+      snap.forEach(doc=>{
+        const d=doc.data(); const fecha = d.date?.toDate ? d.date.toDate() : new Date();
+        const euros = (d.amount||0).toLocaleString("es-ES",{minimumFractionDigits:2});
+        const div=document.createElement("div"); div.className="flex justify-between items-center border-b pb-2 last:border-b-0";
+        div.innerHTML = `<div class="min-w-0"><p class="text-sm font-medium truncate text-gray-900">${d.provider||"-"}</p><p class="text-xs text-gray-500">${fecha.toISOString().slice(0,10)} - ${d.category}</p>${d.notes?`<p class='text-xs italic text-gray-400 truncate mt-0.5'>Nota: ${d.notes}</p>`:""}</div><p class="text-base font-extrabold ml-4 ${d.category==='ingreso'?'text-green-600':'text-red-600'}">${d.category==='ingreso'?'+':'-'}€${euros}</p>`;
+        box.appendChild(div);
       });
     }
 
-    document.getElementById('btnRefrescar').onclick = cargarUltimos;
+    async function cargarResumen(){
+      const u = auth.currentUser; if(!u) return;
+      const col = collection(db, `users/${u.uid}/entries`); const snap = await getDocs(col);
+      let gastos=0, ingresos=0; snap.forEach(doc=>{ const d=doc.data(); if(d.category==="ingreso") ingresos+=Number(d.amount||0); else gastos+=Number(d.amount||0); });
+      updateResumen(gastos, ingresos);
+    }
+    function updateResumen(gastos, ingresos){
+      $("totalGastos").textContent = `-€${gastos.toLocaleString("es-ES",{minimumFractionDigits:2})}`;
+      $("totalIngresos").textContent = `+€${ingresos.toLocaleString("es-ES",{minimumFractionDigits:2})}`;
+      const bal = ingresos-gastos;
+      $("balance").textContent = `€${bal.toLocaleString("es-ES",{minimumFractionDigits:2})}`;
+      $("balance").classList.toggle("text-green-700", bal>=0);
+      $("balance").classList.toggle("text-red-700", bal<0);
+    }
+
+    // ===== Export CSV/XLSX (plantilla 2N) y ZIP fotos =====
+    const CATEGORIES = [
+      {value:"comida",column:"MEALS"},
+      {value:"transporte",column:"OTHER TRANSPORTS (Taxi)"},
+      {value:"servicios",column:"VARIOUS"},
+      {value:"ocio",column:"INVITATIONS"},
+      {value:"ingreso",column:null},
+      {value:"gasolina",column:"GASOLINE"},
+      {value:"peajes",column:"TOLLS & PARKINGS"},
+      {value:"alojamiento",column:"HOTEL"},
+      {value:"varios",column:"VARIOUS"}
+    ];
+    const CSV_COLUMNS = ["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+
+    function sameMonth(ts, yyyymm){ const d = ts?.toDate? ts.toDate(): new Date(ts); return d.toISOString().slice(0,7)===yyyymm; }
+    function toRecord(e){
+      const m=CATEGORIES.find(c=>c.value===e.category); const col=m?m.column:"VARIOUS";
+      const r=CSV_COLUMNS.reduce((a,c)=>(a[c]=0.00,a),{});
+      const d=e.date?.toDate? e.date.toDate(): new Date();
+      r["DATE"]=d.toLocaleDateString("es-ES"); r["CLIENT / PROVIDER"]=e.provider||""; r["DESCRIPTION"]=e.notes||"";
+      if(e.category!=="ingreso"){
+        const a=Number(e.amount||0);
+        if(col && CSV_COLUMNS.includes(col)) r[col]=a; else r["VARIOUS"]=a;
+        let t=0; for(let i=2;i<=9;i++) t+=Number(r[CSV_COLUMNS[i]]||0); r["TOTAL"]=t;
+      } else r["TOTAL"]=0.00;
+      return r;
+    }
+
+    function toCSV(records, monthStr){
+      const head=CSV_COLUMNS.map(h=>`"${h}"`).join(";")+"\\n";
+      const row6=",,PARKINGS ,,,,,TRAVELING,,,\\n";
+      const rows=records.map(r=> CSV_COLUMNS.map(col=>{
+        let v=r[col];
+        if(col!=="DATE"&&col!=="CLIENT / PROVIDER"&&col!=="DESCRIPTION") v= typeof v==="number"? v.toFixed(2).replace(".",","):(v||0);
+        if(v===undefined||v===null) v="";
+        if(typeof v==="string") v=`"${v.replace(/\"/g,'\"\"')}"`;
+        return v;
+      }).join(";")).join("\\n");
+      const monthYear=new Date(monthStr+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+      const today=new Date().toLocaleDateString("es-ES");
+      const tpl=",,,,,   EXPENSES REPORT,,,,,,,\\n"
+        +`NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}\\n`
+        +`PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthYear},,,,,,\\n`
+        +",,,,,,,,,,,,\\n";
+      return new Blob([tpl+head+row6+rows],{type:"text/csv;charset=utf-8;"});
+    }
+
+    function toXLSX(records, monthStr){
+      const monthYear=new Date(monthStr+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+      const today=new Date().toLocaleDateString("es-ES");
+      const header1 = [ "", "", "", "", "", "EXPENSES REPORT" ];
+      const header2 = [ "NOM", "", "Gaston Ortigosa", "", "", "", "", "", "", "", "DATE:", "", today ];
+      const header3 = [ "PRENOM:", "David", "COST CENTER:", "7420", "", "MONTH/YEAR:", "", monthYear ];
+      const header4 = [];
+      const columns = CSV_COLUMNS.slice();
+      const columnsRow2 = [ "", "", "PARKINGS", "", "", "", "", "TRAVELING" ];
+
+      const sheet = [];
+      sheet.push(header1);
+      sheet.push(header2);
+      sheet.push(header3);
+      sheet.push(header4);
+      sheet.push(columns);
+      sheet.push(columnsRow2);
+      for(const r of records){
+        const row = CSV_COLUMNS.map(col=>{
+          if(col==="DATE"||col==="CLIENT / PROVIDER"||col==="DESCRIPTION") return r[col]||"";
+          return typeof r[col]==="number" ? Number(r[col].toFixed(2)) : (r[col]||0);
+        });
+        sheet.push(row);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(sheet);
+      ws["!cols"] = [
+        {wch:10},{wch:26},{wch:14},{wch:12},{wch:12},{wch:18},{wch:22},{wch:14},{wch:10},{wch:10},{wch:10},{wch:30}
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Gastos "+monthStr);
+      const wbout = XLSX.write(wb, {bookType:"xlsx", type:"array"});
+      return new Blob([wbout], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    }
+
+    $("btnExportCSV").onclick = async()=>{
+      try{
+        const u=auth.currentUser; if(!u) return alert("Haz login");
+        const month=$("expMonth").value; if(!month) return alert("Selecciona mes");
+        const snap=await getDocs(collection(db,`users/${u.uid}/entries`));
+        const entries=snap.docs.map(d=>d.data()).filter(e=>sameMonth(e.date,month)&&e.category!=="ingreso");
+        $("expInfo").textContent = `${entries.length} gastos para ${month}`;
+        if(!entries.length) return alert("No hay gastos");
+        const blob=toCSV(entries.map(toRecord), month);
+        const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`Informe_Gastos_${month}.csv`; document.body.appendChild(a); a.click(); a.remove();
+      }catch(e){ console.error(e); alert("Error CSV: "+(e.code||e.message)); }
+    };
+
+    $("btnExportXLSX").onclick = async()=>{
+      try{
+        const u=auth.currentUser; if(!u) return alert("Haz login");
+        const month=$("expMonth").value; if(!month) return alert("Selecciona mes");
+        const snap=await getDocs(collection(db,`users/${u.uid}/entries`));
+        const entries=snap.docs.map(d=>d.data()).filter(e=>sameMonth(e.date,month)&&e.category!=="ingreso");
+        $("expInfo").textContent = `${entries.length} gastos para ${month}`;
+        if(!entries.length) return alert("No hay gastos");
+        const blob=toXLSX(entries.map(toRecord), month);
+        const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`Plantilla_2N_${month}.xlsx`; document.body.appendChild(a); a.click(); a.remove();
+      }catch(e){ console.error(e); alert("Error Excel: "+(e.code||e.message)); }
+    };
+
+    $("btnExportZIP").onclick = async()=>{
+      try{
+        const u=auth.currentUser; if(!u) return alert("Haz login");
+        const month=$("expMonth").value; if(!month) return alert("Selecciona mes");
+        const snap=await getDocs(collection(db,`users/${u.uid}/entries`));
+        const list=snap.docs.map(d=>d.data()).filter(e=>sameMonth(e.date,month)&&e.photoURL);
+        if(!list.length) return alert("No hay fotos en ese mes");
+        const zip=new JSZip(); const folder=zip.folder(`tickets_${month}`);
+        for(const e of list){
+          const d=e.date?.toDate? e.date.toDate(): new Date();
+          const safe=(e.provider||"prov").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+          const name=`${d.toISOString().slice(0,10)}_${safe}.jpg`;
+          const res=await fetch(e.photoURL); const b=await res.blob();
+          folder.file(name,b);
+        }
+        const outb=await zip.generateAsync({type:"blob"});
+        const a=document.createElement("a"); a.href=URL.createObjectURL(outb); a.download=`Fotos_${month}.zip`; document.body.appendChild(a); a.click(); a.remove();
+      }catch(e){ console.error(e); alert("Error ZIP: "+(e.code||e.message)); }
+    };
+
+    // ===== Escaneo con Google AI =====
+    const MODEL_ID = "gemini-1.5-flash";
+    $("gaiKey").value = localStorage.getItem("GAI_KEY") || "";
+    $("btnSaveKey").onclick = ()=>{ localStorage.setItem("GAI_KEY", $("gaiKey").value.trim()); alert("Clave guardada"); };
+    $("btnClearKey").onclick = ()=>{ localStorage.removeItem("GAI_KEY"); $("gaiKey").value=""; alert("Clave borrada"); };
+
+    $("btnScanOpen").onclick = ()=> $("scanInput").click();
+    $("scanInput").addEventListener("change", (e)=>{
+      const f=e.target.files?.[0]; if(!f) return;
+      $("fFile").files = e.target.files;
+      const url=URL.createObjectURL(f); $("preview").src=url; $("preview").classList.remove("hidden"); show("entry");
+    });
+
+    function fileToBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); }); }
+    async function fetchWithRetry(url, options, retries=3){
+      for(let i=0;i<retries;i++){
+        try{
+          const res=await fetch(url,options);
+          if(!res.ok){
+            if(res.status===429 && i<retries-1) throw new Error("rate");
+            throw new Error("HTTP "+res.status);
+          }
+          return res;
+        }catch(err){ if(i===retries-1) throw err; await new Promise(r=>setTimeout(r,1000*Math.pow(2,i))); }
+      }
+    }
+    async function callGeminiVision(base64, mime){
+      const apiKey=localStorage.getItem("GAI_KEY"); if(!apiKey) throw new Error("Falta API key en Ajustes");
+      const prompt=`Extrae JSON con {"date":"YYYY-MM-DD","provider":"texto","amount":0.00} desde esta imagen de ticket. Si falta dato, usa fecha de hoy y amount 0.`;
+      const payload={
+        contents:[{ role:"user", parts:[{text:prompt},{ inlineData:{ mimeType:mime, data:base64 } }] }],
+        generationConfig:{
+          responseMimeType:"application/json",
+          responseSchema:{ type:"OBJECT", properties:{ date:{type:"STRING"}, provider:{type:"STRING"}, amount:{type:"NUMBER"} }, propertyOrdering:["date","provider","amount"] }
+        }
+      };
+      const url=`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res=await fetchWithRetry(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      const json=await res.json(); const txt=json?.candidates?.[0]?.content?.parts?.[0]?.text; if(!txt) throw new Error("Respuesta IA vacía");
+      return JSON.parse(txt);
+    }
+
+    $("btnScan").onclick = async()=>{
+      try{
+        const f=$("fFile").files?.[0]; if(!f) return alert("Elige o toma una foto");
+        if(!localStorage.getItem("GAI_KEY")) return alert("Introduce tu Google AI API key en Ajustes");
+        const b64=await fileToBase64(f);
+        const r=await callGeminiVision(b64, f.type||"image/jpeg");
+        $("fFecha").value=(r.date||new Date().toISOString().slice(0,10)).slice(0,10);
+        $("fProveedor").value=r.provider||"";
+        $("fCantidad").value=String(r.amount??"").replace(",", ".");
+        alert("✅ Datos extraídos. Revisa y guarda.");
+      }catch(e){ console.error(e); alert("Error escaneo: "+(e.message||e)); }
+    };
   </script>
 </body>
 </html>
