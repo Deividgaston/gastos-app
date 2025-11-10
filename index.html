@@ -1,93 +1,10 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N — TEST IA + Firebase</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-<div class="max-w-xl mx-auto p-4 space-y-4">
-  <h1 class="text-2xl font-bold">Gastos 2N — TEST</h1>
-  <p class="text-sm text-gray-600">Prueba Firebase + Gemini</p>
-
-  <!-- Login -->
-  <div class="space-y-2 p-4 bg-white rounded shadow">
-    <div class="flex gap-2">
-      <button id="btnLogin" class="px-3 py-2 bg-indigo-600 text-white rounded">Login Google</button>
-      <button id="btnLogout" class="px-3 py-2 border rounded">Salir</button>
-    </div>
-    <p id="whoami" class="text-xs text-gray-500">No autenticado</p>
-  </div>
-
-  <!-- Guardar gasto -->
-  <div class="space-y-2 p-4 bg-white rounded shadow">
-    <input id="fProveedor" placeholder="Proveedor" class="w-full border px-2 py-1 rounded" />
-    <input id="fCantidad" placeholder="Cantidad" type="number" step="0.01" class="w-full border px-2 py-1 rounded" />
-    <button id="btnGuardar" class="w-full bg-green-600 text-white py-2 rounded">Guardar gasto</button>
-  </div>
-
-  <!-- IA test -->
-  <div class="space-y-2 p-4 bg-white rounded shadow">
-    <input id="apiKey" placeholder="Pega tu API Key Gemini" class="w-full border px-2 py-1 rounded" />
-    <button id="saveKey" class="w-full bg-gray-800 text-white py-2 rounded">Guardar API Key</button>
-    <button id="testKey" class="w-full bg-purple-600 text-white py-2 rounded">Probar IA</button>
-  </div>
-
-  <pre id="out" class="text-xs bg-white p-2 rounded shadow h-40 overflow-auto"></pre>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-// ✅ CONFIG FIREBASE
-const firebaseConfig={apiKey:"AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",authDomain:"gastos-2n.firebaseapp.com",projectId:"gastos-2n",storageBucket:"gastos-2n.firebasestorage.app",messagingSenderId:"55010048795",appId:"1:55010048795:web:4fb48d1e0f9006ebf7b1be"};
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
-
-const $=id=>document.getElementById(id);
-const log=m=>{$("out").textContent+=(typeof m=="string"?m:JSON.stringify(m,null,2))+"\n"};
-
-// ✅ LOGIN
-$("btnLogin").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>log(e));
-$("btnLogout").onclick=()=>signOut(auth);
-onAuthStateChanged(auth,u=>{$("whoami").textContent=u?u.email:"No autenticado"});
-
-// ✅ GUARDAR GASTO BASICO
-$("btnGuardar").onclick=async()=>{
- try{
-  const u=auth.currentUser;if(!u)return alert("Login primero");
-  await addDoc(collection(db,`users/${u.uid}/entries`),{
-    provider:$("fProveedor").value,
-    amount:parseFloat($("fCantidad").value),
-    createdAt:Timestamp.now()
-  });
-  log("✅ Gasto guardado");
- }catch(e){log(e)}
-};
-
-// ✅ GUARDAR API KEY GEMINI
-$("saveKey").onclick=()=>{localStorage.setItem("gkey",$("apiKey").value);alert("API Key guardada")};
-$("apiKey").value=localStorage.getItem("gkey")||"";
-
-// ✅ TEST IA
-async function testIA(){
- try{
-  const key=localStorage.getItem("gkey");
-  if(!key)return alert("Introduce API Key");
-
-  const url=`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${key}`;
-  const body={contents:[{parts:[{text:"Di SOLO: OK IA"}]}]};
-  const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-  const j=await r.json();
-  log(j);
-  alert("Revisa la consola abajo");
- }catch(e){log(e)}
-}
-$("testKey").onclick=testIA;
-</script>
-</body>
-</html>
+<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Gastos 2N</title><link rel='stylesheet' href='css/ui.css'>
+<script defer src='js/ui.js'></script><script defer src='js/firebase.js'></script>
+<script defer src='js/ocr.js'></script><script defer src='js/voice.js'></script>
+<script defer src='js/export.js'></script></head><body>
+<header class='topbar'><img src='assets/2n-logo.svg' class='logo'><h1>Gastos 2N</h1></header>
+<div class='metric-card'><h2 id='totalMes'>0 €</h2><p>Total del mes</p></div>
+<button class='primary-btn' id='scanBtn'>📸 Escanear ticket</button>
+<button class='secondary-btn' id='voiceBtn'>🎤 Añadir por voz</button>
+</body></html>
