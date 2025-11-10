@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N — test base</title>
+  <title>Gastos 2N — TEST IA + Firebase</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
 <div class="max-w-xl mx-auto p-4 space-y-4">
   <h1 class="text-2xl font-bold">Gastos 2N — TEST</h1>
-  <p class="text-sm text-gray-600">Prueba base: Firebase + IA</p>
+  <p class="text-sm text-gray-600">Prueba Firebase + Gemini</p>
 
   <!-- Login -->
   <div class="space-y-2 p-4 bg-white rounded shadow">
@@ -29,7 +29,7 @@
 
   <!-- IA test -->
   <div class="space-y-2 p-4 bg-white rounded shadow">
-    <input id="apiKey" placeholder="Pega tu API Key" class="w-full border px-2 py-1 rounded" />
+    <input id="apiKey" placeholder="Pega tu API Key Gemini" class="w-full border px-2 py-1 rounded" />
     <button id="saveKey" class="w-full bg-gray-800 text-white py-2 rounded">Guardar API Key</button>
     <button id="testKey" class="w-full bg-purple-600 text-white py-2 rounded">Probar IA</button>
   </div>
@@ -42,18 +42,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+// ✅ CONFIG FIREBASE
 const firebaseConfig={apiKey:"AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",authDomain:"gastos-2n.firebaseapp.com",projectId:"gastos-2n",storageBucket:"gastos-2n.firebasestorage.app",messagingSenderId:"55010048795",appId:"1:55010048795:web:4fb48d1e0f9006ebf7b1be"};
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
-const $=i=>document.getElementById(i);
-const log=m=>{$("out").textContent+=(typeof m=="string"?m:JSON.stringify(m))+"\n"};
 
+const $=id=>document.getElementById(id);
+const log=m=>{$("out").textContent+=(typeof m=="string"?m:JSON.stringify(m,null,2))+"\n"};
+
+// ✅ LOGIN
 $("btnLogin").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>log(e));
 $("btnLogout").onclick=()=>signOut(auth);
-
 onAuthStateChanged(auth,u=>{$("whoami").textContent=u?u.email:"No autenticado"});
 
+// ✅ GUARDAR GASTO BASICO
 $("btnGuardar").onclick=async()=>{
  try{
   const u=auth.currentUser;if(!u)return alert("Login primero");
@@ -66,18 +69,25 @@ $("btnGuardar").onclick=async()=>{
  }catch(e){log(e)}
 };
 
-$("saveKey").onclick=()=>{localStorage.setItem("gkey",$("apiKey").value);alert("Guardada")};
+// ✅ GUARDAR API KEY GEMINI
+$("saveKey").onclick=()=>{localStorage.setItem("gkey",$("apiKey").value);alert("API Key guardada")};
 $("apiKey").value=localStorage.getItem("gkey")||"";
 
+// ✅ TEST IA
 async function testIA(){
  try{
-  const key=localStorage.getItem("gkey");if(!key)return alert("Sin API Key");
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-  const body={contents:[{parts:[{text:"Di 'OK IA'"}]}]};
+  const key=localStorage.getItem("gkey");
+  if(!key)return alert("Introduce API Key");
+
+  const url=`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${key}`;
+  const body={contents:[{parts:[{text:"Di SOLO: OK IA"}]}]};
   const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-  const j=await r.json();log(j);alert("IA OK? Mira abajo");
+  const j=await r.json();
+  log(j);
+  alert("Revisa la consola abajo");
  }catch(e){log(e)}
 }
 $("testKey").onclick=testIA;
 </script>
-</body></html>
+</body>
+</html>
