@@ -3,345 +3,108 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N • Escaneo IA</title>
+  <title>Gastos 2N</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <style>
-    body { background:#f6f8fb; }
-    .btn { padding:.5rem .75rem; border-radius:.5rem; font-weight:600; }
-  </style>
+  <style>body{background:#f7f7fb;}button:disabled{opacity:.5}</style>
 </head>
 <body class="min-h-screen">
-  <div class="max-w-xl mx-auto p-4 space-y-4">
-    <header class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-extrabold leading-tight">Gestión de Registros</h1>
-        <p id="whoami" class="text-xs text-gray-500 mt-1">No autenticado</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="btnLogin" class="btn bg-indigo-600 text-white hidden">Entrar con Google</button>
-        <button id="btnLogout" class="btn border hidden">Salir</button>
-        <button id="btnSettings" class="btn border">⚙️ Ajustes</button>
-      </div>
-    </header>
-
-    <section class="grid grid-cols-3 gap-3">
-      <div class="bg-white rounded-xl p-3 border">
-        <p class="text-xs text-gray-500">Total Gastos</p>
-        <p id="totGastos" class="text-lg font-extrabold text-red-600">-€0,00</p>
-      </div>
-      <div class="bg-white rounded-xl p-3 border">
-        <p class="text-xs text-gray-500">Total Ingresos</p>
-        <p id="totIngresos" class="text-lg font-extrabold text-green-600">+€0,00</p>
-      </div>
-      <div class="bg-white rounded-xl p-3 border">
-        <p class="text-xs text-gray-500">Balance</p>
-        <p id="totBalance" class="text-lg font-extrabold text-emerald-700">€0,00</p>
-      </div>
-    </section>
-
-    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold">Nuevo registro</h2>
-        <span id="statusMsg" class="text-xs text-gray-400"></span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-medium">Fecha</label>
-          <input id="fFecha" type="date" class="w-full border rounded px-3 py-2" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium">Categoría</label>
-          <select id="fCategoria" class="w-full border rounded px-3 py-2">
-            <option value="comida">Comida/Mercado</option>
-            <option value="transporte">Otros Transportes</option>
-            <option value="servicios">Servicios/Varios</option>
-            <option value="ocio">Ocio/Invitaciones</option>
-            <option value="gasolina">Gasolina</option>
-            <option value="peajes">Peajes/Parking</option>
-            <option value="alojamiento">Alojamiento/Hotel</option>
-            <option value="varios">Varios</option>
-            <option value="ingreso">Ingreso</option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-xs font-medium">Proveedor / Local</label>
-        <input id="fProveedor" placeholder="Ej: Repsol, Restaurante X" class="w-full border rounded px-3 py-2"/>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-medium">Importe (€)</label>
-          <input id="fCantidad" type="number" step="0.01" min="0.01" placeholder="0,00" class="w-full border rounded px-3 py-2"/>
-        </div>
-        <div>
-          <label class="block text-xs font-medium">Notas</label>
-          <input id="fNota" placeholder="Opcional" class="w-full border rounded px-3 py-2"/>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-xs font-medium">Foto del ticket</label>
-        <input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2" />
-        <img id="preview" class="mt-2 max-h-44 hidden rounded border" />
-      </div>
-
-      <div class="flex gap-3">
-        <button id="scanAI" class="flex-1 btn bg-purple-600 text-white">📸 Escanear ticket con IA</button>
-        <button id="btnGuardar" class="flex-1 btn bg-green-600 text-white">💾 Guardar gasto</button>
-      </div>
-    </section>
-
-    <section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
-      <div class="flex items-center justify-between">
-        <h2 class="font-semibold">Últimos 5 Registros</h2>
-        <button id="btnRefrescar" class="btn border text-sm">↻</button>
-      </div>
-      <div id="lista" class="space-y-2 text-sm"></div>
-    </section>
-
-    <section>
-      <h3 class="text-xs font-semibold text-gray-500 mb-1">Salida / Depuración</h3>
-      <pre id="out" class="text-[11px] bg-white border rounded-xl p-3 overflow-x-auto whitespace-pre-wrap"></pre>
-    </section>
+<div class="max-w-xl mx-auto p-4 space-y-4">
+<header class="flex items-center justify-between">
+  <h1 class="text-2xl font-bold">Gastos 2N</h1>
+  <div class="flex items-center gap-2">
+    <button id="btnLogin" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Google</button>
+    <button id="btnLogout" class="px-3 py-2 rounded border text-sm">Salir</button>
   </div>
+</header>
+<p id="whoami" class="text-sm text-gray-600">No autenticado</p>
 
-  <!-- Modal Ajustes -->
-  <div id="modalSettings" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl w-full max-w-md p-4 space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-bold">Ajustes</h2>
-        <button id="closeSettings" class="btn border">✖</button>
-      </div>
+<section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+  <h2 class="font-semibold">Nuevo gasto</h2>
+  <div><label class="text-sm font-medium">Fecha<input id="fFecha" type="date" class="w-full border rounded px-3 py-2"/></label></div>
+  <div><label class="text-sm font-medium">Categoría<select id="fCategoria" class="w-full border rounded px-3 py-2">
+    <option value="comida">Comida/Mercado</option>
+    <option value="transporte">Otros Transportes</option>
+    <option value="servicios">Servicios/Varios</option>
+    <option value="ocio">Ocio/Invitaciones</option>
+    <option value="gasolina">Gasolina</option>
+    <option value="peajes">Peajes/Parking</option>
+    <option value="alojamiento">Alojamiento/Hotel</option>
+    <option value="varios">Varios</option>
+    <option value="ingreso">Ingreso</option>
+  </select></label></div>
+  <div><label class="text-sm font-medium">Proveedor<input id="fProveedor" class="w-full border rounded px-3 py-2"/></label></div>
+  <div><label class="text-sm font-medium">Notas<textarea id="fNota" rows="2" class="w-full border rounded px-3 py-2"></textarea></label></div>
+  <div><label class="text-sm font-medium">Importe (€)<input id="fCantidad" type="number" min="0.01" step="0.01" class="w-full border rounded px-3 py-2"/></label></div>
+  <div><label class="text-sm font-medium">Foto<input id="fFile" type="file" accept="image/*" class="w-full border rounded px-3 py-2"/></label><img id="preview" class="mt-2 max-h-40 hidden rounded border"/></div>
+  <button id="scanAI" class="w-full py-2 rounded bg-purple-600 text-white font-semibold">📸 Escanear ticket IA</button>
+  <button id="btnGuardar" class="w-full py-3 rounded bg-green-600 text-white font-semibold">Guardar</button>
+</section>
 
-      <div class="space-y-2">
-        <label class="text-sm font-medium">🔑 Gemini API Key</label>
-        <input id="apiKeyInput" type="password" class="w-full border rounded px-3 py-2" placeholder="Pega aquí tu API Key (AI...)" />
-        <div class="flex gap-2">
-          <button id="saveApiKey" class="btn bg-indigo-600 text-white flex-1">Guardar clave</button>
-          <button id="clearApiKey" class="btn border flex-1">Borrar</button>
-        </div>
-        <p class="text-xs text-gray-500">Se guarda en este navegador (localStorage). No se sube a Firebase.</p>
-      </div>
+<section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+  <h2 class="font-semibold">Últimos gastos</h2>
+  <div id="lista" class="space-y-2 text-sm"></div>
+</section>
 
-      <hr class="my-2"/>
+<section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+  <h2 class="font-semibold">Exportar CSV</h2>
+  <input id="month" type="month" class="border rounded px-2 py-1"/>
+  <button id="exportCSV" class="px-4 py-2 rounded bg-orange-600 text-white">Descargar CSV</button>
+</section>
 
-      <div class="space-y-2">
-        <label class="text-sm font-medium">👤 Sesión</label>
-        <div class="flex gap-2">
-          <button id="loginSettings" class="btn border flex-1">Entrar con Google</button>
-          <button id="logoutSettings" class="btn border flex-1">Salir</button>
-        </div>
-        <p id="sessionInfo" class="text-xs text-gray-500"></p>
-      </div>
-    </div>
-  </div>
+<section class="bg-white border rounded-2xl p-4 space-y-3 shadow-sm">
+  <h2 class="font-semibold">Ajustes</h2>
+  <input id="apiKey" placeholder="API Key Google" class="w-full border rounded px-3 py-2"/>
+  <button id="saveKey" class="w-full py-2 bg-gray-800 text-white rounded">Guardar API Key</button>
+  <button id="testKey" class="w-full py-2 bg-gray-500 text-white rounded">Probar IA</button>
+</section>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+<pre id="out" class="text-xs text-gray-600 whitespace-pre-wrap"></pre>
+</div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-      authDomain: "gastos-2n.firebaseapp.com",
-      projectId: "gastos-2n",
-      storageBucket: "gastos-2n.firebasestorage.app",
-      messagingSenderId: "55010048795",
-      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-    const $ = (id)=>document.getElementById(id);
-    const out = $("out");
-    const log = (msg,obj)=>{ out.textContent += (new Date()).toLocaleTimeString()+" — "+msg+(obj?(" "+JSON.stringify(obj,null,2)):"")+"\n"; };
+const firebaseConfig={apiKey:"AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",authDomain:"gastos-2n.firebaseapp.com",projectId:"gastos-2n",storageBucket:"gastos-2n.firebasestorage.app",messagingSenderId:"55010048795",appId:"1:55010048795:web:4fb48d1e0f9006ebf7b1be"};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const storage=getStorage(app,"gs://gastos-2n.firebasestorage.app");
 
-    $("fFecha").value = new Date().toISOString().slice(0,10);
-    $("fCategoria").value = "comida";
+const $=id=>document.getElementById(id);
+const log=m=>{$("out").textContent+=m+"\n"};
+$("fFecha").value=new Date().toISOString().slice(0,10);
 
-    $("fFile").addEventListener("change",(e)=>{
-      const f=e.target.files?.[0];
-      if(!f){ $("preview").classList.add("hidden"); return; }
-      $("preview").src = URL.createObjectURL(f);
-      $("preview").classList.remove("hidden");
-    });
+$("fFile").onchange=e=>{const f=e.target.files?.[0];if(!f)return $("preview").classList.add("hidden");$("preview").src=URL.createObjectURL(f);$("preview").classList.remove("hidden")};
 
-    const modal = $("modalSettings");
-    $("btnSettings").onclick = ()=> modal.classList.remove("hidden");
-    $("closeSettings").onclick = ()=> modal.classList.add("hidden");
-    $("saveApiKey").onclick = ()=>{
-      const key = $("apiKeyInput").value.trim();
-      if(!key) return alert("Introduce una API Key válida.");
-      localStorage.setItem("geminiKey",key);
-      alert("✅ Clave guardada");
-      modal.classList.add("hidden");
-    };
-    $("clearApiKey").onclick = ()=>{ localStorage.removeItem("geminiKey"); $("apiKeyInput").value=""; alert("🧹 Clave borrada"); };
+$("btnLogin").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(e){alert(e.message)}};
+$("btnLogout").onclick=()=>signOut(auth);
 
-    const btnLogin = $("btnLogin");
-    const btnLogout = $("btnLogout");
-    const loginSettings = $("loginSettings");
-    const logoutSettings = $("logoutSettings");
-    const whoami = $("whoami");
-    const sessionInfo = $("sessionInfo");
+onAuthStateChanged(auth,u=>{$("whoami").textContent=u?`Conectado como ${u.email}`:"No autenticado";if(u)cargar()});
 
-    function updateAuthButtons(user){
-      const on = !!user;
-      btnLogin.classList.toggle("hidden", on);
-      btnLogout.classList.toggle("hidden", !on);
-      loginSettings.classList.toggle("hidden", on);
-      logoutSettings.classList.toggle("hidden", !on);
-      whoami.textContent = on ? `Conectado: ${user.email||user.uid}` : "No autenticado";
-      sessionInfo.textContent = on ? `UID: ${user.uid}` : "Sin sesión";
-    }
-    async function doLogin(){
-      try{
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: "select_account" });
-        await signInWithPopup(auth, provider);
-      }catch(e){ alert("Error login: "+(e.message||e)); }
-    }
-    async function doLogout(){ try{ await signOut(auth); }catch(e){ alert("Error logout"); } }
-    btnLogin.onclick = doLogin; loginSettings.onclick = doLogin;
-    btnLogout.onclick = doLogout; logoutSettings.onclick = doLogout;
+async function guardar(){const u=auth.currentUser;if(!u)return alert("Login");const fecha=$("fFecha").value,categoria=$("fCategoria").value,proveedor=$("fProveedor").value.trim(),nota=$("fNota").value.trim(),cantidad=parseFloat($("fCantidad").value);if(!proveedor||!cantidad)return alert("Proveedor e importe");let photoURL="";const f=$("fFile").files?.[0];if(f){const y=fecha.slice(0,7),name=`${fecha}_${Date.now()}.${f.name.split('.').pop()}`,p=`tickets/${u.uid}/${y}/${name}`,r=ref(storage,p);await uploadBytes(r,f);photoURL=await getDownloadURL(r)}await addDoc(collection(db,`users/${u.uid}/entries`),{date:Timestamp.fromDate(new Date(fecha)),category:categoria,provider:proveedor,notes:nota,amount:cantidad,photoURL,isExpense:categoria!="ingreso",createdAt:Timestamp.now()});alert("Guardado");cargar()}
+$("btnGuardar").onclick=guardar;
 
-    onAuthStateChanged(auth, (user)=>{
-      updateAuthButtons(user);
-      if(user){ cargarUltimos(); calcularTotales(); }
-      else { $("lista").innerHTML=""; $("totGastos").textContent="-€0,00"; $("totIngresos").textContent="+€0,00"; $("totBalance").textContent="€0,00"; }
-    });
+async function cargar(){const u=auth.currentUser;if(!u)return;const q=query(collection(db,`users/${u.uid}/entries`),orderBy('createdAt','desc'),limit(5)),s=await getDocs(q);$("lista").innerHTML="";s.forEach(d=>{const x=d.data(),fe=x.date.toDate().toISOString().slice(0,10),eu=(x.amount||0).toLocaleString('es-ES',{minimumFractionDigits:2});$("lista").innerHTML+=`<div class='flex justify-between border rounded p-2'><div>${x.provider}<br><span class='text-xs text-gray-500'>${fe} ${x.notes||''}</span></div><div class='text-right ${x.isExpense?'text-red-600':'text-green-600'}'>${x.isExpense?'-':'+'}${eu}€<br>${x.photoURL?`<a href='${x.photoURL}' target='_blank' class='text-xs underline'>ticket</a>`:''}</div></div>`})}
 
-    $("btnGuardar").onclick = async()=>{
-      const user = auth.currentUser;
-      if(!user) return alert("Inicia sesión primero.");
-      const fecha = $("fFecha").value;
-      const categoria = $("fCategoria").value;
-      const proveedor = $("fProveedor").value.trim();
-      const nota = $("fNota").value.trim();
-      const cantidad = parseFloat(($("fCantidad").value||"0").replace(",", "."));
-      if(!proveedor || !cantidad || cantidad<=0) return alert("Completa proveedor e importe.");
-      $("statusMsg").textContent="Guardando...";
+async function exportar(){const u=auth.currentUser;if(!u)return;const m=$("month").value;if(!m)return alert("Mes");const q=query(collection(db,`users/${u.uid}/entries`)),s=await getDocs(q),rows=["DATE;PROVIDER;CATEGORY;AMOUNT;NOTES;PHOTO"];s.forEach(d=>{const x=d.data(),fe=x.date.toDate().toISOString().slice(0,10);if(!fe.startsWith(m))return;rows.push([fe,x.provider,x.category,x.amount,x.notes,x.photoURL].map(v=>`"${v||''}"`).join(";"))});const blob=new Blob([rows.join("\n")],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`gastos_${m}.csv`;a.click()}
+$("exportCSV").onclick=exportar;
 
-      let photoURL="";
-      const f=$("fFile").files?.[0];
-      if(f){
-        const y=fecha.slice(0,7);
-        const safe=proveedor.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-        const ext=(f.name.split('.').pop()||"jpg").toLowerCase();
-        const fileName=`${fecha}_${safe}_${Date.now()}.${ext}`;
-        const r=ref(storage,`tickets/${user.uid}/${y}/${fileName}`);
-        await uploadBytes(r,f);
-        photoURL=await getDownloadURL(r);
-      }
+$("saveKey").onclick=()=>{localStorage.setItem("gkey",$("apiKey").value);alert("API Guardada")};
+$("apiKey").value=localStorage.getItem("gkey")||"";
 
-      await addDoc(collection(db,`users/${user.uid}/entries`),{
-        date: Timestamp.fromDate(new Date(fecha)),
-        category: categoria,
-        provider: proveedor,
-        notes: nota,
-        amount: cantidad,
-        isExpense: categoria!=="ingreso",
-        photoURL,
-        createdAt: Timestamp.now()
-      });
+async function callGemini(b64,mime){const key=localStorage.getItem("gkey");if(!key)throw Error("Sin API");const prompt="Extrae JSON {date,provider,amount}";const attempts=[
+  ["https://generativelanguage.googleapis.com/v1beta","gemini-2.5-flash-preview-09-2025"],
+  ["https://generativelanguage.googleapis.com/v1beta","gemini-1.5-flash"],
+  ["https://generativelanguage.googleapis.com/v1","gemini-1.5-flash"],
+  ["https://generativelanguage.googleapis.com/v1beta","gemini-1.5-flash-001"],
+];const body={contents:[{role:"user",parts:[{text:prompt},{inlineData:{mimeType:mime,data:b64}}]}],generationConfig:{responseMimeType:"application/json"}};let last;for(const[a,u]of attempts){try{const r=await fetch(`${a}/models/${u}:generateContent?key=${key}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json();const t=j?.candidates?.[0]?.content?.parts?.[0]?.text;if(t)return JSON.parse(t)}catch(e){last=e}}throw last||Error("IA err")}
 
-      $("statusMsg").textContent="✅ Guardado";
-      $("fProveedor").value=""; $("fNota").value=""; $("fCantidad").value=""; $("fFile").value=""; $("preview").classList.add("hidden");
-      cargarUltimos(); calcularTotales();
-      setTimeout(()=>{$("statusMsg").textContent="";},1500);
-    };
+$("scanAI").onclick=async()=>{try{const f=$("fFile").files?.[0];if(!f)return alert("Foto");const buf=await f.arrayBuffer(),b64=btoa(String.fromCharCode(...new Uint8Array(buf))),r=await callGemini(b64,f.type);if(r.provider)$("fProveedor").value=r.provider;if(r.amount)$("fCantidad").value=r.amount;if(r.date)$("fFecha").value=r.date}catch(e){alert(e.message)}};
 
-    $("btnRefrescar").onclick = ()=>{ cargarUltimos(); calcularTotales(); };
-
-    async function cargarUltimos(){
-      const user=auth.currentUser; if(!user) return;
-      const qSnap=await getDocs(query(collection(db,`users/${user.uid}/entries`),orderBy("createdAt","desc"),limit(5)));
-      const list=[]; qSnap.forEach(d=>list.push(d.data()));
-      $("lista").innerHTML = list.map(d=>{
-        const fecha = d.date?.toDate ? d.date.toDate().toISOString().slice(0,10) : "";
-        const euros = (d.amount||0).toLocaleString("es-ES",{minimumFractionDigits:2});
-        return `<div class="flex items-center justify-between border rounded p-2">
-          <div class="min-w-0">
-            <p class="text-sm font-medium truncate">${d.provider||"-"} · <span class="text-gray-500">${d.category}</span></p>
-            <p class="text-xs text-gray-500">${fecha}${d.notes?(" · "+d.notes):""}</p>
-          </div>
-          <div class="text-right ml-2">
-            <p class="text-sm font-semibold ${d.isExpense?'text-red-600':'text-green-600'}">${d.isExpense?'-':'+'}${euros} €</p>
-            ${d.photoURL?`<a class="text-xs underline text-indigo-600" href="${d.photoURL}" target="_blank">ticket</a>`:""}
-          </div>
-        </div>`;
-      }).join("") || `<p class="text-center text-gray-400 text-sm">¡Aún no hay registros!</p>`;
-    }
-
-    async function calcularTotales(){
-      const user=auth.currentUser; if(!user) return;
-      const qSnap=await getDocs(query(collection(db,`users/${user.uid}/entries`),orderBy("createdAt","desc"),limit(100)));
-      let gastos=0, ingresos=0;
-      qSnap.forEach(d=>{ const x=d.data(); if(x.category==="ingreso") ingresos+=(x.amount||0); else gastos+=(x.amount||0); });
-      $("totGastos").textContent="-€"+gastos.toLocaleString("es-ES",{minimumFractionDigits:2});
-      $("totIngresos").textContent="+€"+ingresos.toLocaleString("es-ES",{minimumFractionDigits:2});
-      $("totBalance").textContent="€"+(ingresos-gastos).toLocaleString("es-ES",{minimumFractionDigits:2});
-    }
-
-    // ===== Gemini con fallback para Chrome móvil =====
-    async function callGeminiWithFallback({b64, mime, key, prompt}){
-      const apis=["v1","v1beta"];
-      const models=["gemini-1.5-flash-latest","gemini-1.5-flash","gemini-1.5-flash-001"];
-      const body=()=>({ contents:[{ role:"user", parts:[ {text:prompt}, {inline_data:{mime_type:mime||"image/jpeg", data:b64}} ] }] });
-      for(const api of apis){
-        for(const model of models){
-          const url=`https://generativelanguage.googleapis.com/${api}/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-          try{
-            const res=await fetch(url,{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body()) });
-            const data=await res.json();
-            if(!data.error) return {api,model,data};
-            if(res.status===404 || data?.error?.status==="NOT_FOUND"){ continue; }
-            throw new Error(data?.error?.message || `HTTP ${res.status}`);
-          }catch(e){ console.warn(`Falló ${api}/${model}:`, e.message); }
-        }
-      }
-      throw new Error("No encontré un modelo compatible para tu clave. Revisa permisos en Google AI Studio.");
-    }
-
-    $("scanAI").onclick = async ()=>{
-      const key = localStorage.getItem("geminiKey");
-      if(!key) return alert("Ve a ⚙️ Ajustes y pega tu API Key de Gemini.");
-      const file = $("fFile").files?.[0];
-      if(!file) return alert("Selecciona una foto del ticket primero.");
-
-      const buf = await file.arrayBuffer();
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-      const mime = file.type || "image/jpeg";
-
-      const prompt = `Extrae del ticket y responde EXACTAMENTE:
-Proveedor: <texto>
-Importe: <número con punto decimal>
-Fecha: <YYYY-MM-DD>`;
-
-      try{
-        const {api,model,data} = await callGeminiWithFallback({ b64, mime, key, prompt });
-        console.log("Gemini usado:", api, model);
-        const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const prov = /Proveedor:\s*(.*)/i.exec(txt)?.[1]?.trim();
-        const imp  = /Importe:\s*([0-9]+[.,]?[0-9]*)/.exec(txt)?.[1]?.trim();
-        const fec  = /Fecha:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(txt)?.[1]?.trim();
-        if(prov) $("fProveedor").value = prov;
-        if(imp)  $("fCantidad").value  = imp.replace(",", ".");
-        if(fec)  $("fFecha").value     = fec;
-        if(!prov && !imp) alert("No se pudieron extraer campos. Prueba con otra foto o mejor iluminación.");
-      }catch(e){
-        alert("Error IA: "+e.message);
-      }
-    };
-  </script>
+$("testKey").onclick=async()=>{try{await callGemini(btoa("test"),"text/plain");alert("OK IA") }catch(e){alert(e.message)}};
+</script>
 </body>
 </html>
