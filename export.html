@@ -2,218 +2,244 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Exportar · Gastos 2N</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Gastos 2N</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{{--bg:#f7f7fb;--card:#fff;--text:#101114;--muted:#6b7280;--blue:#0a84ff;--border:#e9e9ef;--success:#34c759;--danger:#ff3b30}}
-    *{{box-sizing:border-box}} body{{margin:0;background:var(--bg);font-family:-apple-system,Inter,Segoe UI,Roboto;color:var(--text)}}
-    .topbar{{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:14px 16px;background:rgba(255,255,255,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}}
-    .topbar a{{text-decoration:none}} .pill{{border-radius:999px;background:#eef5ff;color:#0a84ff;padding:6px 10px;font-size:12px;margin-left:auto}}
-    .app{{max-width:520px;margin:0 auto;padding:14px}}
-    .card{{background:#fff;border:1px solid var(--border);border-radius:20px;padding:14px;box-shadow:0 8px 20px rgba(0,0,0,.04)}}
-    .row{{display:flex;align-items:center;justify-content:space-between;gap:8px}}
-    .grid{{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
-    .btn{{padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:600}}
-    .btn.primary{{background:var(--blue);color:#fff;border:none}}
-    .muted{{color:var(--muted)}}
-    .list{{display:grid;gap:8px;margin-top:10px}}
-    .item{{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:16px;padding:10px;background:#fff}}
-    .item img{{height:44px;width:44px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}}
-    canvas{{width:100%!important;height:200px!important}}
+    :root{
+      --bg:#0b0b0d; --card:#111114; --ink:#f8f9fb; --muted:#9aa0a6; --blue:#0a84ff;
+      --border: #1d1d22; --accent:#2b2b31;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+    .topbar{position:sticky;top:0;background:rgba(17,17,20,.85);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--border);z-index:20}
+    .topbar .row{display:flex;align-items:center;gap:8px;padding:12px 14px}
+    .logo{font-weight:700;letter-spacing:.2px}
+    .spacer{flex:1}
+    .chip{border:1px solid var(--border);background:var(--accent);padding:8px 12px;border-radius:14px;cursor:pointer}
+    .chip.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none}
+    .chip.ghost{background:transparent}
+    .content{padding:14px;display:grid;gap:14px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.3);padding:12px}
+    .card h2{font-size:16px;margin:0 0 8px 0}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .hidden{display:none!important}
+    .fab{position:fixed;right:16px;bottom:24px;background:#0a84ff;border-radius:18px;padding:12px 14px;font-weight:600;box-shadow:0 8px 30px rgba(10,132,255,.5);cursor:pointer;z-index:30}
+    .nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .nav a{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;padding:14px 10px;border-radius:16px;background:linear-gradient(180deg,#131318,#0d0d12);border:1px solid var(--border);text-decoration:none;color:var(--ink)}
+    .nav .ico{font-size:20px}
+    input,select,textarea{width:100%;background:#0f0f14;color:var(--ink);border:1px solid #24242a;border-radius:12px;padding:10px 12px;font:inherit}
+    label{font-size:12px;color:var(--muted)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:end;justify-content:center}
+    .modal.open{display:flex}
+    .sheet{background:var(--card);border:1px solid var(--border);border-radius:18px 18px 0 0;padding:14px;max-width:480px;width:100%}
+    .sheet header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .btn{border:1px solid var(--border);background:#141419;border-radius:12px;padding:10px 12px;color:var(--ink);cursor:pointer}
+    .btn.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none}
+    .list{display:grid;gap:8px}
+    .item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:14px;background:#0e0e13}
+    .item .left{display:flex;gap:10px;align-items:center;min-width:0}
+    .thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#16161c}
+    .amount.minus{color:#ff6b6b} .amount.plus{color:#4cd964}
+    .notice{font-size:12px;color:var(--muted)}
   </style>
+  <!-- Firebase compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
-<body>
-  <header class="topbar">
-    <a class="btn" href="index.html">← Volver</a>
-    <strong>Exportar</strong>
-    <span id="who" class="pill">No login</span>
-  </header>
 
-  <main class="app">
-    <section class="card">
-      <div class="grid">
-        <div>
-          <label class="muted">Mes</label>
-          <input id="expMonth" type="month" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px"/>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <button id="btnXLSX" class="btn primary">📄 Plantilla 2N (XLSX)</button>
-          <button id="btnFotos" class="btn">📥 Descargar fotos</button>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="row">
+      <a href="index.html" class="chip">◀︎ Volver</a>
+      <div class="logo">Exportar</div>
+      <div class="spacer"></div>
+      <button id="btnLogin" class="chip primary">Entrar</button>
+      <button id="btnLogout" class="chip hidden">Salir</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <h2>Mes a exportar</h2>
+      <div class="grid2">
+        <div><label>Mes</label><input id="expMonth" type="month"></div>
+        <div class="row" style="align-items:flex-end;gap:8px">
+          <button id="btnXLSX" class="btn primary">⬇︎ Plantilla 2N (XLSX)</button>
+          <button id="btnPhotos" class="btn">⬇︎ Fotos (múltiples)</button>
         </div>
       </div>
-      <small class="muted">La plantilla sigue el formato (cabecera + matriz) usado anteriormente.</small>
-    </section>
+      <div class="notice">Descarga de fotos como múltiples archivos (sin ZIP).</div>
+    </div>
 
-    <section class="card" style="margin-top:12px">
-      <div class="row"><strong>Dashboard</strong><small class="muted" id="sum"></small></div>
-      <canvas id="chart"></canvas>
-    </section>
+    <div class="card">
+      <h2>Dashboard</h2>
+      <canvas id="chart" height="220"></canvas>
+      <div class="row" id="totals" style="margin-top:10px"></div>
+    </div>
 
-    <section class="card" style="margin-top:12px">
-      <div class="row"><strong>Listado</strong><button id="refresh" class="btn">↻</button></div>
-      <div id="list" class="list"></div>
-    </section>
-  </main>
+    <div class="card">
+      <h2>Listado</h2>
+      <div class="list" id="list"></div>
+    </div>
+  </div>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.2/dist/xlsx.full.min.js"></script>
 <script>
-(function(){
-  const config = {{apiKey:"{apiKey}",authDomain:"{authDomain}",projectId:"{projectId}",storageBucket:"{storageBucket}",messagingSenderId:"{messagingSenderId}",appId:"{appId}" }};
-  firebase.initializeApp(config);
-  const auth=firebase.auth(); const db=firebase.firestore(); const storage=firebase.storage();
-  const $=id=>document.getElementById(id);
+  const $=(id)=>document.getElementById(id);
+  
+    // ======= CONFIG FIREBASE (TU PROYECTO) =======
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
 
-  const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
-  const MAP={{"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"}};
-
-  let chart;
-
-  auth.onAuthStateChanged(user=>{
-    $("who").textContent = user ? (user.email||user.uid) : "No login";
-    if(user){ $("expMonth").value = new Date().toISOString().slice(0,7); loadAll(); }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  $('btnLogin').onclick = async ()=>{ try{ await auth.signInWithPopup(provider);}catch(e){alert(e.message)} };
+  $('btnLogout').onclick = async ()=> auth.signOut();
+  auth.onAuthStateChanged((u)=>{
+    if(u){ $('btnLogin').classList.add('hidden'); $('btnLogout').classList.remove('hidden'); init(); }
+    else{ $('btnLogin').classList.remove('hidden'); $('btnLogout').classList.add('hidden'); }
   });
 
-  function monthRange(ym){{ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }}
-  async function listEntriesMonth(ym, uid){{
-    const [s,e]=monthRange(ym);
-    const snap=await db.collection(`users/${{uid}}/entries`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
-    return snap.docs.map(d=>({{id:d.id, ...d.data()}}));
-  }}
-  async function listKmMonth(ym, uid){{
-    const [s,e]=monthRange(ym);
-    const snap=await db.collection(`users/${{uid}}/kms`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
-    return snap.docs.map(d=>({{id:d.id, ...d.data()}}));
-  }}
+  $('expMonth').value = new Date().toISOString().slice(0,7);
 
-  function renderList(entries){{
-    const box=$("list"); box.innerHTML="";
-    for(const e of entries){{
-      const d=e.date?.toDate? e.date.toDate(): new Date(e.date);
-      const dateISO=d.toISOString().slice(0,10);
-      const amount=Number(e.amount||0);
-      const sign = e.category==='ingreso'?'+':'-';
-      const color = e.category==='ingreso'?'var(--success)':'var(--danger)';
-      const img = e.photoURL? `<img src="${{e.photoURL}}" alt="ticket">` : `<div style="height:44px;width:44px;border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center">—</div>`;
-      const el=document.createElement("div");
-      el.className="item";
-      el.innerHTML = `${{img}}
-        <div style="flex:1">
-          <div style="font-weight:600">${{e.provider||"-"}} <span class="muted">· ${{e.category}}</span></div>
-          <div class="muted" style="font-size:12px">${{dateISO}} ${{e.notes?("· "+e.notes):""}}</div>
-        </div>
-        <div style="font-weight:700;color:${{color}}">${{sign}}${{amount.toLocaleString('es-ES',{{minimumFractionDigits:2}})}}€</div>`;
-      box.appendChild(el);
-    }}
-  }}
+  async function listMonth(ym){
+    const u=auth.currentUser; if(!u) return [];
+    const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1,1);
+    const snap = await db.collection(`users/${u.uid}/entries`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+    return snap.docs.map(d=>({id:d.id, ...d.data()}));
+  }
 
-  function renderChart(entries){{
-    const byCat = {{}};
-    for(const e of entries){{
-      if(e.category==="ingreso") continue;
-      byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0);
-    }}
-    const labels = Object.keys(byCat);
-    const data = labels.map(k=>byCat[k]);
-    if(chart) chart.destroy();
-    chart = new Chart($("chart"), {{type:"bar", data:{{labels, datasets:[{{label:"Gasto por categoría", data}}]}} }});
-  }}
+  function renderList(rows){
+    const list=$('list'); list.innerHTML='';
+    let total=0;
+    rows.forEach(r=>{
+      const d=r.date?.toDate? r.date.toDate(): new Date(r.date);
+      const it=document.createElement('div'); it.className='item';
+      total += r.isExpense? Number(r.amount||0) : -Number(r.amount||0);
+      it.innerHTML = `<div class="left">
+        ${r.photoURL?`<img class="thumb" src="${r.photoURL}">`:`<div class="thumb"></div>`}
+        <div>
+          <div style="font-weight:600">${(r.provider||'-').toString().slice(0,40)}</div>
+          <div class="muted" style="font-size:12px">${d.toLocaleDateString('es-ES')} · ${r.category||'-'}</div>
+          ${r.notes?`<div class="muted" style="font-size:12px">${r.notes}</div>`:''}
+        </div></div>
+        <div class="${r.isExpense?'amount minus':'amount plus'}">${r.isExpense?'-':'+'}${Number(r.amount||0).toFixed(2)} €</div>`;
+      list.appendChild(it);
+    });
+    $('totals').innerHTML = `<div class="chip">Gasto neto: <b>${total.toFixed(2)} €</b></div>`;
+  }
 
-  async function buildXLSX(entries, kms, ym){{
-    const rows = [];
-    for(const e of entries){{
-      if(e.category==="ingreso") continue;
-      const col = MAP[e.category] || "VARIOUS";
-      const rec = {{}};
-      COLUMNS.forEach(c=>rec[c] = (["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)? "": 0));
-      const d=e.date?.toDate?e.date.toDate():new Date(e.date);
-      rec["DATE"] = d.toLocaleDateString("es-ES");
-      rec["CLIENT / PROVIDER"] = e.provider||"";
-      rec["DESCRIPTION"] = e.notes||"";
-      const amount = Number(e.amount||0);
-      if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount;
-      let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0);
-      rec["TOTAL"]=total;
-      rows.push(rec);
-    }}
-    const sheetData = [];
-    const monthlabel=new Date(ym+"-01").toLocaleDateString("es-ES",{{month:"long",year:"numeric"}});
-    const today=new Date().toLocaleDateString("es-ES");
-    sheetData.push([ "", "", "", "", "", "EXPENSES REPORT" ]);
-    sheetData.push([ "NOM", "", "Gaston Ortigosa", "", "", "DATE:", "", today ]);
-    sheetData.push([ "PRENOM:", "David", "COST CENTER:", "7420", "", "MONTH/YEAR:", "", monthlabel ]);
-    sheetData.push([]);
-    sheetData.push(COLUMNS);
-    sheetData.push(["", "", "PARKINGS", "", "", "", "TRAVELING"]);
-    for(const r of rows){{
-      sheetData.push(COLUMNS.map(c => {{
-        if(c==="DATE"||c==="CLIENT / PROVIDER"||c==="DESCRIPTION") return r[c]||"";
-        return Number(r[c]||0);
-      }}));
-    }}
-    const totalKmEmpresa = kms.reduce((a,b)=>a+Number(b.km_empresa||0),0);
-    const totalKmPersonal = kms.reduce((a,b)=>a+Number(b.km_personal||0),0);
-    const avgPrecio = kms.length? (kms.reduce((a,b)=>a+Number(b.precio_litro||0),0)/kms.length):0;
-    const eurosPersonal = totalKmPersonal * avgPrecio;
-    const hojaKm = [
-      ["Mes", monthlabel],
-      ["Total KM empresa", totalKmEmpresa],
-      ["Total KM personal", totalKmPersonal],
-      ["Precio medio €/L", avgPrecio],
-      ["€ a restar por KM personales (km_personal * €/L)", eurosPersonal]
-    ];
+  let chart;
+  function renderChart(rows){
+    const cats = ['comida','gasolina','peajes','alojamiento','transporte','ocio','servicios','varios'];
+    const labels = ['Comida','Gasolina','Peajes','Hotel','Transportes','Invitaciones','Servicios','Varios'];
+    const sums = cats.map(c=> rows.filter(r=>r.isExpense && r.category===c).reduce((a,b)=>a+Number(b.amount||0),0) );
+    const ctx=$('chart');
+    chart && chart.destroy();
+    chart = new Chart(ctx, { type:'doughnut',
+      data:{ labels, datasets:[{ data:sums }]},
+      options:{ plugins:{ legend:{ position:'bottom', labels:{color:'#cfd2d7'} }}, responsive:true }
+    });
+  }
 
-    const wb = XLSX.utils.book_new();
-    const ws1 = XLSX.utils.aoa_to_sheet(sheetData);
-    const ws2 = XLSX.utils.aoa_to_sheet(hojaKm);
-    XLSX.utils.book_append_sheet(wb, ws1, "Informe");
-    XLSX.utils.book_append_sheet(wb, ws2, "KM");
-    const wbout = XLSX.write(wb, {{bookType:'xlsx', type:'array'}});
-    const blob = new Blob([wbout], {{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}});
-    saveAs(blob, `Informe_Gastos_2N_${{ym}}.xlsx`);
-  }}
+  async function init(){
+    const ym=$('expMonth').value;
+    const rows=await listMonth(ym);
+    renderList(rows); renderChart(rows);
+  }
+  $('expMonth').onchange = init;
 
-  async function downloadAllPhotos(entries){{
-    let count=0;
-    for(const e of entries){{
-      if(!e.photoURL && !e.photoPath) continue;
-      try{{
-        const ref = e.photoPath ? firebase.storage().ref(e.photoPath) : firebase.storage().refFromURL(e.photoURL);
-        const url = await ref.getDownloadURL();
-        const a=document.createElement("a"); a.href=url; a.download=""; document.body.appendChild(a); a.click(); a.remove();
-        count++;
-      }}catch(err){{ console.warn("Foto KO", err); }}
-    }}
-    alert(`Lanzadas ${{count}} descargas de fotos.`);
-  }}
+  // Descargar plantilla 2N (XLSX)
+  $('btnXLSX').onclick = async ()=>{
+    try{
+      const ym=$('expMonth').value; const rows=await listMonth(ym); if(!rows.length) return alert('Sin datos');
+      // Construir worksheet estilo "2N"
+      const ws_data = [
+        ["", "", "", "", "", "EXPENSES REPORT"],
+        ["NOM", "", "Gaston Ortigosa", "", "", "", "", "", "", "", "", "DATE:", new Date().toLocaleDateString('es-ES')],
+        ["PRENOM:", "David", "COST CENTER:", "7420", "", "", "", "", "", "", "", "MONTH/YEAR:", new Date(ym+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'})],
+        [],
+        ["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"]
+      ];
+      const map={"comida":8,"gasolina":4,"peajes":2,"alojamiento":3,"transporte":6,"ocio":7,"servicios":9,"varios":9};
+      rows.filter(r=>r.category!=='ingreso').forEach(r=>{
+        const d=r.date?.toDate? r.date.toDate(): new Date(r.date);
+        const row = Array(12).fill("");
+        row[0]=d.toLocaleDateString('es-ES'); row[1]=r.provider||"";
+        const col = map[r.category] ?? 9; row[col]=Number(r.amount||0);
+        row[10]=Number(r.amount||0); row[11]=r.notes||"";
+        ws_data.push(row);
+      });
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      XLSX.utils.book_append_sheet(wb, ws, "Informe");
+      // KM hoja
+      const u=auth.currentUser;
+      const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1,1);
+      const snapKM = await db.collection(`users/${u.uid}/km`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+      const kmRows = snapKM.docs.map(d=>({id:d.id, ...d.data()}));
+      const ws_km_data = [["DATE","DEST","KM EMPRESA","KM PERSONAL","€/L"],];
+      let kmEmp=0, kmPer=0, priceSum=0, priceCount=0;
+      kmRows.forEach(r=>{
+        const d=r.date?.toDate? r.date.toDate(): new Date(r.date);
+        ws_km_data.push([d.toLocaleDateString('es-ES'), r.dest||"", Number(r.kmEmp||0), Number(r.kmPer||0), Number(r.price||0)]);
+        kmEmp+=Number(r.kmEmp||0); kmPer+=Number(r.kmPer||0);
+        if(r.price>0){ priceSum+=Number(r.price); priceCount++; }
+      });
+      const avg = priceCount? (priceSum/priceCount) : 0;
+      ws_km_data.push([]);
+      ws_km_data.push(["TOTAL EMPRESA", kmEmp, "TOTAL PERSONAL", kmPer, "€/L MEDIO", avg]);
+      ws_km_data.push(["€ A RESTAR (KM personal * €/L medio)", kmPer*avg]);
+      const ws_km = XLSX.utils.aoa_to_sheet(ws_km_data);
+      XLSX.utils.book_append_sheet(wb, ws_km, "KM");
+      XLSX.writeFile(wb, `Informe_Gastos_${ym}.xlsx`);
+    }catch(e){ alert(e.message||String(e)); }
+  };
 
-  async function loadAll(){{
-    const user=firebase.auth().currentUser; if(!user) return;
-    const ym=$("expMonth").value; if(!ym) return;
-    const entries=await listEntriesMonth(ym, user.uid);
-    renderList(entries);
-    renderChart(entries);
+  // Descargar fotos (múltiples)
+  $('btnPhotos').onclick = async ()=>{
+    try{
+      const ym=$('expMonth').value; const rows=await listMonth(ym);
+      const pics = rows.filter(r=>r.photoPath||r.photoURL);
+      if(!pics.length) return alert('Sin fotos');
+      for(const p of pics){
+        try{
+          let url = p.photoURL;
+          if(!url && p.photoPath){ url = await storage.ref(p.photoPath).getDownloadURL(); }
+          if(!url) continue;
+          const a=document.createElement('a'); a.href=url; a.download=''; document.body.appendChild(a); a.click(); a.remove();
+          await new Promise(r=>setTimeout(r,150)); // evitar bloqueos
+        }catch(e){ console.log('fallo foto', e); }
+      }
+    }catch(e){ alert(e.message||String(e)); }
+  };
 
-    const totG = entries.filter(e=>e.category!=="ingreso").reduce((a,b)=>a+Number(b.amount||0),0);
-    const totI = entries.filter(e=>e.category==="ingreso").reduce((a,b)=>a+Number(b.amount||0),0);
-    $("sum").textContent = `Gastos: −${{totG.toFixed(2)}}€ · Ingresos: +${{totI.toFixed(2)}}€ · Tickets: ${{entries.length}}`;
-
-    $("btnXLSX").onclick = async ()=>{{
-      const kms = await listKmMonth(ym, user.uid);
-      await buildXLSX(entries, kms, ym);
-    }};
-    $("btnFotos").onclick = ()=> downloadAllPhotos(entries);
-  }}
-
-  $("expMonth").addEventListener("change", loadAll);
-  $("refresh").addEventListener("click", loadAll);
-})();
+  async function init(){
+    await (auth.currentUser? Promise.resolve(): Promise.resolve());
+    const ym=$('expMonth').value; const rows=await listMonth(ym);
+    renderList(rows); renderChart(rows);
+  }
 </script>
 </body>
 </html>

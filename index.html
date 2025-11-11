@@ -3,290 +3,300 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Gastos 2N · iOS Style</title>
-  <meta name="theme-color" content="#0a84ff"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Gastos 2N</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{{--bg:#f7f7fb;--card:#fff;--text:#101114;--muted:#6b7280;--blue:#0a84ff;--border:#e9e9ef;--success:#34c759;--danger:#ff3b30}}
-    *{{box-sizing:border-box}} html,body{{height:100%}} body{{margin:0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Inter;background:var(--bg);color:var(--text)}}
-    .safe{{padding-bottom:env(safe-area-inset-bottom)}}
-    .topbar{{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:14px 16px;background:rgba(255,255,255,.8);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--border);z-index:5}}
-    .topbar h1{{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}}
-    .app{{max-width:460px;margin:0 auto;padding:14px}}
-    .grid{{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
-    .card{{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:14px;box-shadow:0 8px 20px rgba(0,0,0,.04)}}
-    .btn{{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:600}}
-    .btn.primary{{background:var(--blue);color:#fff;border:none}}
-    .btn.icon{{aspect-ratio:1/1;padding:12px}}
-    .muted{{color:var(--muted)}} .row{{display:flex;align-items:center;justify-content:space-between;gap:8px}}
-    .pill{{border-radius:999px;background:#eef5ff;color:#0a84ff;padding:6px 10px;font-size:12px}}
-    .quick{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
-    .quick .tile{{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px;border:1px solid var(--border);border-radius:18px;background:#fff;cursor:pointer}}
-    .tile i{{font-style:normal;font-size:22px}}
-    .hidden{{display:none!important}}
-    /* Modal */
-    .modal{{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.45);z-index:50}}
-    .modal.open{{display:flex}}
-    .sheet{{width:100%;max-width:520px;background:#fff;border-top-left-radius:18px;border-top-right-radius:18px;border:1px solid var(--border);box-shadow:0 -10px 30px rgba(0,0,0,.2)}}
-    .sheet header,.sheet footer{{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}}
-    .sheet footer{{border-bottom:none;border-top:1px solid var(--border)}}
-    .sheet .body{{padding:12px 14px;display:grid;gap:10px;grid-template-columns:1fr 1fr}}
-    .field{{display:flex;flex-direction:column;gap:6px}}
-    .field input,.field select,.field textarea{{padding:10px;border:1px solid var(--border);border-radius:12px;font:inherit;background:#fff}}
-    .preview{{grid-column:1/3;display:flex;gap:10px;align-items:center;border:1px dashed var(--border);padding:10px;border-radius:12px}}
-    .preview img{{height:72px;border-radius:8px}}
-    .footerbar{{position:sticky;bottom:0;display:flex;gap:10px;padding:10px;background:rgba(255,255,255,.85);backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--border)}}
+    :root{
+      --bg:#0b0b0d; --card:#111114; --ink:#f8f9fb; --muted:#9aa0a6; --blue:#0a84ff;
+      --border: #1d1d22; --accent:#2b2b31;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+    .topbar{position:sticky;top:0;background:rgba(17,17,20,.85);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--border);z-index:20}
+    .topbar .row{display:flex;align-items:center;gap:8px;padding:12px 14px}
+    .logo{font-weight:700;letter-spacing:.2px}
+    .spacer{flex:1}
+    .chip{border:1px solid var(--border);background:var(--accent);padding:8px 12px;border-radius:14px;cursor:pointer}
+    .chip.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none}
+    .chip.ghost{background:transparent}
+    .content{padding:14px;display:grid;gap:14px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.3);padding:12px}
+    .card h2{font-size:16px;margin:0 0 8px 0}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .hidden{display:none!important}
+    .fab{position:fixed;right:16px;bottom:24px;background:#0a84ff;border-radius:18px;padding:12px 14px;font-weight:600;box-shadow:0 8px 30px rgba(10,132,255,.5);cursor:pointer;z-index:30}
+    .nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .nav a{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;padding:14px 10px;border-radius:16px;background:linear-gradient(180deg,#131318,#0d0d12);border:1px solid var(--border);text-decoration:none;color:var(--ink)}
+    .nav .ico{font-size:20px}
+    input,select,textarea{width:100%;background:#0f0f14;color:var(--ink);border:1px solid #24242a;border-radius:12px;padding:10px 12px;font:inherit}
+    label{font-size:12px;color:var(--muted)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:end;justify-content:center}
+    .modal.open{display:flex}
+    .sheet{background:var(--card);border:1px solid var(--border);border-radius:18px 18px 0 0;padding:14px;max-width:480px;width:100%}
+    .sheet header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .btn{border:1px solid var(--border);background:#141419;border-radius:12px;padding:10px 12px;color:var(--ink);cursor:pointer}
+    .btn.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none}
+    .list{display:grid;gap:8px}
+    .item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:14px;background:#0e0e13}
+    .item .left{display:flex;gap:10px;align-items:center;min-width:0}
+    .thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#16161c}
+    .amount.minus{color:#ff6b6b} .amount.plus{color:#4cd964}
+    .notice{font-size:12px;color:var(--muted)}
   </style>
-</head>
-<body class="safe">
-  <header class="topbar">
-    <h1>Gastos 2N</h1>
-    <span class="pill" id="whoami">No autenticado</span>
-    <button class="btn" id="btnAI" title="API Key Gemini">⚙️ IA</button>
-    <button class="btn" id="btnLogin">🔐 Google</button>
-    <button class="btn hidden" id="btnLogout">Salir</button>
-  </header>
-
-  <main class="app">
-    <section class="card">
-      <div class="row"><strong>Acciones rápidas</strong><span class="muted" style="font-size:12px">iPhone optimizado</span></div>
-      <div class="quick" style="margin-top:10px">
-        <div class="tile" id="tileScan"><i>📸</i><span>Escanear ticket</span></div>
-        <div class="tile" id="tileManual"><i>➕</i><span>Ingreso manual</span></div>
-        <a class="tile" href="export.html"><i>📁</i><span>Exportar</span></a>
-        <a class="tile" href="km.html"><i>🚗</i><span>Gastos de KM</span></a>
-      </div>
-    </section>
-
-    <section class="card" style="margin-top:12px">
-      <div class="row"><strong>Actividad</strong><button class="btn icon" id="btnRefresh" title="Refrescar">↻</button></div>
-      <div id="list" style="display:grid;gap:8px;margin-top:10px"></div>
-    </section>
-  </main>
-
-  <!-- Modal IA -->
-  <div id="aiModal" class="modal" aria-hidden="true">
-    <div class="sheet">
-      <header><strong>Configurar IA (Gemini)</strong><button class="btn" id="closeAI">Cerrar</button></header>
-      <div class="body" style="grid-template-columns:1fr">
-        <div class="field"><label>API Key (Google AI)</label><input id="aiKey" type="password" placeholder="AIza..." /></div>
-        <small class="muted" style="grid-column:1/1">Se guarda en este navegador.</small>
-      </div>
-      <footer><button class="btn" id="clearAI">Borrar</button><button class="btn primary" id="saveAI">Guardar</button></footer>
-    </div>
-  </div>
-
-  <!-- Modal Revisión / también para ingreso manual (con foto opcional) -->
-  <div id="revModal" class="modal" aria-hidden="true">
-    <div class="sheet">
-      <header><strong>Revisar y guardar</strong><button class="btn" id="closeRev">Cerrar</button></header>
-      <div class="body">
-        <div class="field"><label>Fecha</label><input id="revDate" type="date"/></div>
-        <div class="field"><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"/></div>
-        <div class="field"><label>Proveedor</label><input id="revProvider" type="text" placeholder="Proveedor / Cliente"/></div>
-        <div class="field"><label>Categoría</label><select id="revCategory">
-          <option value="varios" selected>Varios</option>
-          <option value="comida">Comida</option>
-          <option value="gasolina">Gasolina</option>
-          <option value="peajes">Peajes</option>
-          <option value="alojamiento">Hotel</option>
-          <option value="transporte">Transportes</option>
-          <option value="ocio">Invitaciones</option>
-          <option value="servicios">Servicios</option>
-          <option value="ingreso">Ingreso</option>
-        </select></div>
-        <div class="field" style="grid-column:1/3">
-          <label>Notas</label><textarea id="revNotes" rows="2" placeholder="Opcional"></textarea>
-        </div>
-        <div class="preview" style="grid-column:1/3">
-          <img id="revThumb" alt="" />
-          <div>
-            <div class="field">
-              <label>Foto (opcional)</label>
-              <input id="revFile" type="file" accept="image/*" />
-            </div>
-            <small class="muted" id="revInfo"></small>
-          </div>
-        </div>
-      </div>
-      <footer><button class="btn" id="cancelRev">Cancelar</button><button class="btn primary" id="saveRev">Guardar</button></footer>
-    </div>
-  </div>
-
-  <div class="footerbar">
-    <small class="muted">© Gastos 2N</small>
-    <span id="log" class="muted" style="margin-left:auto;font-size:12px"></span>
-  </div>
-
-  <!-- Firebase compat SDK -->
+  <!-- Firebase compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+</head>
 
-  <script>
-  (function(){
-    const config = {{apiKey:"{apiKey}",authDomain:"{authDomain}",projectId:"{projectId}",storageBucket:"{storageBucket}",messagingSenderId:"{messagingSenderId}",appId:"{appId}"}};
-    firebase.initializeApp(config);
-    const auth=firebase.auth(); const db=firebase.firestore(); const storage=firebase.storage();
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="row">
+      <div class="logo">Gastos 2N</div>
+      <div class="spacer"></div>
+      <button id="btnAI" class="chip">🤖 IA</button>
+      <button id="btnLogin" class="chip primary">Entrar</button>
+      <button id="btnLogout" class="chip hidden">Salir</button>
+    </div>
+  </div>
 
-    const $=id=>document.getElementById(id);
-    const setLog=t=>{{$("log").textContent=t}}
-    const outList=$("list");
+  <div class="content">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2>Acciones rápidas</h2>
+          <div id="whoami" class="muted">No autenticado</div>
+        </div>
+      </div>
+      <div class="nav" style="margin-top:8px">
+        <a id="scanBtn"><div class="ico">📸</div><div>Escanear</div></a>
+        <a id="manualBtn"><div class="ico">✍️</div><div>Ingreso manual</div></a>
+        <a href="km.html"><div class="ico">🚗</div><div>Gastos KM</div></a>
+        <a href="export.html"><div class="ico">📁</div><div>Exportar</div></a>
+      </div>
+    </div>
 
-    // IA modal
-    const aiModal=$("aiModal");
-    $("btnAI").onclick=()=>{{ aiModal.classList.add("open"); $("aiKey").value=localStorage.getItem("gkey")||""; }}
-    $("closeAI").onclick=()=>aiModal.classList.remove("open");
-    $("saveAI").onclick=()=>{{ const v=$("aiKey").value.trim(); if(!v) return alert("Pega tu API key"); localStorage.setItem("gkey",v); alert("Guardada"); aiModal.classList.remove("open"); }}
-    $("clearAI").onclick=()=>{{ localStorage.removeItem("gkey"); $("aiKey").value=""; }}
+    <div class="card">
+      <h2>Últimos gastos</h2>
+      <div class="list" id="lastList"></div>
+      <div class="notice">Las fotos y datos se guardan en tu cuenta de Firebase</div>
+    </div>
+  </div>
+</div>
 
-    // Auth
-    const provider=new firebase.auth.GoogleAuthProvider();
-    $("btnLogin").onclick=async()=>{{ try{{ await auth.signInWithPopup(provider);}}catch(e){{ alert("Login error: "+(e.message||"")); }}}}
-    $("btnLogout").onclick=async()=>{{ await auth.signOut(); }}
-    auth.onAuthStateChanged(user=>{{
-      if(user){{
-        $("whoami").textContent = user.email||user.uid;
-        $("btnLogin").classList.add("hidden"); $("btnLogout").classList.remove("hidden");
-        renderRecent();
-      }}else{{
-        $("whoami").textContent = "No autenticado";
-        $("btnLogin").classList.remove("hidden"); $("btnLogout").classList.add("hidden");
-        outList.innerHTML="";
-      }}
-    }});
+<!-- Modales -->
+<div id="aiModal" class="modal"><div class="sheet">
+  <header><strong>Configurar IA (Gemini)</strong><button class="btn" id="closeAI">Cerrar</button></header>
+  <div>
+    <label>API Key (se guarda en este dispositivo)</label>
+    <input id="aiKey" type="password" placeholder="AIza..." />
+  </div>
+  <div class="row" style="margin-top:10px;justify-content:flex-end">
+    <button class="btn" id="clearAI">Borrar</button>
+    <button class="btn primary" id="saveAI">Guardar</button>
+  </div>
+</div></div>
 
-    // Helpers
-    function money(n){{ return (Number(n||0)).toLocaleString('es-ES',{{minimumFractionDigits:2}}) }}
-    function chip(cat){{ const m={{comida:"🍽️",gasolina:"⛽",peajes:"🅿️",alojamiento:"🏨",transporte:"🚕",ocio:"🎟️",servicios:"🧰",varios:"📦",ingreso:"💚"}}; return m[cat]||"📦"; }}
+<div id="reviewModal" class="modal"><div class="sheet">
+  <header><strong>Revisar y guardar</strong><button class="btn" id="closeReview">Cerrar</button></header>
+  <div class="grid2">
+    <div><label>Fecha</label><input id="revDate" type="date"></div>
+    <div><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"></div>
+    <div style="grid-column:1/3"><label>Proveedor</label><input id="revProvider" type="text" maxlength="80"></div>
+    <div><label>Categoría</label><select id="revCategory">
+      <option value="varios" selected>Varios</option>
+      <option value="comida">Comida</option>
+      <option value="gasolina">Gasolina</option>
+      <option value="peajes">Peajes</option>
+      <option value="alojamiento">Hotel</option>
+      <option value="transporte">Transportes</option>
+      <option value="ocio">Invitaciones</option>
+      <option value="servicios">Servicios</option>
+      <option value="ingreso">Ingreso</option>
+    </select></div>
+    <div><label>Imagen</label><input id="revFile" type="file" accept="image/*"></div>
+    <div style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
+    <div style="grid-column:1/3" class="row"><img id="revThumb" class="thumb"><div id="revInfo" class="muted"></div></div>
+  </div>
+  <div class="row" style="justify-content:flex-end;margin-top:10px">
+    <button class="btn" id="cancelReview">Cancelar</button>
+    <button class="btn primary" id="saveReview">Guardar</button>
+  </div>
+</div></div>
 
-    async function renderRecent(){{
-      const user=auth.currentUser; if(!user) return;
-      const snap=await db.collection(`users/${{user.uid}}/entries`).orderBy("createdAt","desc").limit(10).get();
-      outList.innerHTML="";
-      snap.forEach(doc=>{{
-        const d=doc.data(); const date=(d.date?.toDate?d.date.toDate():new Date(d.date)).toISOString().slice(0,10);
-        const el=document.createElement("div");
-        el.className="row card";
-        el.innerHTML = `<div style="display:flex;gap:10px;align-items:center">
-            <span style="font-size:22px">${{chip(d.category)}}</span>
-            <div>
-              <div style="font-weight:600">${{d.provider||"-"}} <span class="muted">· ${{d.category}}</span></div>
-              <div class="muted" style="font-size:12px">${{date}} ${{d.notes?("· "+d.notes):""}}</div>
-            </div>
-          </div>
-          <div style="font-weight:700;${{d.category==='ingreso'?'color:var(--success)':'color:var(--danger)'}}">${{d.category==='ingreso'?'+':'-'}}${{money(d.amount)}}€</div>`;
-        outList.appendChild(el);
-      }});
-    }}
-    $("btnRefresh").onclick=renderRecent;
+<script>
+  // ===== UI helpers (modals) =====
+  const $ = (id)=>document.getElementById(id);
+  const open = (el)=>el.classList.add('open');
+  const close = (el)=>el.classList.remove('open');
 
-    // Camera capture for OCR (when clicking tileScan)
-    let hiddenInput;
-    function ensureCamera(){{ if(hiddenInput) return hiddenInput; hiddenInput=document.createElement("input"); hiddenInput.type="file"; hiddenInput.accept="image/*"; hiddenInput.capture="environment"; hiddenInput.style.display="none"; document.body.appendChild(hiddenInput); return hiddenInput; }}
-    function fileToBase64(file){{ return new Promise((resolve,reject)=>{{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(",")[1]||""); rd.onerror=()=>reject(new Error("No se pudo leer imagen")); rd.readAsDataURL(file); }}); }}
-    function safeParseJSON(text){{ try{{ let s=(text||"").trim(); if(s.startsWith("```")) s=s.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim(); return JSON.parse(s); }}catch{{ throw new Error("Respuesta IA no es JSON"); }} }}
-    function fallbackParse(text){{ const t=(text||"").replace(/\s+/g," ").trim(); let amount=0; const m=t.match(/(\d+[.,]\d{{2}})\s*(€|eur)?/i); if(m) amount=Number(m[1].replace(",", ".")); let dateISO=new Date().toISOString().slice(0,10); const d1=t.match(/(\d{{2}})[\/\-](\d{{2}})[\/\-](\d{{4}})/); const d2=t.match(/(\d{{4}})[\/\-](\d{{2}})[\/\-](\d{{2}})/); if(d2) dateISO=`${{d2[1]}}-${{d2[2]}}-${{d2[3]}}`; else if(d1) dateISO=`${{d1[3]}}-${{d1[2]}}-${{d1[1]}}`; let provider="Ticket"; const prov=t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{{2,40}}/); if(prov) provider=prov[0].trim(); return {{ date:dateISO, provider, amount }}; }}
-    async function callGemini(base64, mime){{ 
-      const key=(localStorage.getItem("gkey")||"").trim();
-      if(!key){{ document.getElementById("btnAI").click(); throw new Error("Falta API Key"); }}
-      const prompt=`Devuelve solo un JSON válido EXACTO:\n{{"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}}`;
-      const body={{contents:[{{role:"user",parts:[{{text:prompt}},{{inlineData:{{mimeType:mime||"image/jpeg",data:base64}}}}]}}]}};
-      const models=["gemini-2.5-flash","gemini-2.0-flash"];
-      for(const m of models){{ 
-        const url=`https://generativelanguage.googleapis.com/v1/models/${{m}}:generateContent?key=${{encodeURIComponent(key)}}`;
-        const res=await fetch(url,{{method:"POST",headers:{{"Content-Type":"application/json"}},body:JSON.stringify(body)}});
-        const txt=await res.text(); let js=null; try{{js=JSON.parse(txt)}}catch{{}}
-        if(res.status===429){{ await new Promise(r=>setTimeout(r,800)); continue; }}
-        if(!res.ok){{ setLog("IA fallo "+m); continue; }}
-        const text=js?.candidates?.[0]?.content?.parts?.[0]?.text||"";
-        try{{ return safeParseJSON(text) }}catch{{ return fallbackParse(text) }}
-      }}
-      throw new Error("No fue posible extraer datos");
-    }}
+  // ===== Firebase init =====
+  
+    // ======= CONFIG FIREBASE (TU PROYECTO) =======
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
 
-    // Modal review state
-    const rev = {{ file:null }};
-    function openRev(initial){{ 
-      $("revDate").value = initial.date || new Date().toISOString().slice(0,10);
-      $("revAmount").value = initial.amount || "";
-      $("revProvider").value = initial.provider || "";
-      $("revCategory").value = initial.category || "varios";
-      $("revNotes").value = initial.notes || "";
-      $("revThumb").src = rev.file ? URL.createObjectURL(rev.file) : "";
-      $("revInfo").textContent = rev.file ? (rev.file.name + " · " + Math.round(rev.file.size/1024) + " KB") : "Sin imagen";
-      $("revModal").classList.add("open");
-    }}
-    function closeRev(){{ $("revModal").classList.remove("open"); }}
-    $("closeRev").onclick=closeRev; $("cancelRev").onclick=closeRev;
 
-    // Guardar desde modal (con foto opcional)
-    $("saveRev").onclick = async ()=>{{ 
-      try{{ 
-        const user=auth.currentUser; if(!user) return alert("Haz login");
-        const dateISO=$("revDate").value||new Date().toISOString().slice(0,10);
-        const amount=Number($("revAmount").value||0);
-        const providerTxt=$("revProvider").value.trim();
-        const category=$("revCategory").value;
-        const notes=$("revNotes").value.trim();
-        if(!providerTxt) return alert("Proveedor obligatorio");
-        if(!amount||amount<=0) return alert("Importe > 0");
-        const yyyyMM=dateISO.slice(0,7);
-        let photoURL="", photoPath="";
-        if(rev.file){{ 
-          const safeProv=(providerTxt||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-          const ext=(rev.file.name.split('.').pop()||'jpg').toLowerCase();
-          const filename=`${{dateISO}}_${{safeProv}}_${{Date.now()}}.${{ext}}`;
-          photoPath=`tickets/${{user.uid}}/${{yyyyMM}}/${{filename}}`;
-          await firebase.storage().ref(photoPath).put(rev.file);
-          photoURL=await firebase.storage().ref(photoPath).getDownloadURL();
-        }}
-        await db.collection(`users/${{user.uid}}/entries`).add({{
-          date: new Date(dateISO), amount, provider: providerTxt, category, notes,
-          photoURL, photoPath, isExpense: category!=="ingreso", createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }});
-        alert("Guardado ✅");
-        closeRev(); renderRecent();
-      }}catch(e){{ alert("Error guardando: "+(e.message||"")); }}
-    }};
+  // ===== Auth =====
+  const provider = new firebase.auth.GoogleAuthProvider();
+  $('btnLogin').onclick = async ()=>{ try{ await auth.signInWithPopup(provider);}catch(e){alert(e.message)} };
+  $('btnLogout').onclick = async ()=> auth.signOut();
+  auth.onAuthStateChanged(async (user)=>{
+    if(user){
+      $('whoami').textContent = user.email || user.uid;
+      $('btnLogin').classList.add('hidden'); $('btnLogout').classList.remove('hidden');
+      loadLast();
+    }else{
+      $('whoami').textContent = 'No autenticado';
+      $('btnLogin').classList.remove('hidden'); $('btnLogout').classList.add('hidden');
+      $('lastList').innerHTML = '';
+    }
+  });
 
-    // Tile: Escanear
-    document.getElementById("tileScan").onclick = async ()=>{{
-      try{{ 
-        const user=auth.currentUser; if(!user) return alert("Haz login");
-        const input = ensureCamera();
-        const file = await new Promise((resolve,reject)=>{{ 
-          const fn=()=>{{ input.removeEventListener("change",fn); if(input.files&&input.files[0]) resolve(input.files[0]); else reject(new Error("Sin imagen")); }};
-          input.addEventListener("change",fn,{{once:true}}); input.click();
-        }});
-        setLog("Procesando imagen…");
-        const img = await new Promise((res,rej)=>{{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); }});
-        const max=2048, sc=Math.min(1, max/Math.max(img.width,img.height)); const w=Math.round(img.width*sc), h=Math.round(img.height*sc);
-        const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h);
-        const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",0.92));
-        const compact=new File([blob], (file.name||"ticket")+".jpg", {{type:"image/jpeg"}});
-        const b64 = await fileToBase64(compact);
-        const ai = await callGemini(b64, "image/jpeg");
-        rev.file = compact;
-        openRev({{ date: ai.date, amount: ai.amount, provider: ai.provider, category:"varios", notes:"" }});
-      }}catch(e){{ alert("OCR error: "+(e.message||"")); }}
-    }};
+  // ===== AI Key modal =====
+  $('btnAI').onclick = ()=>{ $('aiKey').value=localStorage.getItem('gkey')||''; open($('aiModal')); };
+  $('closeAI').onclick = ()=> close($('aiModal'));
+  $('saveAI').onclick = ()=>{ const v=$('aiKey').value.trim(); if(!v){alert('Pega tu API key');return;} localStorage.setItem('gkey', v); close($('aiModal')); };
+  $('clearAI').onclick = ()=>{ localStorage.removeItem('gkey'); $('aiKey').value=''; };
 
-    // Tile: Ingreso manual
-    document.getElementById("tileManual").onclick = ()=>{{ 
-      rev.file = (document.getElementById("revFile").files && document.getElementById("revFile").files[0]) ? document.getElementById("revFile").files[0] : null;
-      openRev({{ date: new Date().toISOString().slice(0,10), amount:"", provider:"", category:"ingreso", notes:"" }});
-    }};
+  // ===== OCR helpers (Gemini) =====
+  const fileToBase64 = (file)=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(file); });
+  const downscale = async (file, max=2048,q=0.9)=>{
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+    const s=Math.min(1, max/Math.max(img.width,img.height));
+    const w=Math.round(img.width*s), h=Math.round(img.height*s);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+    const blob = await new Promise(r=>cv.toBlob(r,'image/jpeg',q)); URL.revokeObjectURL(img.src);
+    return new File([blob], (file.name||'ticket')+'.jpg', {type:'image/jpeg'});
+  };
+  const safeParseJSON=(t)=>{ let s=(t||'').trim(); if(s.startsWith('```')) s=s.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+    const a=s.indexOf('{'), b=s.lastIndexOf('}'); if(a>-1&&b>-1) s=s.slice(a,b+1); return JSON.parse(s); };
+  const fallbackParse=(text)=>{ const T=(text||'').replace(/\s+/g,' ').trim();
+    let amount=0; const m=T.match(/(\d+[.,]\d{2})\s*(€|eur)?/i); if(m) amount=Number(m[1].replace(',','.'));
+    let dISO=new Date().toISOString().slice(0,10);
+    const d1=T.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/); const d2=T.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    if(d2) dISO=`${d2[1]}-${d2[2]}-${d2[3]}`; else if(d1) dISO=`${d1[3]}-${d1[2]}-${d1[1]}`;
+    let provider='Ticket'; const p=T.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); if(p) provider=p[0].trim(); return {date:dISO, provider, amount}; };
+  async function callGemini(file){
+    const key=(localStorage.getItem('gkey')||'').trim(); if(!key){ open($('aiModal')); throw new Error('Falta API Key'); }
+    const prompt=`Devuelve solo un JSON válido: {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}`;
+    const base64 = await fileToBase64(file);
+    const body={ contents:[{role:'user',parts:[{text:prompt},{inlineData:{mimeType:file.type||'image/jpeg',data:base64}}]}] };
+    const models=['gemini-2.5-flash','gemini-2.0-flash'];
+    for(const model of models){
+      const url=`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{}
+      if(res.status===429){ await new Promise(r=>setTimeout(r,800)); continue; }
+      if(!res.ok) continue;
+      const text=js?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      try{ return safeParseJSON(text);}catch{ return fallbackParse(text); }
+    }
+    throw new Error('No se pudo extraer texto');
+  }
 
-    document.getElementById("revFile").addEventListener("change",(e)=>{{ 
-      const f=e.target.files?.[0]; if(!f){{ document.getElementById("revThumb").src=""; document.getElementById("revInfo").textContent="Sin imagen"; return; }}
-      document.getElementById("revThumb").src=URL.createObjectURL(f);
-      document.getElementById("revInfo").textContent = f.name + " · " + Math.round(f.size/1024) + " KB";
-      rev.file = f;
-    }});
+  // ===== Review modal state =====
+  const review = { file:null };
+  const setReviewFile = (f)=>{
+    review.file=f;
+    if(f){ $('revThumb').src = URL.createObjectURL(f); $('revInfo').textContent = `${f.name} · ${Math.round(f.size/1024)} KB`; }
+  };
 
-  })();
-  </script>
+  $('closeReview').onclick = ()=> close($('reviewModal'));
+  $('cancelReview').onclick = ()=> close($('reviewModal'));
+  $('revFile').onchange = (e)=>{ const f=e.target.files?.[0]; if(f) setReviewFile(f); };
+
+  // ===== Scan & Manual =====
+  function pickCamera(){
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.click();
+    return new Promise((res,rej)=>{ inp.onchange=()=>{ inp.files&&inp.files[0]?res(inp.files[0]):rej(new Error('Sin imagen')); }; });
+  }
+  document.getElementById('scanBtn').onclick = async ()=>{
+    const user=auth.currentUser; if(!user) return alert('Haz login primero');
+    try{
+      const raw = await pickCamera();
+      const file = await downscale(raw, 2048, .9);
+      const r = await callGemini(file);
+      $('revDate').value = (r.date && /^\d{4}-\d{2}-\d{2}$/.test(r.date))? r.date : new Date().toISOString().slice(0,10);
+      $('revAmount').value = r.amount||'';
+      $('revProvider').value = r.provider||'';
+      $('revCategory').value = 'varios';
+      $('revNotes').value = '';
+      setReviewFile(file);
+      open($('reviewModal'));
+    }catch(e){ alert(e.message||String(e)); }
+  };
+
+  document.getElementById('manualBtn').onclick = ()=>{
+    const user=auth.currentUser; if(!user) return alert('Haz login primero');
+    $('revDate').value = new Date().toISOString().slice(0,10);
+    $('revAmount').value=''; $('revProvider').value=''; $('revCategory').value='varios'; $('revNotes').value='';
+    $('revFile').value=''; $('revThumb').src=''; $('revInfo').textContent='';
+    review.file=null; open($('reviewModal'));
+  };
+
+  // ===== Guardar =====
+  document.getElementById('saveReview').onclick = async ()=>{
+    try{
+      const user=auth.currentUser; if(!user) return alert('Haz login');
+      const dateISO=$('revDate').value||new Date().toISOString().slice(0,10);
+      const amount=Number($('revAmount').value||0); if(!(amount>0)) return alert('Importe > 0');
+      const provider=($('revProvider').value||'Ticket').slice(0,80);
+      const category=$('revCategory').value; const notes=$('revNotes').value||'';
+      const yyyyMM=dateISO.slice(0,7);
+      let photoURL='', photoPath='';
+      if(review.file){
+        const safeProv=provider.replace(/[^a-zA-Z0-9-_ ]/g,'').slice(0,40).replace(/\s+/g,'_');
+        const ext=(review.file.name.split('.').pop()||'jpg').toLowerCase();
+        const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
+        photoPath = `tickets/${user.uid}/${yyyyMM}/${filename}`;
+        await storage.ref(photoPath).put(review.file);
+        photoURL = await storage.ref(photoPath).getDownloadURL();
+      }
+      await db.collection(`users/${user.uid}/entries`).add({
+        date:new Date(dateISO), amount, provider, category, notes,
+        photoURL, photoPath, isExpense: category!=='ingreso',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      close($('reviewModal')); loadLast(); alert('Guardado ✅');
+    }catch(e){ alert(e.message||String(e)); }
+  };
+
+  // ===== Últimos =====
+  async function loadLast(){
+    const user=auth.currentUser; if(!user) return;
+    const snap = await db.collection(`users/${user.uid}/entries`).orderBy('createdAt','desc').limit(10).get();
+    const list=$('lastList'); list.innerHTML='';
+    snap.forEach(doc=>{
+      const d=doc.data(); const dt = d.date?.toDate ? d.date.toDate() : new Date(d.date);
+      const li=document.createElement('div'); li.className='item';
+      li.innerHTML = `<div class="left">
+          ${d.photoURL?`<img class="thumb" src="${d.photoURL}" alt="">`:`<div class="thumb"></div>`}
+          <div><div style="font-weight:600">${(d.provider||'-').toString().slice(0,40)}</div>
+          <div class="muted" style="font-size:12px">${dt.toLocaleDateString('es-ES')} · ${d.category||'-'}</div></div>
+        </div>
+        <div class="amount ${d.isExpense?'minus':'plus'}">${d.isExpense?'-':'+'}${Number(d.amount||0).toFixed(2)} €</div>`;
+      list.appendChild(li);
+    });
+  }
+</script>
 </body>
 </html>
