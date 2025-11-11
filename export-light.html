@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gastos 2N — Exportación simple (sin ZIP)</title>
+  <style>
+    :root{--bg:#0b0c10;--card:#14151b;--muted:#8b8ea1;--accent:#7c5cff;--ok:#17c964;--danger:#ff6b6b;--border:#242632}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:#fff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto}
+    .topbar{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;padding:12px 16px;background:#0e1016;border-bottom:1px solid var(--border)}
+    .topbar h1{margin:0;font-size:18px;font-weight:600}
+    .btn{border:1px solid var(--border);background:#11131a;color:#fff;border-radius:12px;padding:8px 12px;cursor:pointer}
+    .btn.primary{background:var(--accent);border:none}
+    .btn.ghost{background:transparent}
+    .btn[disabled]{opacity:.5;cursor:not-allowed}
+    .content{max-width:1000px;margin:0 auto;padding:16px}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:14px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    @media (max-width:800px){.grid{grid-template-columns:1fr}}
+    .item{display:flex;gap:12px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:10px;background:#0f1118}
+    .thumb{width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+    .meta{flex:1;min-width:0}
+    .meta h4{margin:0 0 4px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .muted{color:var(--muted);font-size:12px}
+    pre{white-space:pre-wrap;background:#0d0f15;border:1px dashed var(--border);border-radius:12px;padding:10px;max-height:220px;overflow:auto}
+    .hidden{display:none!important}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#131528;border:1px solid var(--border);color:#cbd1ff}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Gastos 2N — Exportación simple</h1>
+    <button id="btnLogin" class="btn">🟢 Entrar con Google</button>
+    <button id="btnLogout" class="btn hidden">Salir</button>
+    <span id="who" class="muted" style="margin-left:auto">No autenticado</span>
+  </header>
+
+  <main class="content">
+    <section class="panel" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="pill">Exportar por mes</label>
+      <input id="month" type="month" class="btn" />
+      <button id="load" class="btn primary">Cargar</button>
+      <button id="csv" class="btn">⬇️ CSV</button>
+      <button id="dlAll" class="btn">📥 Descargar todas (una por una)</button>
+    </section>
+
+    <section id="summary" class="panel">
+      <div class="grid">
+        <div class="panel" style="background:#101220">
+          <h3 style="margin:.2rem 0">Totales</h3>
+          <div id="totals" class="muted">—</div>
+        </div>
+        <div class="panel" style="background:#101220">
+          <h3 style="margin:.2rem 0">Recuento</h3>
+          <div id="count" class="muted">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Lista de gastos</h3>
+      <div id="list" class="grid"></div>
+    </section>
+
+    <section class="panel">
+      <strong>Logs</strong>
+      <pre id="logs"></pre>
+      <ul class="muted" style="margin:6px 0 0 12px;font-size:12px">
+        <li>Este export usa <b>photoURL</b> con token público para descargar fotos sin ZIP.</li>
+        <li>El botón “Descargar todas” dispara descargas nativas del navegador (puede pedir permiso para múltiples descargas).</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
+  <script>
+  (function(){
+    const $ = (id)=>document.getElementById(id);
+    const log = (m)=>{ $('logs').textContent += (typeof m==='string'? m: JSON.stringify(m,null,2)) + '\n'; };
+
+    // ---- Firebase config (tu proyecto) ----
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    $('btnLogin').onclick = ()=>auth.signInWithPopup(provider).catch(e=>{ alert('Login error: '+(e.message||'')); log(e); });
+    $('btnLogout').onclick = ()=>auth.signOut();
+
+    auth.onAuthStateChanged(u=>{
+      if(u){
+        $('who').textContent = 'Conectado como ' + (u.email||u.uid);
+        $('btnLogin').classList.add('hidden');
+        $('btnLogout').classList.remove('hidden');
+        if(!$('month').value) $('month').value = new Date().toISOString().slice(0,7);
+      }else{
+        $('who').textContent = 'No autenticado';
+        $('btnLogin').classList.remove('hidden');
+        $('btnLogout').classList.add('hidden');
+      }
+    });
+
+    function monthRange(ym){
+      const s = new Date(ym+'-01T00:00:00');
+      const e = new Date(s.getFullYear(), s.getMonth()+1, 1);
+      return [s,e];
+    }
+
+    async function listEntries(ym, uid){
+      const [s,e] = monthRange(ym);
+      const snap = await db.collection('users/'+uid+'/entries').where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+      return snap.docs.map(d=>({id:d.id, ...d.data()}));
+    }
+
+    function euro(n){ return (Number(n)||0).toLocaleString('es-ES',{style:'currency',currency:'EUR'}); }
+
+    function paint(entries){
+      const wrap = $('list'); wrap.innerHTML='';
+      let total = 0, fotos=0, items=0;
+      for(const e of entries){
+        const d = e.date?.toDate? e.date.toDate(): new Date(e.date);
+        const li = document.createElement('div'); li.className='item';
+        const img = document.createElement('img'); img.className='thumb'; img.alt='foto';
+        img.src = e.photoURL || '';
+        const meta = document.createElement('div'); meta.className='meta';
+        const h4 = document.createElement('h4'); h4.textContent = (e.provider||'—') + ' · ' + euro(e.amount);
+        const p = document.createElement('div'); p.className='muted'; p.textContent = d.toLocaleDateString('es-ES') + ' · ' + (e.category||'varios');
+        meta.appendChild(h4); meta.appendChild(p);
+        const btn = document.createElement('a'); btn.className='btn'; btn.textContent='Descargar'; btn.target='_blank';
+        if(e.photoURL){ btn.href=e.photoURL; btn.setAttribute('download',''); fotos++; } else { btn.href='#'; btn.classList.add('ghost'); btn.textContent='Sin foto'; }
+        li.appendChild(img); li.appendChild(meta); li.appendChild(btn);
+        wrap.appendChild(li);
+        if(e.category!=='ingreso') total += Number(e.amount||0);
+        items++;
+      }
+      $('totals').textContent = 'Gasto del mes: ' + euro(total);
+      $('count').textContent = `Registros: ${items} · Fotos: ${fotos}`;
+    }
+
+    $('load').onclick = async ()=>{
+      try{
+        const u = auth.currentUser; if(!u) return alert('Haz login primero');
+        const ym = $('month').value; if(!ym) return alert('Selecciona mes');
+        const entries = await listEntries(ym, u.uid);
+        if(!entries.length){ $('list').innerHTML=''; $('totals').textContent='—'; $('count').textContent='0'; return alert('Sin registros para este mes'); }
+        paint(entries);
+      }catch(e){ log(e); alert('Error cargando: '+(e.message||'')); }
+    };
+
+    // Descarga en lote (abre descargas nativas; puede requerir permiso del navegador)
+    $('dlAll').onclick = ()=>{
+      const links = Array.from(document.querySelectorAll('#list a[download]'));
+      if(!links.length) return alert('No hay fotos para descargar');
+      let i=0;
+      const go=()=>{
+        if(i>=links.length) return;
+        const a = links[i++];
+        a.click();
+        setTimeout(go, 400); // espaciar descargas para evitar bloqueos
+      };
+      const ok = confirm('Se iniciarán '+links.length+' descargas. ¿Continuar?');
+      if(ok) go();
+    };
+
+    // CSV simple (mismo formato de tu plantilla)
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+    const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+    function toCSVValue(col, value){
+      if(col!=='DATE'&&col!=='CLIENT / PROVIDER'&&col!=='DESCRIPTION'){
+        const n=Number(value||0); return (isFinite(n)?n:0).toFixed(2).replace('.',',');
+      }
+      const s=String(value||'').replace(/"/g,'""'); return '"'+s+'"';
+    }
+    function toCSVRecords(entries){
+      const rows=[];
+      for(const e of entries){
+        if(e.category==='ingreso') continue;
+        const col=MAP[e.category]||'VARIOUS';
+        const rec={}; COLUMNS.forEach(c=>rec[c]=(['DATE','CLIENT / PROVIDER','DESCRIPTION'].includes(c)?'':0));
+        const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+        rec['DATE']=d.toLocaleDateString('es-ES');
+        rec['CLIENT / PROVIDER']=e.provider||'';
+        rec['DESCRIPTION']=e.notes||'';
+        const amount=Number(e.amount||0);
+        if(COLUMNS.includes(col)) rec[col]=amount; else rec['VARIOUS']=amount;
+        let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0);
+        rec['TOTAL']=total; rows.push(rec);
+      }
+      return rows;
+    }
+    function buildCSV(rows, monthlabel, today){
+      const head=',,,,,   EXPENSES REPORT,,,,,,\nNOM,,Gaston Ortigosa,,,,,,,,,DATE:,,'+today+'\nPRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,'+monthlabel+',,,,,,\n,,,,,,,,,,,,\n';
+      const h1=COLUMNS.map(h=>'"'+h+'"').join(';')+'\n';
+      const h2=",,PARKINGS ,,,,,TRAVELING,,,\n";
+      const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(';')).join('\n');
+      return head+h1+h2+data+'\n';
+    }
+    $('csv').onclick = async ()=>{
+      try{
+        const u = auth.currentUser; if(!u) return alert('Haz login');
+        const ym = $('month').value; if(!ym) return alert('Selecciona mes');
+        const entries = await listEntries(ym, u.uid);
+        if(!entries.length) return alert('Sin gastos');
+        const rows=toCSVRecords(entries);
+        const monthlabel=new Date(ym+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+        const today=new Date().toLocaleDateString('es-ES');
+        const csv=buildCSV(rows, monthlabel, today);
+        const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='Informe_Gastos_'+ym+'.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }catch(e){ log(e); alert('CSV error: '+(e.message||'')); }
+    };
+
+    // Valor inicial
+    $('month').value = new Date().toISOString().slice(0,7);
+  })();
+  </script>
+</body>
+</html>
