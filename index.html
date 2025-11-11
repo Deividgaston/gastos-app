@@ -8,7 +8,7 @@
     :root{--blue:#007aff;--bg:#fff;--muted:#6b7280;--border:#e5e7eb}
     *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Inter",system-ui,Segoe UI,Roboto}
     .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:#fff}
-    .topbar img{height:28px} .topbar h1{font-size:18px;margin:0;font-weight:700;flex:1}
+    .topbar svg{height:28px} .topbar h1{font-size:18px;margin:0;font-weight:700;flex:1}
     .btn{border:none;padding:10px 14px;border-radius:12px;background:#f2f2f7;cursor:pointer} .btn.primary{background:var(--blue);color:#fff}
     .btn.small{padding:8px 10px;font-size:13px} .btn.outline{background:#fff;border:1px solid var(--border)}
     .content{max-width:980px;margin:0 auto;padding:16px}
@@ -44,7 +44,8 @@
 </head>
 <body>
   <header class="topbar">
-    <img src="assets/2n-logo.svg" alt="2N" />
+    <!-- Inline simple 2N-like logo -->
+    <svg viewBox="0 0 120 40" aria-hidden="true"><rect x="0" y="0" width="120" height="40" rx="8" fill="#111827"></rect><text x="60" y="26" text-anchor="middle" fill="#fff" font-family="system-ui,Segoe UI,Roboto" font-weight="700" font-size="20">2N</text></svg>
     <h1>Gastos 2N</h1>
     <div class="stack">
       <button id="btnLogin" class="btn small">Entrar</button>
@@ -88,7 +89,7 @@
           <button id="btnZIP" class="btn">🗜️ ZIP fotos del mes</button>
         </div>
       </div>
-      <p class="muted" style="margin-top:8px">El CSV usa separador <b>;</b> y coma decimal, con las columnas oficiales de 2N. El ZIP incluye todas las fotos de tickets del mes.</p>
+      <p class="muted" style="margin-top:8px">El CSV usa separador <b>;</b> y coma decimal. El ZIP incluye todas las fotos de tickets del mes.</p>
     </section>
 
     <section class="panel">
@@ -162,12 +163,12 @@
       getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs, where
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import {
-      getStorage, ref, uploadBytes, getDownloadURL
+      getStorage, ref, uploadBytes, getDownloadURL, getBlob, getBytes
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
     // --------- Helpers UI ----------
     const $ = (id)=>document.getElementById(id);
-    const log = (m)=>{ const out = $("out"); if(!out) return; out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2)) + "\n"; };
+    const log = (m)=>{ const out = $("out"); if(!out) return; out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2)) + "\\n"; };
     const setTotalMes = (n)=>{ $("totalMes").textContent = new Intl.NumberFormat("es-ES",{minimumFractionDigits:2}).format(n) + " €"; };
     const setNumTickets = (n)=>{ $("numTickets").textContent = n; };
     const setOCRModel = (name)=>{ $("ultimoModelo").textContent = name || "—"; };
@@ -199,7 +200,6 @@
     onAuthStateChanged(auth, async (user)=>{
       $("whoami").textContent = user ? `Conectado como ${user.email||user.uid}` : "No autenticado";
       if (user) {
-        // por defecto mes actual en export
         const now = new Date();
         $("expMonth").value = now.toISOString().slice(0,7);
         await refrescarDashboard();
@@ -211,15 +211,17 @@
       const user = auth.currentUser; if(!user) throw new Error("No autenticado");
 
       let photoURL = "";
+      let storagePath = "";
       if (file) {
         const yyyyMM = (date ? new Date(date) : new Date()).toISOString().slice(0,7);
-        const safeProv = (provider||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+        const safeProv = (provider||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
         const ext = (file.name?.split(".").pop()||"jpg").toLowerCase();
         const filename = `${(date?new Date(date):new Date()).toISOString().slice(0,10)}_${safeProv}_${Date.now()}.${ext}`;
         const path = `tickets/${user.uid}/${yyyyMM}/${filename}`;
         const r = ref(storage, path);
         await uploadBytes(r, file);
         photoURL = await getDownloadURL(r);
+        storagePath = path; // guardamos la ruta interna
       }
 
       const col = collection(db, `users/${user.uid}/entries`);
@@ -230,11 +232,12 @@
         notes: notes || "",
         amount: Number(amount || 0),
         photoURL,
+        photoPath: storagePath, // <<< NUEVO
         isExpense: (category || "varios") !== "ingreso",
         createdAt: serverTimestamp()
       });
 
-      return { ok:true, photoURL };
+      return { ok:true, photoURL, photoPath: storagePath };
     }
 
     // --------- Dashboard (mes actual) ----------
@@ -246,7 +249,7 @@
       const nextMonth = new Date(`${m==="12" ? y+1 : y}-${m==="12" ? "01" : String(Number(m)+1).padStart(2,"0")}-01T00:00:00`);
 
       const col = collection(db, `users/${user.uid}/entries`);
-      const q = query(col, orderBy("date","desc")); // ordenamos por date (guardado como Timestamp)
+      const q = query(col, orderBy("date","desc"));
       const snap = await getDocs(q);
 
       let total = 0, count = 0;
@@ -293,14 +296,14 @@
     }
     function normalizeAmount(val){
       if(val==null) return 0;
-      let s = String(val).trim().replace(/[€$]/g,"").replace(/\s/g,"").replace(",",".");
-      s = s.replace(/[^\d.\-]/g,"");
+      let s = String(val).trim().replace(/[€$]/g,"").replace(/\\s/g,"").replace(",",".");
+      s = s.replace(/[^\\d.\\-]/g,"");
       const n = Number(s);
       return isFinite(n) ? n : 0;
     }
     function normalizeDate(val){
       if(!val) return new Date();
-      if(/^\d{4}-\d{2}-\d{2}$/.test(val)){
+      if(/^\\d{4}-\\d{2}-\\d{2}$/.test(val)){
         const d = new Date(val+"T00:00:00"); if(!isNaN(d)) return d;
       }
       const d2 = new Date(val); return isNaN(d2) ? new Date() : d2;
@@ -505,11 +508,9 @@ Reglas:
       "peajes": "TOLLS & PARKINGS",
       "alojamiento": "HOTEL",
       "varios": "VARIOUS"
-      // "ingreso": no se exporta como gasto
     };
 
     function toCSVValue(col, value){
-      // Fechas/texto con comillas; números con coma decimal
       if (col !== "DATE" && col !== "CLIENT / PROVIDER" && col !== "DESCRIPTION") {
         if (typeof value === "number") {
           return value.toFixed(2).replace(".", ",");
@@ -524,20 +525,19 @@ Reglas:
     }
 
     function buildCSV(rows, monthlabel, todaylabel){
-      // Cabecera tipo plantilla 2N (ligera)
       const templateHeader =
-        `,,,,,   EXPENSES REPORT,,,,,,,\n` +
-        `NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${todaylabel}\n` +
-        `PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\n` +
-        `,,,,,,,,,,,,\n`;
+        `,,,,,   EXPENSES REPORT,,,,,,,\\n` +
+        `NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${todaylabel}\\n` +
+        `PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\\n` +
+        `,,,,,,,,,,,,\\n`;
 
-      const headerRow = COLUMNS.map(h=>`"${h}"`).join(";") + "\n";
-      const headerRow2 = `,,PARKINGS ,,,,,TRAVELING,,,\n`;
-      const dataRows = rows.map(rec => COLUMNS.map(c => toCSVValue(c, rec[c])).join(";")).join("\n");
-      return templateHeader + headerRow + headerRow2 + dataRows + "\n";
+      const headerRow = COLUMNS.map(h=>`"${h}"`).join(";") + "\\n";
+      const headerRow2 = `,,PARKINGS ,,,,,TRAVELING,,,\\n`;
+      const dataRows = rows.map(rec => COLUMNS.map(c => toCSVValue(c, rec[c])).join(";")).join("\\n");
+      return templateHeader + headerRow + headerRow2 + dataRows + "\\n";
     }
 
-    function monthRange(ym){ // "YYYY-MM" -> [start, end)
+    function monthRange(ym){
       const start = new Date(ym + "-01T00:00:00");
       const y = start.getFullYear();
       const m = start.getMonth();
@@ -548,7 +548,6 @@ Reglas:
     async function getEntriesForMonth(ym){
       const user = auth.currentUser; if(!user) throw new Error("No autenticado");
       const [start, end] = monthRange(ym);
-      // Filtro por fecha (campo 'date' guardado como Timestamp)
       const col = collection(db, `users/${user.uid}/entries`);
       const q = query(col, where("date", ">=", start), where("date", "<", end), orderBy("date","asc"));
       const snap = await getDocs(q);
@@ -556,10 +555,7 @@ Reglas:
       snap.forEach(doc=>{
         const d = doc.data();
         const dateObj = d.date?.toDate ? d.date.toDate() : new Date(d.date);
-        list.push({
-          ...d,
-          date: dateObj,
-        });
+        list.push({ ...d, date: dateObj });
       });
       return list;
     }
@@ -567,21 +563,18 @@ Reglas:
     function toCSVRecords(entries){
       const rows = [];
       for (const e of entries){
-        if (e.category === "ingreso") continue; // no exportamos ingresos
+        if (e.category === "ingreso") continue;
         const colName = CATEGORY_MAP[e.category] || "VARIOUS";
         const rec = {};
         COLUMNS.forEach(c => rec[c] = (["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c) ? "" : 0.00));
 
-        rec["DATE"] = e.date.toLocaleDateString("es-ES"); // DD/MM/YYYY
+        rec["DATE"] = e.date.toLocaleDateString("es-ES");
         rec["CLIENT / PROVIDER"] = e.provider || "";
         rec["DESCRIPTION"] = e.notes || "";
 
-        // Monto a su columna
         const amount = Number(e.amount||0);
-        if (COLUMNS.includes(colName)) rec[colName] = amount;
-        else rec["VARIOUS"] = amount;
+        if (COLUMNS.includes(colName)) rec[colName] = amount; else rec["VARIOUS"] = amount;
 
-        // TOTAL = suma C..J (índices 2..9)
         let total = 0;
         for (let i=2;i<=9;i++) total += Number(rec[COLUMNS[i]]||0);
         rec["TOTAL"] = total;
@@ -591,7 +584,6 @@ Reglas:
       return rows;
     }
 
-    // ----- Export UI -----
     $("expBtn").addEventListener("click", ()=>{
       const p = $("exportPanel");
       p.style.display = (p.style.display==="none") ? "block" : "none";
@@ -629,20 +621,40 @@ Reglas:
         const zip = new JSZip();
         let ok = 0, fail = 0;
 
+        const urlToPath = (url) => {
+          try {
+            const afterO = url.split("/o/")[1];
+            if (!afterO) return "";
+            const encodedPath = afterO.split("?")[0];
+            return decodeURIComponent(encodedPath);
+          } catch { return ""; }
+        };
+
         for (const e of photos){
           try{
-            const resp = await fetch(e.photoURL);
-            if (!resp.ok) throw new Error("HTTP "+resp.status);
-            const blob = await resp.blob();
+            const path = e.photoPath || urlToPath(e.photoURL);
+            if (!path) throw new Error("Sin ruta de Storage");
+
+            const r = ref(storage, path);
+            let blob;
+            try {
+              blob = await getBlob(r);
+            } catch {
+              const bytes = await getBytes(r);
+              blob = new Blob([bytes]);
+            }
+
             const d = e.date instanceof Date ? e.date : new Date(e.date);
             const dateISO = d.toISOString().slice(0,10);
-            const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-            const ext = (blob.type.split("/")[1]||"jpg").toLowerCase();
-            const name = `${dateISO}_${prov}.${ext}`;
+            const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
+            const guessedExt = (blob.type && blob.type.includes("/")) ? blob.type.split("/")[1] : "jpg";
+            const name = `${dateISO}_${prov}.${guessedExt}`;
+
             zip.file(name, blob);
             ok++;
           }catch(err){
-            fail++; log({ fallo_descarga_foto: e.photoURL, err: err.message||String(err) });
+            fail++; 
+            log({ fallo_descarga_foto_sdk: e.photoURL || e.photoPath, err: err.message||String(err) });
           }
         }
 
