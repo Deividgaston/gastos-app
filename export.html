@@ -1,66 +1,71 @@
-
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N – Exportar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gastos 2N — Exportar</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>body{background:#f6f7fb}</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body { background:#0b0c0f; color:#eaeaea; }
+    .card { background: linear-gradient(180deg,#121317, #0b0c0f); border:1px solid rgba(255,255,255,0.07); }
+    .btn { transition: transform .06s ease; }
+    .btn:active { transform: scale(.98); }
+  </style>
 </head>
-<body class="min-h-screen">
-  <div class="max-w-2xl mx-auto p-4 space-y-4">
+<body class="min-h-screen text-white">
+  <div class="mx-auto max-w-xl p-4 space-y-4">
     <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Exportar Informe</h1>
-      <a href="./" class="px-3 py-2 rounded-lg border hover:bg-white">Volver</a>
+      <div class="flex items-center gap-3">
+        <button id="btnBack" class="btn px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs">← Volver</button>
+        <h1 class="text-xl md:text-2xl font-semibold">Exportar</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnLogin" class="btn px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-xs hidden">Entrar Google</button>
+        <button id="btnLogout" class="btn px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs hidden">Salir</button>
+      </div>
     </header>
+    <p id="whoami" class="text-xs text-white/60">…</p>
 
-    <section class="bg-white rounded-2xl border p-4 shadow-sm space-y-3">
-      <div class="flex items-center justify-between">
-        <div class="text-sm text-gray-600" id="whoami">No autenticado</div>
-        <div class="space-x-2">
-          <button id="btnLogin" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Entrar con Google</button>
-          <button id="btnLogout" class="px-3 py-2 rounded border text-sm">Salir</button>
+    <section class="card rounded-2xl p-4 space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs text-white/70">Mes</label>
+          <input id="fMes" type="month" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div class="col-span-2 flex gap-2">
+          <button id="btnCSV" class="btn flex-1 bg-emerald-500 hover:bg-emerald-600 rounded-xl py-2 font-semibold">Descargar CSV</button>
+          <button id="btnZIP" class="btn flex-1 bg-white/10 hover:bg-white/20 rounded-xl py-2 font-semibold">Descargar fotos (ZIP)</button>
         </div>
       </div>
-
-      <div>
-        <label class="block text-sm font-medium">Mes</label>
-        <input id="fMes" type="month" class="border rounded px-3 py-2" />
-      </div>
-
-      <div class="flex flex-wrap gap-2">
-        <button id="btnCSV" class="px-4 py-2 rounded bg-orange-600 text-white font-medium">Descargar CSV</button>
-        <button id="btnZIP" class="px-4 py-2 rounded bg-emerald-600 text-white font-medium">Descargar ZIP de fotos</button>
-      </div>
-
-      <div class="text-xs text-gray-500">Las fotos se buscan en <code>tickets/&lt;uid&gt;/YYYY-MM/</code> directamente desde Firebase Storage (con sesión).</div>
+      <div id="status" class="text-xs text-white/60"></div>
     </section>
 
-    <section class="bg-white rounded-2xl border p-4 shadow-sm space-y-3">
-      <h2 class="font-semibold">Vista previa</h2>
-      <pre id="preview" class="text-xs text-gray-700 whitespace-pre-wrap"></pre>
+    <section class="card rounded-2xl p-4">
+      <h3 class="font-semibold mb-2">Registros del mes</h3>
+      <div id="lista" class="space-y-2"></div>
+    </section>
+
+    <section>
+      <pre id="out" class="text-[11px] text-white/60 whitespace-pre-wrap"></pre>
     </section>
   </div>
 
-  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { 
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
+    import {
+      getAuth, setPersistence, browserLocalPersistence,
+      GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+      onAuthStateChanged, signOut
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { 
-      getFirestore, collection, query, where, orderBy, getDocs, Timestamp 
+    import {
+      getFirestore, collection, getDocs, query, where
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import {
       getStorage, ref, listAll, getBlob
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-    // CSV/ZIP helpers
-    import "https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js";
-    import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
-
-    // --- Config de tu proyecto ---
     const firebaseConfig = {
       apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
       authDomain: "gastos-2n.firebaseapp.com",
@@ -70,141 +75,167 @@
       appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
     };
 
-    // --- Init ---
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    await setPersistence(auth, browserLocalPersistence);
     const db = getFirestore(app);
     const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
 
-    const whoami = document.getElementById('whoami');
-    const fMes = document.getElementById('fMes');
-    const preview = document.getElementById('preview');
+    const $ = (id)=>document.getElementById(id);
+    const log = (o)=>{ try{$("out").textContent += (typeof o==="string"?o:JSON.stringify(o,null,2)) + "\\n";}catch{} };
+    const statusEl = $("status");
 
-    // Set default month to current
-    const now = new Date();
-    fMes.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    $("btnBack").onclick = ()=>{ location.href = "index.html"; };
 
-    // Auth handlers
-    document.getElementById('btnLogin').onclick = async () => {
-      try {
+    $("btnLogin").onclick = async ()=>{
+      try{
         const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        await signInWithPopup(auth, provider);
-      } catch (e) {
-        alert("Error login: " + (e.code || e.message));
-      }
+        if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) await signInWithRedirect(auth, provider);
+        else await signInWithPopup(auth, provider);
+      }catch(e){ log("Login error: "+(e.code||e.message)); }
     };
-    document.getElementById('btnLogout').onclick = async () => { await signOut(auth); };
+    $("btnLogout").onclick = async ()=>{ await signOut(auth); };
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) whoami.textContent = `Conectado como ${user.email || user.uid}`;
-      else whoami.textContent = "No autenticado";
+    onAuthStateChanged(auth, (user)=>{
+      if (user){
+        $("whoami").textContent = "Conectado como " + (user.email||user.uid);
+        $("btnLogin").classList.add("hidden");
+        $("btnLogout").classList.remove("hidden");
+        renderMes();
+        cargarMes();
+      } else {
+        $("whoami").textContent = "No autenticado";
+        $("btnLogin").classList.remove("hidden");
+        $("btnLogout").classList.add("hidden");
+      }
     });
 
-    // Helpers
-    function firstAndNextMonth(ym) {
-      const [y,m] = ym.split('-').map(Number);
-      const first = new Date(y, m-1, 1, 0,0,0,0);
-      const next = new Date(y, m, 1, 0,0,0,0);
-      return {first, next};
-    }
-    function toCSV(rows) {
-      const cols = ["DATE","PROVIDER","CATEGORY","AMOUNT","NOTES","PHOTO_PATH"];
-      const head = cols.join(",");
-      const body = rows.map(r => [
-        r.date, 
-        `"${(r.provider||"").replaceAll('"','""')}"`,
-        r.category || "",
-        (r.amount ?? ""),
-        `"${(r.notes||"").replaceAll('"','""')}"`,
-        r.photoPath || ""
-      ].join(",")).join("\n");
-      return head + "\n" + body + "\n";
+    // mes por defecto
+    const now = new Date(); $("fMes").value = now.toISOString().slice(0,7);
+    $("fMes").addEventListener("change", ()=>{ cargarMes(); });
+
+    let cacheMes = []; // registros del mes
+    async function cargarMes(){
+      const user = auth.currentUser; if (!user) return;
+      const mm = $("fMes").value; // YYYY-MM
+      statusEl.textContent = "Cargando…";
+      cacheMes = [];
+      // Simple: traemos todo y filtramos por prefijo de fecha
+      const col = collection(db, `users/${user.uid}/entries`);
+      const snap = await getDocs(col);
+      snap.forEach(doc=>{
+        const d = doc.data();
+        const iso = (d.date?.toDate ? d.date.toDate() : new Date()).toISOString().slice(0,10);
+        if (iso.startsWith(mm)) cacheMes.push({id:doc.id, ...d, iso});
+      });
+      pintarLista();
+      statusEl.textContent = `Encontrados ${cacheMes.length} registros`;
     }
 
-    // Query entries for month (with client-side filter fallback)
-    async function getMonthEntries(uid, ym) {
-      const {first, next} = firstAndNextMonth(ym);
-      const refCol = collection(db, `users/${uid}/entries`);
-
-      // Try range query; if it fails (index), fallback to client filter
-      try {
-        const q = query(refCol, where('date', '>=', Timestamp.fromDate(first)), where('date','<', Timestamp.fromDate(next)), orderBy('date','asc'));
-        const snap = await getDocs(q);
-        const rows = [];
-        snap.forEach(doc => {
-          const d = doc.data();
-          rows.push({
-            date: d.date?.toDate ? d.date.toDate().toISOString().slice(0,10) : "",
-            provider: d.provider || "",
-            category: d.category || "",
-            amount: d.amount || "",
-            notes: d.notes || "",
-            photoPath: d.photoPath || "" // por compatibilidad si guardaste la ruta
-          });
-        });
-        return rows;
-      } catch (e) {
-        // Fallback: fetch all and filter
-        const snap = await getDocs(query(refCol, orderBy('date','asc')));
-        const rows = [];
-        snap.forEach(doc => {
-          const d = doc.data();
-          const dt = d.date?.toDate ? d.date.toDate() : null;
-          if (dt && dt >= first && dt < next) {
-            rows.push({
-              date: dt.toISOString().slice(0,10),
-              provider: d.provider || "",
-              category: d.category || "",
-              amount: d.amount || "",
-              notes: d.notes || "",
-              photoPath: d.photoPath || ""
-            });
-          }
-        });
-        return rows;
-      }
+    function pintarLista(){
+      const cont = $("lista"); cont.innerHTML = "";
+      cacheMes.sort((a,b)=> (a.iso > b.iso ? -1 : 1));
+      cacheMes.forEach(d=>{
+        const euros = (d.amount||0).toLocaleString("es-ES",{minimumFractionDigits:2});
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between border border-white/10 rounded-xl p-2 bg-white/5";
+        row.innerHTML = `
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-white truncate">${d.provider||"-"} · <span class="text-white/50">${d.category}</span></p>
+            <p class="text-xs text-white/50">${d.iso} ${d.notes?("· "+d.notes):""}</p>
+          </div>
+          <div class="ml-3 text-right">
+            <p class="text-sm font-semibold ${d.isExpense?'text-red-400':'text-emerald-400'}">${d.isExpense?'-':'+'}${euros} €</p>
+            ${d.photoURL? `<a href="${d.photoURL}" target="_blank" class="text-[11px] text-indigo-300 underline">ticket</a>`: ""}
+          </div>
+        `;
+        cont.appendChild(row);
+      });
     }
 
     // CSV
-    document.getElementById('btnCSV').onclick = async () => {
-      const user = auth.currentUser;
-      if (!user) { alert("Inicia sesión con Google"); return; }
-      const ym = fMes.value;
-      const rows = await getMonthEntries(user.uid, ym);
-      preview.textContent = JSON.stringify(rows, null, 2);
-      const csv = toCSV(rows);
-      const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
-      saveAs(blob, `gastos-${ym}.csv`);
+    $("btnCSV").onclick = ()=>{
+      if (!cacheMes.length){ alert("No hay datos este mes"); return; }
+      const HEAD = ["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+      const cats = {
+        comida: "MEALS",
+        transporte: "OTHER TRANSPORTS (Taxi)",
+        servicios: "VARIOUS",
+        ocio: "INVITATIONS",
+        gasolina: "GASOLINE",
+        peajes: "TOLLS & PARKINGS",
+        alojamiento: "HOTEL",
+        varios: "VARIOUS"
+      };
+      const rows = cacheMes
+        .filter(x=> x.category !== "ingreso")
+        .map(x=>{
+          const rec = Object.fromEntries(HEAD.map(h=>[h,""]));
+          rec["DATE"] = x.iso.split("-").reverse().join("/"); // DD/MM/YYYY
+          rec["CLIENT / PROVIDER"] = x.provider || "";
+          rec["DESCRIPTION"] = x.notes || "";
+          HEAD.forEach(h=>{ if (["TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(h)) rec[h] = "0,00"; });
+          const col = cats[x.category] || "VARIOUS";
+          const amt = Number(x.amount||0);
+          rec[col] = amt.toFixed(2).replace(".",",");
+          rec["TOTAL"] = amt.toFixed(2).replace(".",",");
+          return rec;
+        });
+      if (!rows.length){ alert("No hay gastos (solo ingresos) este mes"); return; }
+
+      const esc = (v)=>{
+        if (v==null) return "";
+        const s = String(v);
+        if (/[;"\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+        if (s === "CLIENT / PROVIDER") return '"CLIENT / PROVIDER"';
+        return s;
+      };
+      const csv = [HEAD.map(esc).join(";")].concat(
+        rows.map(r => HEAD.map(h=>esc(r[h])).join(";"))
+      ).join("\n");
+
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+      const mm = $("fMes").value;
+      saveAs(blob, `Informe_Gastos_${mm}.csv`);
     };
 
-    // ZIP photos from Storage using SDK (authenticated)
-    document.getElementById('btnZIP').onclick = async () => {
-      const user = auth.currentUser;
-      if (!user) { alert("Inicia sesión con Google"); return; }
-      const ym = fMes.value;
-      const folderRef = ref(storage, `tickets/${user.uid}/${ym}/`);
-      const zip = new JSZip();
-      let ok = 0, fail = 0;
-      try {
-        const all = await listAll(folderRef);
-        for (const item of all.items) {
-          try {
+    // ZIP fotos
+    $("btnZIP").onclick = async ()=>{
+      try{
+        const user = auth.currentUser; if (!user){ alert("Login requerido"); return; }
+        const mm = $("fMes").value; // YYYY-MM
+        const dir = ref(storage, `tickets/${user.uid}/${mm}`);
+        statusEl.textContent = "Listando fotos…";
+        const all = await listAll(dir);
+        if (!all.items.length){ alert("No hay fotos para ese mes"); return; }
+        const zip = new JSZip();
+        let ok=0, fail=0;
+        for (const item of all.items){
+          try{
             const blob = await getBlob(item);
             zip.file(item.name, blob);
             ok++;
-          } catch (e) {
-            fail++;
-            console.log("fallo_zip_blob", item.fullPath, e?.message||e);
+          }catch(e){
+            fail++; log({fallo_zip_sdk:item.fullPath, err:e.message});
           }
         }
-        const out = await zip.generateAsync({type:"blob"});
-        saveAs(out, `fotos-${ym}.zip`);
-        preview.textContent = `ZIP listo: ${ok} ok, ${fail} fallos`;
-      } catch (e) {
-        alert("Error listando fotos: " + (e.code || e.message));
+        statusEl.textContent = "Comprimiendo ZIP…";
+        const content = await zip.generateAsync({type:"blob"});
+        saveAs(content, `tickets_${mm}.zip`);
+        statusEl.textContent = `ZIP listo: ${ok} ok, ${fail} fallos`;
+      }catch(e){
+        alert("ZIP error: " + e.message);
+        log({zip_error:e.message});
       }
     };
+
+    function renderMes(){
+      // si venimos de index, no pedimos login otra vez
+      const fromIndex = sessionStorage.getItem("fromIndex")==="1";
+      if (fromIndex){
+        sessionStorage.removeItem("fromIndex");
+      }
+    }
   </script>
 </body>
 </html>
