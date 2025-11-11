@@ -1,0 +1,133 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Gastos de KM</title>
+  <style>
+    :root{{--bg:#f7f7fb;--card:#fff;--text:#101114;--muted:#6b7280;--blue:#0a84ff;--border:#e9e9ef}}
+    *{{box-sizing:border-box}} body{{margin:0;background:var(--bg);font-family:-apple-system,Inter,Segoe UI,Roboto;color:var(--text)}}
+    .topbar{{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:14px 16px;background:rgba(255,255,255,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}}
+    .app{{max-width:520px;margin:0 auto;padding:14px}}
+    .card{{background:#fff;border:1px solid var(--border);border-radius:20px;padding:14px;box-shadow:0 8px 20px rgba(0,0,0,.04)}}
+    .grid{{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
+    .field{{display:flex;flex-direction:column;gap:6px}}
+    .field input{{padding:10px;border:1px solid var(--border);border-radius:12px}}
+    .btn{{padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:600}}
+    .btn.primary{{background:var(--blue);color:#fff;border:none}}
+    .list{{display:grid;gap:8px;margin-top:10px}}
+    .item{{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--border);border-radius:16px;padding:10px;background:#fff}}
+    .muted{{color:var(--muted)}}
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="btn" href="index.html">← Volver</a>
+    <strong>Gastos de KM</strong>
+    <span id="who" style="margin-left:auto;font-size:12px;background:#eef5ff;color:#0a84ff;border-radius:20px;padding:6px 10px">No login</span>
+  </header>
+
+  <main class="app">
+    <section class="card">
+      <div class="grid">
+        <div class="field">
+          <label>Fecha</label>
+          <input id="kDate" type="date"/>
+        </div>
+        <div class="field">
+          <label>Destino</label>
+          <input id="kDestino" type="text" placeholder="Cliente/ciudad"/>
+        </div>
+        <div class="field">
+          <label>KM empresa</label>
+          <input id="kEmp" type="number" step="0.1" min="0"/>
+        </div>
+        <div class="field">
+          <label>KM personales</label>
+          <input id="kPers" type="number" step="0.1" min="0"/>
+        </div>
+        <div class="field">
+          <label>Precio litro gasolina (€)</label>
+          <input id="kPrecio" type="number" step="0.001" min="0"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="kSave" class="btn primary">Guardar</button>
+        <button id="kRefresh" class="btn">Refrescar</button>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <strong>Resumen mensual</strong>
+      <div id="kSum" class="muted" style="margin-top:6px"></div>
+      <div id="kList" class="list"></div>
+    </section>
+  </main>
+
+<script>
+(function(){
+  const config = {{apiKey:"{apiKey}",authDomain:"{authDomain}",projectId:"{projectId}",storageBucket:"{storageBucket}",messagingSenderId:"{messagingSenderId}",appId:"{appId}" }};
+  firebase.initializeApp(config);
+  const auth=firebase.auth(); const db=firebase.firestore();
+  const $=id=>document.getElementById(id);
+
+  $("kDate").value = new Date().toISOString().slice(0,10);
+
+  auth.onAuthStateChanged(user=>{
+    $("who").textContent = user ? (user.email||user.uid) : "No login";
+    if(user) refresh();
+  });
+
+  function monthRangeOf(d){{ const s=new Date(d.getFullYear(), d.getMonth(), 1); const e=new Date(d.getFullYear(), d.getMonth()+1, 1); return [s,e]; }}
+  async function refresh(){{
+    const user=firebase.auth().currentUser; if(!user) return;
+    const d=new Date($("kDate").value || new Date().toISOString().slice(0,10));
+    const [s,e]=monthRangeOf(d);
+    const snap=await db.collection(`users/${{user.uid}}/kms`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
+    const rows=snap.docs.map(x=>({{id:x.id, ...x.data()}}));
+    render(rows);
+  }}
+
+  function render(rows){{
+    const list=$("kList"); list.innerHTML="";
+    let emp=0, per=0, avg=0;
+    rows.forEach(r=>{{
+      emp+=Number(r.km_empresa||0); per+=Number(r.km_personal||0); avg+=Number(r.precio_litro||0);
+      const d=r.date?.toDate? r.date.toDate(): new Date(r.date);
+      const el=document.createElement("div");
+      el.className="item";
+      el.innerHTML = `<div><div style="font-weight:600">${{d.toISOString().slice(0,10)}} · ${{r.destino||"-"}}</div>
+        <div class="muted" style="font-size:12px">Emp: ${{Number(r.km_empresa||0)}} km · Per: ${{Number(r.km_personal||0)}} km · ${{Number(r.precio_litro||0).toFixed(3)}}€/L</div></div>`;
+      list.appendChild(el);
+    }});
+    const precio = rows.length? avg/rows.length : 0;
+    const eurosPersonal = per * precio;
+    $("kSum").textContent = `KM empresa: ${{emp.toFixed(1)}} · KM personal: ${{per.toFixed(1)}} · Precio medio: ${{precio.toFixed(3)}} €/L · € a restar (pers*€/L): ${{eurosPersonal.toFixed(2)}}€`;
+  }}
+
+  $("kSave").onclick = async ()=>{{
+    try{{
+      const user=firebase.auth().currentUser; if(!user) return alert("Haz login");
+      const dateISO=$("kDate").value||new Date().toISOString().slice(0,10);
+      await db.collection(`users/${{user.uid}}/kms`).add({{
+        date: new Date(dateISO),
+        destino: $("kDestino").value.trim(),
+        km_empresa: Number($("kEmp").value||0),
+        km_personal: Number($("kPers").value||0),
+        precio_litro: Number($("kPrecio").value||0),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }});
+      alert("KM guardado");
+      $("kDestino").value=""; $("kEmp").value=""; $("kPers").value=""; $("kPrecio").value="";
+      refresh();
+    }}catch(e){{ alert("Error: "+(e.message||"")); }}
+  }};
+  $("kRefresh").onclick=refresh;
+})();
+</script>
+</body>
+</html>
