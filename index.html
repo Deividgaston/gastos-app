@@ -13,7 +13,7 @@
     .btn.primary{background:var(--blue);color:#fff;border:none}
     .content{max-width:960px;margin:0 auto;padding:14px}
     .panel{border:1px solid var(--border);border-radius:16px;padding:12px 14px;margin-top:12px}
-    .muted{color:var(--muted)} pre{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:240px;overflow:auto}
+    .muted{color:var(--muted)} pre{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:260px;overflow:auto}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px}
     .modal.open{display:flex}
     .sheet{background:#fff;border-radius:18px;max-width:520px;width:100%;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2)}
@@ -36,7 +36,7 @@
   </header>
 
   <main class="content">
-    <div class="panel">
+    <div class="panel" style="display:flex;gap:8px;flex-wrap:wrap">
       <button id="scanBtn" class="btn primary">📸 Escanear ticket</button>
       <button id="expBtn" class="btn">📁 Exportar mes</button>
     </div>
@@ -95,8 +95,6 @@
       $("closeAI").addEventListener("click", closeAIModal);
       $("saveAI").addEventListener("click", ()=>{ const v=$("aiKey").value.trim(); if(!v){alert("Pega tu API Key");return;} localStorage.setItem("gkey", v); alert("Guardada ✅"); closeAIModal(); });
       $("clearAI").addEventListener("click", ()=>{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("Borrada"); });
-
-      // Exponer funciones globales que usará el script principal por si este tarda
       window.__ui = { openAIModal, closeAIModal };
     })();
   </script>
@@ -250,14 +248,58 @@ Reglas: solo JSON, punto decimal, total final.`;
     async function listEntriesMonth(ym, uid){ const [s,e]=monthRange(ym); const snap = await db.collection(`users/${uid}/entries`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get(); return snap.docs.map(d=>({ id:d.id, ...d.data() })); }
     function toCSVRecords(entries){ const rows=[]; for(const e of entries){ if(e.category==="ingreso") continue; const col=MAP[e.category]||"VARIOUS"; const rec={}; COLUMNS.forEach(c=>rec[c]=(["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)?"":0)); const d=e.date?.toDate?e.date.toDate():new Date(e.date); rec["DATE"]=d.toLocaleDateString("es-ES"); rec["CLIENT / PROVIDER"]=e.provider||""; rec["DESCRIPTION"]=e.notes||""; const amount=Number(e.amount||0); if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount; let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0); rec["TOTAL"]=total; rows.push(rec);} return rows; }
 
+    // CSV
     $("btnCSV").addEventListener("click", async ()=>{
       try{ const user=auth.currentUser; if(!user) return alert("Haz login"); const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes"); const entries=await listEntriesMonth(ym,user.uid); if(!entries.length) return alert("Sin gastos"); const rows=toCSVRecords(entries); const monthlabel=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"}); const today=new Date().toLocaleDateString("es-ES"); const csv=buildCSV(rows, monthlabel, today); saveAs(new Blob([csv], {type:"text/csv;charset=utf-8"}), `Informe_Gastos_${ym}.csv`); }
       catch(e){ log(e); alert("CSV error: "+(e.message||"")); }
     });
 
+    // ZIP con getBytes() autenticado (parche CORS)
     $("btnZIP").addEventListener("click", async ()=>{
-      try{ const user=auth.currentUser; if(!user) return alert("Haz login"); const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes"); const entries=await listEntriesMonth(ym,user.uid); const photos=entries.filter(e=>e.photoURL); if(!photos.length) return alert("Sin fotos"); const zip=new JSZip(); let ok=0,fail=0; for(const e of photos){ try{ const ref = e.photoPath ? storage.ref(e.photoPath) : storage.refFromURL(e.photoURL); const url = await ref.getDownloadURL(); const resp = await fetch(url); const blob = await resp.blob(); const d=e.date?.toDate?e.date.toDate():new Date(e.date); const name=`${d.toISOString().slice(0,10)}_${(e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_")}.jpg`; zip.file(name, blob); ok++; }catch(err){ fail++; log({ fallo_zip:e.photoURL||e.photoPath, err:err.message||String(err) }); } } const out=await zip.generateAsync({type:"blob"}); saveAs(out, `Fotos_Gastos_${ym}.zip`); log(`ZIP: ${ok} ok, ${fail} fallos`); }
-      catch(e){ log(e); alert("ZIP error: "+(e.message||"")); }
+      try{
+        const user=auth.currentUser; if(!user) return alert("Haz login");
+        const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes");
+        const entries=await listEntriesMonth(ym,user.uid);
+        const photos=entries.filter(e=>e.photoURL);
+        if(!photos.length) return alert("Sin fotos");
+
+        const zip=new JSZip(); let ok=0,fail=0;
+        for(const e of photos){
+          try{
+            const ref = e.photoPath ? storage.ref(e.photoPath) : storage.refFromURL(e.photoURL);
+
+            // Descarga autenticada (hasta 15MB por imagen)
+            let bytes;
+            try {
+              bytes = await ref.getBytes(15*1024*1024);
+            } catch (err) {
+              // Fallback: URL + fetch
+              const url = await ref.getDownloadURL();
+              const resp = await fetch(url, { mode: "cors", cache: "no-store" });
+              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+              const ab = await resp.arrayBuffer();
+              bytes = new Uint8Array(ab);
+            }
+
+            const blob = new Blob([bytes], { type: "image/jpeg" });
+            const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+            const dateISO=d.toISOString().slice(0,10);
+            const prov=(e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+            const name=`${dateISO}_${prov}.jpg`;
+            zip.file(name, blob);
+            ok++;
+          }catch(err){
+            fail++;
+            log({ fallo_zip_sdk: e.photoURL || e.photoPath, err: err.message || String(err) });
+          }
+        }
+
+        const out=await zip.generateAsync({type:"blob"});
+        saveAs(out, `Fotos_Gastos_${ym}.zip`);
+        log(`🗜️ ZIP listo: ${ok} ok, ${fail} fallos`);
+      }catch(e){
+        log(e); alert("ZIP error: "+(e.message||""));
+      }
     });
 
   })();
