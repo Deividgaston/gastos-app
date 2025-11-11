@@ -1,66 +1,66 @@
+
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Gastos 2N — Exportar ZIP</title>
-  <style>
-    :root{--b:#007aff;--bd:#e5e7eb;--m:#6b7280}
-    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:#f7f7fb}
-    .wrap{max-width:680px;margin:0 auto;padding:16px}
-    .card{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:14px;margin-top:14px;box-shadow:0 6px 16px rgba(0,0,0,.04)}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .btn{border:1px solid var(--bd);background:#fff;border-radius:12px;padding:9px 14px;cursor:pointer;transition:.15s}
-    .btn:hover{transform:translateY(-1px)}
-    .btn.primary{background:var(--b);color:#fff;border:none}
-    .muted{color:var(--m)} pre{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:260px;overflow:auto}
-    input,select{padding:9px 10px;border:1px solid var(--bd);border-radius:10px;font:inherit}
-    h1{font-size:18px;margin:0 0 8px 0}
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-
-  <!-- Firebase compat (Auth/Firestore) -->
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <!-- Storage MODULAR solo para getBlob autenticado -->
-  <script type="module">
-    import { getStorage, ref as sref, getBlob } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-    window.__dlBlob = async (path) => {
-      const storage = getStorage(firebase.app());
-      const r = sref(storage, path);
-      return await getBlob(r);
-    };
-  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gastos 2N – Exportar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body{background:#f6f7fb}</style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Exportar fotos del mes (ZIP)</h1>
-      <div class="row">
-        <button id="login" class="btn">🟢 Entrar con Google</button>
-        <button id="logout" class="btn">Salir</button>
-        <span id="who" class="muted" style="margin-left:auto">No autenticado</span>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <label>Mes:</label>
-        <input id="month" type="month"/>
-        <button id="zip" class="btn primary">🗜️ Descargar ZIP</button>
-      </div>
-      <p class="muted" style="margin-top:8px">
-        Esta página usa <code>getBlob()</code> del SDK de Storage para evitar CORS y tokens públicos.
-      </p>
-    </div>
+<body class="min-h-screen">
+  <div class="max-w-2xl mx-auto p-4 space-y-4">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Exportar Informe</h1>
+      <a href="./" class="px-3 py-2 rounded-lg border hover:bg-white">Volver</a>
+    </header>
 
-    <div class="card">
-      <strong>Logs</strong>
-      <pre id="out"></pre>
-    </div>
+    <section class="bg-white rounded-2xl border p-4 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-600" id="whoami">No autenticado</div>
+        <div class="space-x-2">
+          <button id="btnLogin" class="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Entrar con Google</button>
+          <button id="btnLogout" class="px-3 py-2 rounded border text-sm">Salir</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">Mes</label>
+        <input id="fMes" type="month" class="border rounded px-3 py-2" />
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button id="btnCSV" class="px-4 py-2 rounded bg-orange-600 text-white font-medium">Descargar CSV</button>
+        <button id="btnZIP" class="px-4 py-2 rounded bg-emerald-600 text-white font-medium">Descargar ZIP de fotos</button>
+      </div>
+
+      <div class="text-xs text-gray-500">Las fotos se buscan en <code>tickets/&lt;uid&gt;/YYYY-MM/</code> directamente desde Firebase Storage (con sesión).</div>
+    </section>
+
+    <section class="bg-white rounded-2xl border p-4 shadow-sm space-y-3">
+      <h2 class="font-semibold">Vista previa</h2>
+      <pre id="preview" class="text-xs text-gray-700 whitespace-pre-wrap"></pre>
+    </section>
   </div>
 
-  <script>
-    // === Configura aquí tu Firebase ===
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, collection, query, where, orderBy, getDocs, Timestamp 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import {
+      getStorage, ref, listAll, getBlob
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+    // CSV/ZIP helpers
+    import "https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js";
+    import JSZip from "https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm";
+
+    // --- Config de tu proyecto ---
     const firebaseConfig = {
       apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
       authDomain: "gastos-2n.firebaseapp.com",
@@ -70,82 +70,141 @@
       appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
     };
 
-    // === Inicializa compat (Auth + Firestore) ===
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db   = firebase.firestore();
+    // --- Init ---
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
 
-    const $ = (id)=>document.getElementById(id);
-    const log = (m)=>{ $("out").textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\\n"; };
+    const whoami = document.getElementById('whoami');
+    const fMes = document.getElementById('fMes');
+    const preview = document.getElementById('preview');
 
-    // Auth
-    const provider = new firebase.auth.GoogleAuthProvider();
-    $("login").onclick  = async ()=>{ try{ await auth.signInWithPopup(provider);}catch(e){log(e);} };
-    $("logout").onclick = async ()=>{ await auth.signOut(); };
-    auth.onAuthStateChanged(u=>{
-      if(u){ $("who").textContent = \`Conectado como \${u.email||u.uid}\`; }
-      else { $("who").textContent = "No autenticado"; }
+    // Set default month to current
+    const now = new Date();
+    fMes.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // Auth handlers
+    document.getElementById('btnLogin').onclick = async () => {
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        alert("Error login: " + (e.code || e.message));
+      }
+    };
+    document.getElementById('btnLogout').onclick = async () => { await signOut(auth); };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) whoami.textContent = `Conectado como ${user.email || user.uid}`;
+      else whoami.textContent = "No autenticado";
     });
 
     // Helpers
-    function monthRange(ym){
-      const s = new Date(ym+"-01T00:00:00");
-      const e = new Date(s.getFullYear(), s.getMonth()+1, 1);
-      return [s,e];
+    function firstAndNextMonth(ym) {
+      const [y,m] = ym.split('-').map(Number);
+      const first = new Date(y, m-1, 1, 0,0,0,0);
+      const next = new Date(y, m, 1, 0,0,0,0);
+      return {first, next};
     }
-    async function listEntriesMonth(ym, uid){
-      const [s,e] = monthRange(ym);
-      const snap = await db.collection(\`users/\${uid}/entries\`)
-        .where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
-      return snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    }
-    function safeName(entry){
-      const d = entry.date?.toDate ? entry.date.toDate() : new Date(entry.date);
-      const dateISO = isNaN(d) ? new Date().toISOString().slice(0,10) : d.toISOString().slice(0,10);
-      const prov = (entry.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
-      let ext = ".jpg";
-      const src = entry.photoPath||entry.photoURL||"";
-      const low = src.toLowerCase();
-      if(low.endsWith(".png")) ext=".png";
-      else if(low.endsWith(".jpeg")) ext=".jpeg";
-      else if(low.endsWith(".webp")) ext=".webp";
-      else if(low.endsWith(".jpg")) ext=".jpg";
-      return \`\${dateISO}_\${prov}\${ext}\`;
+    function toCSV(rows) {
+      const cols = ["DATE","PROVIDER","CATEGORY","AMOUNT","NOTES","PHOTO_PATH"];
+      const head = cols.join(",");
+      const body = rows.map(r => [
+        r.date, 
+        `"${(r.provider||"").replaceAll('"','""')}"`,
+        r.category || "",
+        (r.amount ?? ""),
+        `"${(r.notes||"").replaceAll('"','""')}"`,
+        r.photoPath || ""
+      ].join(",")).join("\n");
+      return head + "\n" + body + "\n";
     }
 
-    // Acción ZIP
-    $("zip").onclick = async ()=>{
-      try{
-        const u = auth.currentUser; if(!u) return alert("Haz login primero");
-        const ym = $("month").value; if(!ym) return alert("Selecciona un mes (YYYY-MM)");
+    // Query entries for month (with client-side filter fallback)
+    async function getMonthEntries(uid, ym) {
+      const {first, next} = firstAndNextMonth(ym);
+      const refCol = collection(db, `users/${uid}/entries`);
 
-        const entries = await listEntriesMonth(ym, u.uid);
-        const withPhotos = entries.filter(e=>e.photoPath); // usamos photoPath
-        if(!withPhotos.length){ return alert("No hay fotos para ese mes"); }
-
-        const zip = new JSZip(); let ok=0, fail=0;
-
-        for(const e of withPhotos){
-          try{
-            const blob = await window.__dlBlob(e.photoPath);
-            zip.file(safeName(e), blob);
-            ok++;
-          }catch(err){
-            fail++; log({ fallo_zip_getBlob: e.photoPath||e.photoURL, err: err.message||String(err) });
+      // Try range query; if it fails (index), fallback to client filter
+      try {
+        const q = query(refCol, where('date', '>=', Timestamp.fromDate(first)), where('date','<', Timestamp.fromDate(next)), orderBy('date','asc'));
+        const snap = await getDocs(q);
+        const rows = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          rows.push({
+            date: d.date?.toDate ? d.date.toDate().toISOString().slice(0,10) : "",
+            provider: d.provider || "",
+            category: d.category || "",
+            amount: d.amount || "",
+            notes: d.notes || "",
+            photoPath: d.photoPath || "" // por compatibilidad si guardaste la ruta
+          });
+        });
+        return rows;
+      } catch (e) {
+        // Fallback: fetch all and filter
+        const snap = await getDocs(query(refCol, orderBy('date','asc')));
+        const rows = [];
+        snap.forEach(doc => {
+          const d = doc.data();
+          const dt = d.date?.toDate ? d.date.toDate() : null;
+          if (dt && dt >= first && dt < next) {
+            rows.push({
+              date: dt.toISOString().slice(0,10),
+              provider: d.provider || "",
+              category: d.category || "",
+              amount: d.amount || "",
+              notes: d.notes || "",
+              photoPath: d.photoPath || ""
+            });
           }
-        }
-
-        const outBlob = await zip.generateAsync({type:"blob"});
-        saveAs(outBlob, \`Fotos_Gastos_\${ym}.zip\`);
-        log(\`🗜️ ZIP listo: \${ok} ok, \${fail} fallos\`);
-      }catch(e){
-        console.error(e); log(e); alert("Error ZIP: "+(e.message||""));
+        });
+        return rows;
       }
+    }
+
+    // CSV
+    document.getElementById('btnCSV').onclick = async () => {
+      const user = auth.currentUser;
+      if (!user) { alert("Inicia sesión con Google"); return; }
+      const ym = fMes.value;
+      const rows = await getMonthEntries(user.uid, ym);
+      preview.textContent = JSON.stringify(rows, null, 2);
+      const csv = toCSV(rows);
+      const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+      saveAs(blob, `gastos-${ym}.csv`);
     };
 
-    // UI por defecto
-    $("month").value = new Date().toISOString().slice(0,7);
-    log("Listo. Inicia sesión, elige mes y pulsa ZIP.");
+    // ZIP photos from Storage using SDK (authenticated)
+    document.getElementById('btnZIP').onclick = async () => {
+      const user = auth.currentUser;
+      if (!user) { alert("Inicia sesión con Google"); return; }
+      const ym = fMes.value;
+      const folderRef = ref(storage, `tickets/${user.uid}/${ym}/`);
+      const zip = new JSZip();
+      let ok = 0, fail = 0;
+      try {
+        const all = await listAll(folderRef);
+        for (const item of all.items) {
+          try {
+            const blob = await getBlob(item);
+            zip.file(item.name, blob);
+            ok++;
+          } catch (e) {
+            fail++;
+            console.log("fallo_zip_blob", item.fullPath, e?.message||e);
+          }
+        }
+        const out = await zip.generateAsync({type:"blob"});
+        saveAs(out, `fotos-${ym}.zip`);
+        preview.textContent = `ZIP listo: ${ok} ok, ${fail} fallos`;
+      } catch (e) {
+        alert("Error listando fotos: " + (e.code || e.message));
+      }
+    };
   </script>
 </body>
 </html>
