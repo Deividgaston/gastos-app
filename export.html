@@ -1,80 +1,114 @@
-
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gastos 2N — Exportar</title>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <style>
-    :root{--blue:#007aff;--border:#e5e7eb;--muted:#6b7280;--bg:#f7f7fb}
-    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:var(--bg)}
-    .topbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);background:#fff;z-index:5}
-    .topbar h1{margin:0;flex:1;font-size:18px}
-    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 12px;cursor:pointer}
-    .btn.primary{background:var(--blue);color:#fff;border:none}
-    .content{max-width:960px;margin:0 auto;padding:14px}
-    .panel{border:1px solid var(--border);border-radius:16px;padding:12px 14px;margin-top:12px;background:#fff}
+    :root{--blue:#0a84ff;--bg:#0b0b0f;--card:#14141a;--muted:#9aa0a6;--border:#26262d;--accent:#34c759}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial;background:var(--bg);color:#fff}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;padding:12px 16px;background:rgba(20,20,26,.7);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+    .topbar h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.2px}
+    .spacer{flex:1}
+    .btn{background:#1f1f27;border:1px solid var(--border);color:#fff;border-radius:12px;padding:8px 12px;cursor:pointer;transition:.15s}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{background:var(--blue);border:none}
+    .btn.outline{background:transparent;border:1px solid var(--border)}
+    .page{max-width:1100px;margin:0 auto;padding:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px 16px}
+    .grid{display:grid;gap:12px}
+    @media(min-width:900px){ .grid.cols-2{grid-template-columns:1fr 1fr} .grid.cols-3{grid-template-columns:2fr 1fr} }
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .chip{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:#191922;color:var(--muted)}
     .muted{color:var(--muted)}
-    pre{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:300px;overflow:auto}
-    .grid{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:end}
-    .field{display:flex;flex-direction:column;gap:6px}
-    input,select{padding:9px 10px;border:1px solid var(--border);border-radius:10px;font:inherit}
-    .hidden{display:none!important}
+    .field{display:flex;flex-direction:column;gap:6px;min-width:200px}
+    .field input,.field select{background:#0f0f14;border:1px solid var(--border);color:#fff;border-radius:12px;padding:9px 10px;font:inherit}
+    .list{display:grid;gap:10px}
+    .item{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;background:#101015;border:1px solid var(--border);border-radius:14px;padding:8px}
+    .thumb{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#0d0d12;border:1px solid var(--border)}
+    .amount{font-weight:700}
+    .pos{color:#30d158}.neg{color:#ff453a}
+    .divider{height:1px;background:var(--border);margin:10px 0}
+    pre{white-space:pre-wrap;background:#0f0f14;border:1px dashed #2a2a33;border-radius:12px;padding:10px;color:#d1d5db;max-height:220px;overflow:auto}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <h1>Exportar — Gastos 2N</h1>
-    <a class="btn" href="./index.html">← Volver</a>
-    <button id="btnLogin" class="btn">🟢 Google</button>
-    <button id="btnLogout" class="btn hidden">Salir</button>
+    <button class="btn outline" onclick="location.href='./'">← Volver</button>
+    <h1>Gastos 2N — Exportar</h1>
+    <div class="spacer"></div>
+    <span id="whoami" class="chip">No autenticado</span>
+    <button id="btnLogin" class="btn">Entrar con Google</button>
+    <button id="btnLogout" class="btn outline" style="display:none">Salir</button>
   </header>
 
-  <main class="content">
-    <div class="panel grid">
-      <div class="field">
-        <label>Mes y año</label>
-        <input id="expMonth" type="month">
+  <main class="page grid cols-3">
+    <section class="card">
+      <div class="row">
+        <div class="field">
+          <label>Mes a exportar</label>
+          <input id="expMonth" type="month"/>
+        </div>
+        <div class="field">
+          <label>Acciones</label>
+          <div class="row">
+            <button id="btnCSV" class="btn primary">⬇️ CSV</button>
+            <button id="btnZIP" class="btn">🗜️ ZIP fotos</button>
+          </div>
+        </div>
       </div>
-      <button id="btnCSV" class="btn">⬇️ Descargar CSV</button>
-      <button id="btnZIP" class="btn primary">🗜️ Descargar ZIP fotos</button>
-    </div>
+      <div class="divider"></div>
+      <div class="grid cols-2">
+        <div class="card" style="background:#0f0f14">
+          <strong>Gasto por categoría</strong>
+          <canvas id="catChart" height="200"></canvas>
+        </div>
+        <div class="card" style="background:#0f0f14">
+          <strong>Gasto por día</strong>
+          <canvas id="dayChart" height="200"></canvas>
+        </div>
+      </div>
+    </section>
 
-    <div class="panel">
-      <div class="muted" id="whoami">No autenticado</div>
+    <section class="card" id="listCard">
+      <div class="row">
+        <strong>Detalle del mes</strong>
+        <span class="chip" id="sumChip">Total: —</span>
+      </div>
+      <div class="divider"></div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <section class="card">
+      <strong>Logs</strong>
       <pre id="out"></pre>
-      <details>
-        <summary>Ayuda</summary>
-        <ul>
-          <li>Asegúrate de haber iniciado sesión con el mismo usuario que guarda los tickets.</li>
-          <li>Las fotos se leen con permisos privados desde <code>tickets/&lt;uid&gt;/YYYY-MM/archivo</code>.</li>
-          <li>Si aparece "permission-denied", revisa las Reglas de Storage y que sigues logueado.</li>
-        </ul>
-      </details>
-    </div>
+      <div class="divider"></div>
+      <small class="muted">
+        • Se requiere login con Google en este mismo dominio (GitHub Pages).<br>
+        • El ZIP usa Storage SDK <code>getBytes</code> (sin CORS).<br>
+        • CSV usa columnas oficiales de la plantilla 2N.
+      </small>
+    </section>
   </main>
 
+  <!-- Firebase compat (para compartir sesión) -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
+  <!-- Firebase modular para Storage.getBytes -->
   <script type="module">
-    const $ = (id)=>document.getElementById(id);
-    const log = (m)=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
+    // ===== Utilidad de logs =====
+    const log = (m)=>{
+      const out=document.getElementById('out');
+      out.textContent += (typeof m==="string"? m: JSON.stringify(m,null,2)) + "\\n";
+    };
 
-    // ===== Firebase modular SDK =====
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { 
-      getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
-      setPersistence, browserLocalPersistence, signOut
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-      getFirestore, collection, query, where, orderBy, getDocs
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import {
-      getStorage, ref as sRef, getBytes
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-
-    // ===== Config (tu proyecto) =====
+    // ===== Config (igual que en tu index) =====
     const firebaseConfig = {
       apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
       authDomain: "gastos-2n.firebaseapp.com",
@@ -84,56 +118,80 @@
       appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
+    // ===== Inicializar compat (si no existe) =====
+    if (firebase.apps.length === 0) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
 
-    await setPersistence(auth, browserLocalPersistence);
+    // ===== Modular solo para Storage.getBytes =====
+    import { initializeApp as initMod, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getStorage, ref, getBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+    let appMod = getApps().length ? getApp() : initMod(firebaseConfig);
+    const storageMod = getStorage(appMod, "gs://gastos-2n.firebasestorage.app");
 
-    const provider = new GoogleAuthProvider();
-    $("btnLogin").onclick = async ()=>{
-      try{ await signInWithPopup(auth, provider); }catch(e){ log(e); alert("Login error: "+(e.message||"")); }
+    // ===== UI Auth =====
+    const whoami = document.getElementById('whoami');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+
+    btnLogin.onclick = async ()=>{
+      try{
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        await auth.signInWithPopup(provider);
+      }catch(e){ console.error(e); log({login_error:e.message||e}); alert("Login error"); }
     };
-    $("btnLogout").onclick = async ()=>{ await signOut(auth); };
+    btnLogout.onclick = ()=> auth.signOut();
 
-    onAuthStateChanged(auth, (user)=>{
+    auth.onAuthStateChanged(user=>{
       if(user){
-        $("whoami").textContent = `Conectado como ${user.email||user.uid}`;
-        $("btnLogin").classList.add("hidden");
-        $("btnLogout").classList.remove("hidden");
+        whoami.textContent = user.email || user.uid;
+        btnLogin.style.display="none";
+        btnLogout.style.display="inline-block";
+        const m = document.getElementById('expMonth');
+        if(!m.value) m.value = new Date().toISOString().slice(0,7);
+        refreshAll().catch(console.error);
       }else{
-        $("whoami").textContent = "No autenticado";
-        $("btnLogin").classList.remove("hidden");
-        $("btnLogout").classList.add("hidden");
+        whoami.textContent = "No autenticado";
+        btnLogin.style.display="inline-block";
+        btnLogout.style.display="none";
       }
     });
 
-    // ===== Utils Export =====
+    // ===== Helpers datos =====
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+    const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+
     function monthRange(ym){
       const s=new Date(ym+"-01T00:00:00");
       const e=new Date(s.getFullYear(), s.getMonth()+1, 1);
       return [s,e];
     }
-    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
-    const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+
+    async function listEntriesMonth(ym, uid){
+      const [s,e]=monthRange(ym);
+      const snap=await db.collection(`users/${uid}/entries`)
+        .where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
+      return snap.docs.map(d=>({id:d.id, ...d.data()}));
+    }
+
     function toCSVValue(col, value){
       if(col!=="DATE"&&col!=="CLIENT / PROVIDER"&&col!=="DESCRIPTION"){
         const n=Number(value||0); return (isFinite(n)?n:0).toFixed(2).replace(".",",");
       }
       const s=String(value||"").replace(/"/g,'""'); return `"${s}"`;
     }
-    function buildCSV(rows, monthlabel, today){
-      const head=`,,,,,   EXPENSES REPORT,,,,,,,
-NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}
-PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,
 
-`;
+    function buildCSV(rows, monthlabel, today){
+      const head=`,,,,,   EXPENSES REPORT,,,,,,,\nNOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}\nPRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\n,,,,,,,,,,,,\n`;
       const h1=COLUMNS.map(h=>`"${h}"`).join(";")+"\n";
       const h2=",,PARKINGS ,,,,,TRAVELING,,,\n";
       const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("\n");
       return head+h1+h2+data+"\n";
     }
+
     function toCSVRecords(entries){
       const rows=[];
       for(const e of entries){
@@ -152,77 +210,153 @@ PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,
       return rows;
     }
 
-    async function listEntriesMonth(ym, uid){
-      const [s,e]=monthRange(ym);
-      const q=query(
-        collection(db, `users/${uid}/entries`),
-        where("date", ">=", s),
-        where("date", "<", e),
-        orderBy("date", "asc")
-      );
-      const snap=await getDocs(q);
-      return snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    // ===== Render UI =====
+    let catChart, dayChart;
+
+    function renderList(entries){
+      const list = document.getElementById('list');
+      const sumChip = document.getElementById('sumChip');
+      list.innerHTML = "";
+      let total = 0;
+      for(const e of entries){
+        if(e.category !== "ingreso") total += Number(e.amount||0);
+        const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
+        const thumb = e.photoURL || "";
+        const amountText = (Number(e.amount||0)).toLocaleString("es-ES",{minimumFractionDigits:2}) + " €";
+        const item = document.createElement('div');
+        item.className = "item";
+        const signClass = (e.category==="ingreso")? "pos":"neg";
+        item.innerHTML = `
+          <img class="thumb" src="${thumb}" onerror="this.src='data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22><rect width=%2264%22 height=%2264%22 fill=%22%23101015%22/><text x=%2232%22 y=%2236%22 font-size=%2210%22 text-anchor=%22middle%22 fill=%22%239aa0a6%22>sin foto</text></svg>')}'" alt="foto"/>
+          <div>
+            <div style="font-weight:600">${e.provider||'—'} <span class="muted">· ${e.category||''}</span></div>
+            <div class="muted" style="font-size:12px">${d.toISOString().slice(0,10)} ${e.notes?('· '+e.notes):''}</div>
+          </div>
+          <div class="amount ${signClass}">${(e.category==="ingreso"?'+':'-')+amountText}</div>
+        `;
+        list.appendChild(item);
+      }
+      sumChip.textContent = "Total: " + total.toLocaleString("es-ES",{minimumFractionDigits:2}) + " €";
     }
 
+    function renderCharts(entries, ym){
+      const byCat = {};
+      const byDay = {};
+      const daysInMonth = new Date(ym.split('-')[0], ym.split('-')[1], 0).getDate();
+      for(let d=1; d<=daysInMonth; d++){ byDay[d]=0; }
+
+      for(const e of entries){
+        if(e.category==="ingreso") continue;
+        const cat = e.category || "varios";
+        byCat[cat] = (byCat[cat]||0) + Number(e.amount||0);
+        const date = e.date?.toDate ? e.date.toDate() : new Date(e.date);
+        const day = date.getDate();
+        byDay[day] = (byDay[day]||0) + Number(e.amount||0);
+      }
+
+      // Pie por categoría
+      const catLabels = Object.keys(byCat);
+      const catVals = catLabels.map(k=>byCat[k]);
+      const c1 = document.getElementById('catChart');
+      if(catChart){ catChart.destroy(); }
+      catChart = new Chart(c1, {
+        type: 'doughnut',
+        data: { labels: catLabels, datasets:[{ data: catVals }] },
+        options: { plugins:{ legend:{ labels:{ color:'#e5e7eb' } } } }
+      });
+
+      // Línea por día
+      const days = Object.keys(byDay).map(n=>Number(n)).sort((a,b)=>a-b);
+      const dayVals = days.map(d=>byDay[d]);
+      const c2 = document.getElementById('dayChart');
+      if(dayChart){ dayChart.destroy(); }
+      dayChart = new Chart(c2, {
+        type: 'line',
+        data: { labels: days, datasets:[{ data: dayVals, tension: .3, fill: true }] },
+        options: { scales:{ x:{ ticks:{ color:'#c7cbd1' } }, y:{ ticks:{ color:'#c7cbd1' } } },
+                   plugins:{ legend:{ display:false } } }
+      });
+    }
+
+    async function refreshAll(){
+      const user = auth.currentUser; if(!user) return;
+      const ym = document.getElementById('expMonth').value || new Date().toISOString().slice(0,7);
+      const entries = await listEntriesMonth(ym, user.uid);
+      renderList(entries);
+      renderCharts(entries, ym);
+    }
+
+    document.getElementById('expMonth').addEventListener('change', refreshAll);
+
     // ===== CSV =====
-    $("btnCSV").addEventListener("click", async ()=>{
+    document.getElementById('btnCSV').addEventListener('click', async ()=>{
       try{
-        const user=auth.currentUser; if(!user) return alert("Haz login");
-        const ym=$("expMonth").value; if(!ym) return alert("Selecciona mes");
-        const entries=await listEntriesMonth(ym, user.uid);
+        const user=auth.currentUser; if(!user) return alert("Login requerido");
+        const ym=document.getElementById('expMonth').value; if(!ym) return alert("Selecciona mes");
+        const entries=await listEntriesMonth(ym,user.uid);
         if(!entries.length) return alert("Sin gastos");
         const rows=toCSVRecords(entries);
         const monthlabel=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
         const today=new Date().toLocaleDateString("es-ES");
         const csv=buildCSV(rows, monthlabel, today);
         saveAs(new Blob([csv], {type:"text/csv;charset=utf-8"}), `Informe_Gastos_${ym}.csv`);
-      }catch(e){ console.error(e); log(e); alert("CSV error: "+(e.message||"")); }
+      }catch(e){ console.error(e); log({csv_error:e.message||String(e)}); alert("CSV error"); }
     });
 
-    // ===== ZIP con getBytes autenticado =====
-    $("expMonth").value = new Date().toISOString().slice(0,7);
-    $("btnZIP").addEventListener("click", async ()=>{
+    // ===== ZIP via Storage.getBytes =====
+    document.getElementById('btnZIP').addEventListener('click', async ()=>{
       try{
-        const user=auth.currentUser; if(!user) return alert("Haz login");
-        const ym=$("expMonth").value; if(!ym) return alert("Selecciona mes");
-        const entries=await listEntriesMonth(ym, user.uid);
+        const user=auth.currentUser; if(!user) return alert("Login requerido");
+        const ym=document.getElementById('expMonth').value; if(!ym) return alert("Selecciona mes");
+        const entries=await listEntriesMonth(ym,user.uid);
         const photos=entries.filter(e=>e.photoPath || e.photoURL);
         if(!photos.length) return alert("Sin fotos");
 
         const zip=new JSZip(); let ok=0, fail=0;
-        const MAX = 12*1024*1024; // 12MB
+        const maxBytes = 12 * 1024 * 1024;
 
         for(const e of photos){
           try{
-            let path = e.photoPath;
-            if(!path && e.photoURL){
+            let storageRef;
+            if(e.photoPath){
+              storageRef = ref(storageMod, e.photoPath);
+            }else if(e.photoURL){
+              // photoURL -> ref a partir de URL de descarga
               const u = new URL(e.photoURL);
-              const i = u.pathname.indexOf('/o/');
-              if(i>0){ path = decodeURIComponent(u.pathname.slice(i+3)); }
+              // extraer el objeto path decodificado
+              const pathEnc = u.pathname.split('/o/')[1]?.split('?')[0] || "";
+              const fsPath = decodeURIComponent(pathEnc);
+              storageRef = ref(storageMod, fsPath);
+            }else{
+              throw new Error("Sin referencia de foto");
             }
-            if(!path) throw new Error("Sin referencia");
 
-            const r = sRef(storage, path);
-            const bytes = await getBytes(r, MAX);
-            const mime = path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-            const blob = new Blob([bytes], {type:mime});
+            const bytes = await getBytes(storageRef, maxBytes);
+            // intentar detectar mime por extensión
+            const name = storageRef.name || "ticket.jpg";
+            const isPng = name.toLowerCase().endsWith('.png');
+            const blob = new Blob([bytes], {type: isPng ? 'image/png':'image/jpeg'});
 
             const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
             const dateISO = d.toISOString().slice(0,10);
             const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-            const ext = (mime==='image/png')?'.png':'.jpg';
+            const ext = isPng?'.png':'.jpg';
             zip.file(`${dateISO}_${prov}${ext}`, blob);
             ok++;
           }catch(err){
-            fail++; log({fallo_zip_auth: e.photoURL||e.photoPath, err: err.message||String(err)});
+            fail++; log({fallo_zip_getBytes:(e.photoPath||e.photoURL), err: err.message||String(err)});
           }
         }
 
         const outBlob = await zip.generateAsync({type:"blob"});
         saveAs(outBlob, `Fotos_Gastos_${ym}.zip`);
         log(`🗜️ ZIP listo: ${ok} ok, ${fail} fallos`);
-      }catch(e){ console.error(e); log(e); alert("ZIP error: "+(e.message||"")); }
+      }catch(e){ console.error(e); log({zip_error:e.message||String(e)}); alert("ZIP error"); }
     });
+
+    // Auto set mes
+    const m = document.getElementById('expMonth');
+    if(!m.value) m.value = new Date().toISOString().slice(0,7);
   </script>
 </body>
 </html>
