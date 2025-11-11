@@ -1,38 +1,398 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>App Gastos - 2N</title>
-  <link rel="stylesheet" href="CSS/styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gastos 2N</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --bg:#0b0c10; --card:#111318; --muted:#9aa1af; }
+    html,body{height:100%}
+    body{background:#0b0c10;color:#eef1f5;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .card{background:#111318;border-radius:20px;border:1px solid #1f2533;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:12px;padding:.75rem 1rem;font-weight:600}
+    .btn-primary{background:#6d5afe;color:#fff}
+    .btn-primary:hover{filter:brightness(1.1)}
+    .btn-outline{border:1px solid #2b3345}
+    .badge{font-size:.75rem;padding:.25rem .5rem;border-radius:999px;background:#1a2030;border:1px solid #2a3246;color:#9fb1ff}
+    input,select,textarea{background:#0c0f15;border:1px solid #242c3f;border-radius:12px;padding:.65rem .8rem;width:100%;color:#e8ecf3}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:#6d5afe;box-shadow:0 0 0 4px rgba(109,90,254,.16)}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    .line{border-top:1px dashed #242c3f}
+    a.link{color:#9fb1ff;text-decoration:underline}
+  </style>
 </head>
-<body>
-  <h2>Registro de Gastos 2N</h2>
+<body class="min-h-screen">
+  <div class="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold">Gastos 2N</h1>
+        <p id="whoami" class="text-sm text-slate-400">No autenticado</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnLogin" class="btn btn-outline">Entrar con Google</button>
+        <button id="btnLogout" class="btn btn-outline hidden">Salir</button>
+        <a href="./export.html" class="btn btn-primary">Exportar</a>
+      </div>
+    </header>
 
-  <!-- Login -->
-  <button id="loginBtn">Iniciar sesión con Google</button>
-  <button id="logoutBtn" style="display:none;">Cerrar sesión</button>
+    <!-- Preferencias IA -->
+    <section class="card p-4 sm:p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Ajustes de IA</h2>
+        <span id="aiStatus" class="badge">sin clave</span>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="text-sm text-slate-300">API Key de Google AI (se guarda localmente)</label>
+          <input id="aiKey" type="password" placeholder="AIza..." autocomplete="off">
+        </div>
+        <div>
+          <label class="text-sm text-slate-300">Modelo</label>
+          <select id="aiModel">
+            <option>gemini-2.0-flash</option>
+            <option>gemini-1.5-flash</option>
+            <option>gemini-1.5-pro</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button id="btnSaveKey" class="btn btn-primary">Guardar clave</button>
+        <button id="btnClearKey" class="btn btn-outline">Borrar clave</button>
+      </div>
+      <p class="text-xs text-slate-400">Tu clave se guarda en el navegador (localStorage). No se envía a nuestros servidores.</p>
+    </section>
 
-  <p id="userEmail"></p>
+    <!-- Resumen -->
+    <section class="card p-4 sm:p-5">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="p-4 rounded-xl border border-slate-800 bg-[#0c0f15]">
+          <p class="text-slate-400 text-sm">Total Gastos</p>
+          <p id="sumGastos" class="text-2xl font-bold text-rose-400">-€0,00</p>
+        </div>
+        <div class="p-4 rounded-xl border border-slate-800 bg-[#0c0f15]">
+          <p class="text-slate-400 text-sm">Total Ingresos</p>
+          <p id="sumIngresos" class="text-2xl font-bold text-emerald-400">+€0,00</p>
+        </div>
+        <div class="p-4 rounded-xl border border-slate-800 bg-[#0c0f15]">
+          <p class="text-slate-400 text-sm">Balance</p>
+          <p id="sumBalance" class="text-2xl font-bold text-indigo-300">€0,00</p>
+        </div>
+      </div>
+    </section>
 
-  <!-- Botón para abrir export.html -->
-  <a href="export.html">
-    <button id="exportBtn" style="display:none; background:#007bff; color:white;">
-      📦 Exportar Gastos (ZIP)
-    </button>
-  </a>
+    <!-- Formulario -->
+    <section class="card p-4 sm:p-5 space-y-3">
+      <h2 class="font-semibold">Nuevo registro</h2>
+      <div class="grid-2">
+        <div>
+          <label class="text-sm text-slate-300">Fecha</label>
+          <input id="fFecha" type="date">
+        </div>
+        <div>
+          <label class="text-sm text-slate-300">Categoría</label>
+          <select id="fCategoria">
+            <option value="comida">Comida / Meals</option>
+            <option value="transporte">Otros transportes (Taxi)</option>
+            <option value="hotel">Hotel</option>
+            <option value="peajes">Tolls & Parkings</option>
+            <option value="gasolina">Gasoline</option>
+            <option value="invitaciones">Invitations</option>
+            <option value="varios">Varios</option>
+            <option value="ingreso">Ingreso</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="text-sm text-slate-300">Proveedor</label>
+          <input id="fProveedor" placeholder="Ej: Repsol, Restaurante X">
+        </div>
+        <div>
+          <label class="text-sm text-slate-300">Importe (€)</label>
+          <input id="fCantidad" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">
+        </div>
+      </div>
+      <div>
+        <label class="text-sm text-slate-300">Notas</label>
+        <textarea id="fNota" rows="2" placeholder="Opcional"></textarea>
+      </div>
+      <div>
+        <label class="text-sm text-slate-300">Foto del ticket</label>
+        <input id="fFile" type="file" accept="image/*" capture="environment">
+        <img id="preview" class="mt-2 max-h-40 hidden rounded border border-slate-700" />
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="btnScan" class="btn btn-outline">📸 Escanear ticket con IA</button>
+        <button id="btnGuardar" class="btn btn-primary">💾 Guardar gasto</button>
+      </div>
+      <p class="text-xs text-slate-400">Las fotos se suben a <code>tickets/&lt;uid&gt;/YYYY-MM/&lt;archivo&gt;</code>.</p>
+    </section>
 
-  <!-- Botón para capturar ticket -->
-  <button id="captureBtn" style="display:none;">📸 Escanear Ticket</button>
+    <!-- Lista -->
+    <section class="card p-4 sm:p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Últimos 10 registros</h2>
+        <button id="btnRefrescar" class="btn btn-outline">Refrescar</button>
+      </div>
+      <div id="lista" class="space-y-2"></div>
+    </section>
 
-  <!-- Contenedor de imagen y campos -->
-  <div id="previewSection" style="display:none;">
-    <img id="preview" style="max-width: 300px; display:block;" />
-    <input id="montoInput" placeholder="Importe" />
-    <input id="proveedorInput" placeholder="Proveedor" />
-    <button id="saveBtn">💾 Guardar</button>
+    <section>
+      <pre id="out" class="text-xs text-slate-400 whitespace-pre-wrap"></pre>
+    </section>
   </div>
 
-  <script type="module" src="js/index.js"></script>
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, collection, addDoc, Timestamp, query, orderBy, limit, getDocs, where 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { 
+      getStorage, ref, uploadBytes, getDownloadURL 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+    // --- Config Firebase (tu proyecto) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
+
+    // --- UI helpers ---
+    const $ = (id)=>document.getElementById(id);
+    const log = (o)=> { try{ $('out').textContent += (typeof o==='string'?o:JSON.stringify(o,null,2)) + "\\n"; }catch{} };
+    const whoami = $('whoami');
+    const aiStatus = $('aiStatus');
+
+    // fecha por defecto
+    $('fFecha').value = new Date().toISOString().slice(0,10);
+
+    // preview imagen
+    const fileInput = $('fFile'), preview = $('preview');
+    fileInput.addEventListener('change', (e)=>{
+      const f = e.target.files?.[0];
+      if (!f){ preview.classList.add('hidden'); return; }
+      const url = URL.createObjectURL(f);
+      preview.src = url; preview.classList.remove('hidden');
+    });
+
+    // IA key persistence
+    const KEY_LS = 'gastos2n_ai_key', MODEL_LS='gastos2n_ai_model';
+    function refreshAIStatus(){
+      const k = localStorage.getItem(KEY_LS);
+      aiStatus.textContent = k ? 'clave guardada' : 'sin clave';
+    }
+    $('aiKey').value = localStorage.getItem(KEY_LS) || '';
+    $('aiModel').value = localStorage.getItem(MODEL_LS) || 'gemini-2.0-flash';
+    refreshAIStatus();
+
+    $('btnSaveKey').onclick = ()=>{
+      localStorage.setItem(KEY_LS, $('aiKey').value.trim());
+      localStorage.setItem(MODEL_LS, $('aiModel').value);
+      refreshAIStatus();
+      alert('Clave guardada');
+    };
+    $('btnClearKey').onclick = ()=>{
+      localStorage.removeItem(KEY_LS);
+      refreshAIStatus();
+      $('aiKey').value='';
+    };
+
+    // Auth
+    $('btnLogin').onclick = async ()=>{
+      try{
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt:'select_account' });
+        await signInWithPopup(auth, provider);
+      }catch(e){ log({login_error:e.message||e}); alert('Error login'); }
+    };
+    $('btnLogout').onclick = async ()=>{ await signOut(auth); };
+
+    onAuthStateChanged(auth, (user)=>{
+      if(user){
+        $('btnLogin').classList.add('hidden');
+        $('btnLogout').classList.remove('hidden');
+        whoami.textContent = `Conectado como ${user.email}`;
+        cargarUltimos();
+        actualizarSumasMesActual();
+      }else{
+        $('btnLogout').classList.add('hidden');
+        $('btnLogin').classList.remove('hidden');
+        whoami.textContent = 'No autenticado';
+        $('lista').innerHTML = '';
+        $('sumGastos').textContent='-€0,00';
+        $('sumIngresos').textContent='+€0,00';
+        $('sumBalance').textContent='€0,00';
+      }
+    });
+
+    // Escanear con IA
+    $('btnScan').onclick = async ()=>{
+      const key = localStorage.getItem(KEY_LS);
+      const model = localStorage.getItem(MODEL_LS) || 'gemini-2.0-flash';
+      if(!key){ alert('Guarda tu API key de Google AI en Ajustes'); return; }
+      const f = fileInput.files?.[0];
+      if(!f){ alert('Selecciona una foto'); return; }
+
+      try{
+        const b64 = await fileToBase64(f);
+        const endpoint = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+        const prompt = [
+          { text: "Extract 'date' (YYYY-MM-DD), 'provider' (string), 'amount' (number, dot decimal) from this receipt. Answer JSON only with keys: date, provider, amount." }
+        ];
+        const payload = {
+          contents: [{
+            role:"user",
+            parts: [
+              { text: prompt[0].text },
+              { inline_data: { mime_type: f.type || "image/jpeg", data: b64.split(',')[1] } }
+            ]
+          }]
+        };
+        const res = await fetch(endpoint, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if(!res.ok){ log(data); throw new Error(data.error?.message || 'IA error'); }
+        const text = data.candidates?.[0]?.content?.parts?.map(p=>p.text).join(' ') || '';
+        let json = safeJson(text.trim());
+        log({IA:json||text});
+        if(json){
+          if(json.date) $('fFecha').value = json.date;
+          if(json.provider) $('fProveedor').value = json.provider;
+          if(json.amount) $('fCantidad').value = String(json.amount);
+        }else{
+          alert('No se pudo interpretar la respuesta de la IA. Revisa el ticket o edita manualmente.');
+        }
+      }catch(e){
+        console.error(e); alert('Fallo IA: '+(e.message||e));
+      }
+    };
+
+    function safeJson(s){
+      try{ return JSON.parse(s); }catch{}
+      // intenta limpiar comillas simples o trailing
+      try{ return JSON.parse(s.replace(/'/g,'\"')); }catch{}
+      return null;
+    }
+    function fileToBase64(file){
+      return new Promise((resolve,reject)=>{
+        const r = new FileReader();
+        r.onload = ()=>resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    // Guardar gasto
+    $('btnGuardar').onclick = async ()=>{
+      try{
+        const user = auth.currentUser; if(!user){ alert('Haz login primero'); return; }
+        const fecha = $('fFecha').value || new Date().toISOString().slice(0,10);
+        const categoria = $('fCategoria').value;
+        const proveedor = $('fProveedor').value.trim();
+        const nota = $('fNota').value.trim();
+        const cantidad = parseFloat(($('fCantidad').value||'').replace(',','.'));
+        if(!proveedor || !cantidad || !(cantidad>0)){ alert('Proveedor e importe > 0'); return; }
+
+        // Subir foto si existe
+        let photoURL="";
+        const f = fileInput.files?.[0];
+        if(f){
+          const y = fecha.slice(0,7);
+          const safeProv = proveedor.replace(/[^a-zA-Z0-9-_ ]/g,'').slice(0,40).replace(/\s+/g,'_');
+          const ext = (f.name.split('.').pop()||'jpg').toLowerCase();
+          const filename = `${fecha}_${safeProv}_${Date.now()}.${ext}`;
+          const path = `tickets/${user.uid}/${y}/${filename}`;
+          const r = ref(storage, path);
+          await uploadBytes(r, f);
+          photoURL = await getDownloadURL(r);
+          log({foto_subida:path});
+        }
+
+        const col = collection(db, `users/${user.uid}/entries`);
+        await addDoc(col, {
+          date: Timestamp.fromDate(new Date(fecha)),
+          category: categoria,
+          provider: proveedor,
+          notes: nota,
+          amount: cantidad,
+          isExpense: categoria !== 'ingreso',
+          photoURL,
+          createdAt: Timestamp.now()
+        });
+
+        alert('✅ Gasto guardado');
+        // reset pequeños
+        $('fProveedor').value=''; $('fNota').value=''; $('fCantidad').value='';
+        fileInput.value=''; preview.classList.add('hidden');
+        cargarUltimos(); actualizarSumasMesActual();
+      }catch(e){ console.error(e); alert('Error guardando: '+(e.message||e)); }
+    };
+
+    // Listado últimos 10
+    async function cargarUltimos(){
+      const user = auth.currentUser; if(!user) return;
+      const col = collection(db, `users/${user.uid}/entries`);
+      const qy = query(col, orderBy('createdAt','desc'), limit(10));
+      const snap = await getDocs(qy);
+      const lista = $('lista'); lista.innerHTML='';
+      snap.forEach(doc=>{
+        const d = doc.data();
+        const fecha = d.date?.toDate ? d.date.toDate() : new Date();
+        const euros = (d.amount||0).toLocaleString('es-ES',{minimumFractionDigits:2});
+        const row = document.createElement('div');
+        row.className = "flex items-center justify-between p-3 rounded-xl border border-slate-800 bg-[#0c0f15]";
+        row.innerHTML = `
+          <div class="min-w-0">
+            <p class="font-medium text-slate-100 truncate">${d.provider||'-'} <span class="text-slate-400">· ${d.category}</span></p>
+            <p class="text-xs text-slate-400">${fecha.toISOString().slice(0,10)} ${d.notes?('· '+d.notes):''}</p>
+          </div>
+          <div class="text-right ml-3">
+            <p class="font-semibold ${d.isExpense?'text-rose-400':'text-emerald-400'}">${d.isExpense?'-':'+'}${euros} €</p>
+            ${d.photoURL?`<a class="link text-xs" target="_blank" href="${d.photoURL}">ticket</a>`:''}
+          </div>`;
+        lista.appendChild(row);
+      });
+    }
+    $('btnRefrescar').onclick = cargarUltimos;
+
+    // Sumas del mes actual
+    async function actualizarSumasMesActual(){
+      const u = auth.currentUser; if(!u) return;
+      const today = new Date();
+      const y = today.getFullYear(), m = today.getMonth();
+      const d0 = new Date(y, m, 1); const d1 = new Date(y, m+1, 1);
+      const col = collection(db, `users/${u.uid}/entries`);
+      const qy = query(col, where('date','>=',d0), where('date','<',d1));
+      const snap = await getDocs(qy);
+      let gastos=0, ingresos=0;
+      snap.forEach(doc=>{
+        const d = doc.data();
+        if(d.isExpense) gastos += (d.amount||0);
+        else ingresos += (d.amount||0);
+      });
+      $('sumGastos').textContent = '-€'+gastos.toFixed(2);
+      $('sumIngresos').textContent = '+€'+ingresos.toFixed(2);
+      $('sumBalance').textContent = '€'+(ingresos-gastos).toFixed(2);
+    }
+  </script>
 </body>
 </html>
