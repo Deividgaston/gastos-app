@@ -9,16 +9,30 @@
     *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Inter",system-ui,Segoe UI,Roboto}
     .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:#fff}
     .topbar img{height:28px} .topbar h1{font-size:18px;margin:0;font-weight:700;flex:1}
-    .btn{border:none;padding:10px 14px;border-radius:12px;background:#f2f2f7} .btn.primary{background:var(--blue);color:#fff}
+    .btn{border:none;padding:10px 14px;border-radius:12px;background:#f2f2f7;cursor:pointer} .btn.primary{background:var(--blue);color:#fff}
     .btn.small{padding:8px 10px;font-size:13px} .btn.outline{background:#fff;border:1px solid var(--border)}
     .content{max-width:820px;margin:0 auto;padding:16px}
     .metric-card{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
     .metric{border:1px solid var(--border);border-radius:16px;padding:14px 16px}
     .metric h2{margin:0 0 4px 0;font-size:22px} .metric p{margin:0;color:var(--muted);font-size:13px}
-    .panel{border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-top:12px}
-    .muted{color:var(--muted)} .stack{display:flex;gap:8px;flex-wrap:wrap}
     .tabs{display:flex;gap:8px;margin:10px 0} .tabs .tab{flex:1}
-    pre.log{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:240px;overflow:auto}
+    .panel{border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-top:12px}
+    .muted{color:var(--muted)} pre.log{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:240px;overflow:auto}
+
+    /* Modal revisión */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px}
+    .modal.open{display:flex}
+    .sheet{background:#fff;border-radius:18px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden}
+    .sheet header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .sheet h3{margin:0;font-size:16px}
+    .sheet .body{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:12px;color:#374151}
+    .field input,.field select,.field textarea{border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit}
+    .field textarea{grid-column:1/3;min-height:72px;resize:vertical}
+    .preview{grid-column:1/3;border:1px solid var(--border);border-radius:12px;padding:8px;display:flex;gap:12px;align-items:center}
+    .preview img{height:72px;width:auto;border-radius:8px}
+    .sheet footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
   </style>
 </head>
 <body>
@@ -56,6 +70,59 @@
     </section>
   </main>
 
+  <!-- Modal de revisión -->
+  <div id="reviewModal" class="modal" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+      <header>
+        <h3 id="reviewTitle">Revisar y guardar</h3>
+        <button id="btnCloseModal" class="btn small outline">Cerrar</button>
+      </header>
+      <div class="body">
+        <div class="field">
+          <label for="revDate">Fecha</label>
+          <input type="date" id="revDate" />
+        </div>
+        <div class="field">
+          <label for="revAmount">Importe (€)</label>
+          <input type="number" id="revAmount" min="0.01" step="0.01" />
+        </div>
+        <div class="field" style="grid-column:1/3">
+          <label for="revProvider">Proveedor / Concepto</label>
+          <input type="text" id="revProvider" placeholder="Ej: Repsol, Restaurante X" />
+        </div>
+        <div class="field">
+          <label for="revCategory">Categoría</label>
+          <select id="revCategory">
+            <option value="comida">Comida/Mercado</option>
+            <option value="transporte">Otros Transportes</option>
+            <option value="servicios">Servicios/Varios</option>
+            <option value="ocio">Ocio/Invitaciones</option>
+            <option value="gasolina">Gasolina</option>
+            <option value="peajes">Peajes/Parking</option>
+            <option value="alojamiento">Alojamiento/Hotel</option>
+            <option value="varios" selected>Varios</option>
+            <option value="ingreso">Ingreso</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column:1/3">
+          <label for="revNotes">Notas</label>
+          <textarea id="revNotes" placeholder="Opcional"></textarea>
+        </div>
+        <div class="preview">
+          <img id="revThumb" alt="ticket" />
+          <div>
+            <div style="font-size:12px;color:#6b7280">Vista previa del ticket</div>
+            <div id="revFileInfo" style="font-size:12px"></div>
+          </div>
+        </div>
+      </div>
+      <footer>
+        <button id="btnCancel" class="btn">Cancelar</button>
+        <button id="btnSave" class="btn primary">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
   <!-- ================= SCRIPTS (MÓDULOS) ================= -->
   <script type="module">
     // --------- Firebase (CDN módulos) ----------
@@ -64,7 +131,7 @@
       getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import {
-      getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs, where
+      getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
@@ -144,7 +211,6 @@
       const monthStart = new Date(`${y}-${m}-01T00:00:00`);
       const nextMonth = new Date(`${m==="12" ? y+1 : y}-${m==="12" ? "01" : String(Number(m)+1).padStart(2,"0")}-01T00:00:00`);
 
-      // Firestore: por simplicidad, leeremos todo y filtramos por fecha local (si quisieras optimizar, guarda un campo yyyymm y filtra por él)
       const col = collection(db, `users/${user.uid}/entries`);
       const q = query(col, orderBy("createdAt","desc"));
       const snap = await getDocs(q);
@@ -163,7 +229,7 @@
       setNumTickets(count);
     }
 
-    // ===================== OCR (Gemini) =====================
+    // ===================== OCR + Revisión =====================
 
     function getApiKey(){
       let k = localStorage.getItem("gkey");
@@ -236,7 +302,6 @@ Reglas:
         }]
       };
 
-      // Fallback de modelos compatibles con v1 (sin generationConfig/responseMimeType)
       const models = ["gemini-1.5-flash","gemini-1.5-pro","gemini-2.0-flash"];
       let lastErr;
       for (const model of models){
@@ -277,6 +342,62 @@ Reglas:
       return hiddenInput;
     }
 
+    // ------- Estado temporal para revisión -------
+    const reviewState = { file:null, provider:"", amount:0, dateISO:"", category:"varios", notes:"" };
+
+    function openReviewModal(){
+      $("reviewModal").classList.add("open");
+      $("revDate").value = reviewState.dateISO || new Date().toISOString().slice(0,10);
+      $("revAmount").value = reviewState.amount ? String(reviewState.amount) : "";
+      $("revProvider").value = reviewState.provider || "";
+      $("revCategory").value = reviewState.category || "varios";
+      $("revNotes").value = reviewState.notes || "";
+      $("revThumb").src = reviewState.file ? URL.createObjectURL(reviewState.file) : "";
+      $("revFileInfo").textContent = reviewState.file ? `${reviewState.file.name || "captura"} · ${Math.round(reviewState.file.size/1024)} KB` : "";
+    }
+    function closeReviewModal(){
+      $("reviewModal").classList.remove("open");
+      // Limpieza de URL blob (si quisieras liberar memoria)
+      try { if ($("revThumb").src.startsWith("blob:")) URL.revokeObjectURL($("revThumb").src); } catch {}
+    }
+
+    $("btnCloseModal").addEventListener("click", closeReviewModal);
+    $("btnCancel").addEventListener("click", closeReviewModal);
+
+    $("btnSave").addEventListener("click", async ()=>{
+      try{
+        const user = auth.currentUser; if(!user) return alert("Haz login primero");
+        // Leer valores del modal
+        const dateISO = $("revDate").value || new Date().toISOString().slice(0,10);
+        const amount = Number($("revAmount").value || 0);
+        const provider = $("revProvider").value.trim();
+        const category = $("revCategory").value;
+        const notes = $("revNotes").value.trim();
+
+        if (!provider) return alert("Proveedor es obligatorio");
+        if (!amount || amount <= 0) return alert("Importe debe ser mayor a 0");
+
+        const resp = await saveExpense({
+          date: dateISO,
+          category,
+          provider,
+          notes,
+          amount,
+          file: reviewState.file
+        });
+
+        log("✅ Gasto guardado con foto");
+        if (resp?.photoURL) log({ photoURL: resp.photoURL });
+        alert("Gasto guardado ✅");
+        closeReviewModal();
+        await refrescarDashboard();
+      }catch(e){
+        console.error(e);
+        log({ error: e.message || String(e), details: e.responseJSON || "" });
+        alert("❌ Error al guardar: " + (e.message || "desconocido"));
+      }
+    });
+
     async function handleScan(){
       try{
         const user = auth.currentUser; if(!user) return alert("Haz login primero");
@@ -297,25 +418,16 @@ Reglas:
         const result = await callGeminiVision(b64, file.type);
         log({ IA: result });
 
-        const provider = (result?.provider || "").toString().trim().slice(0,80) || "Ticket";
-        const amount = normalizeAmount(result?.amount);
+        // Rellenar estado para revisión
         const dateObj = normalizeDate(result?.date);
-        const yyyy_mm_dd = dateObj.toISOString().slice(0,10);
+        reviewState.file = file;
+        reviewState.provider = (result?.provider || "").toString().trim().slice(0,80) || "Ticket";
+        reviewState.amount = normalizeAmount(result?.amount);
+        reviewState.dateISO = dateObj.toISOString().slice(0,10);
+        reviewState.category = "varios";
+        reviewState.notes = "";
 
-        const resp = await saveExpense({
-          date: yyyy_mm_dd,
-          category: "varios",
-          provider,
-          notes: "",
-          amount,
-          file
-        });
-
-        log("✅ Gasto guardado con foto");
-        if (resp?.photoURL) log({ photoURL: resp.photoURL });
-        alert("Ticket escaneado y guardado ✅");
-
-        await refrescarDashboard();
+        openReviewModal();
       }catch(e){
         console.error(e);
         log({ error: e.message || String(e), details: e.responseJSON || "" });
