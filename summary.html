@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Summary — Gastos 2N</title>
+  <link rel="stylesheet" href="assets/style.css"/>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Summary</h1>
+    <a class="btn" href="index.html">Volver</a>
+    <span class="badge" style="margin-left:auto" id="whoami">...</span>
+  </header>
+  <main class="content">
+    <div class="panel">
+      <div class="grid2">
+        <div><div class="small">Gasto total</div><div id="totG" style="font-size:24px">-</div></div>
+        <div><div class="small">Ingresos</div><div id="totI" style="font-size:24px">-</div></div>
+      </div>
+    </div>
+    <div class="panel"><strong>Por categorías</strong><canvas id="pie" height="260"></canvas></div>
+    <div class="panel"><strong>Evolución semanal</strong><canvas id="line" height="260"></canvas></div>
+  </main>
+  <script>
+  (function(){
+    const {auth,db}=App; AfterRedirect(); requireAuth(load);
+    async function load(u){
+      const snap = await db.collection(`users/${u.uid}/entries`).orderBy('date','asc').get();
+      const data = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      const totals = data.reduce((a,e)=>{ if(e.category==='ingreso') a.ing+=Number(e.amount||0); else a.exp+=Number(e.amount||0); return a; },{exp:0,ing:0});
+      $id('totG').textContent = totals.exp.toFixed(2)+' €';
+      $id('totI').textContent = totals.ing.toFixed(2)+' €';
+
+      const cats = {{comida:0,gasolina:0,peajes:0,alojamiento:0,transporte:0,ocio:0,servicios:0,varios:0}};
+      data.forEach(e=>{ if(e.category!=='ingreso') cats[e.category||'varios'] += Number(e.amount||0); });
+      const pie = new Chart($id('pie'), {{type:'doughnut', data:{{labels:Object.keys(cats), datasets:[{{data:Object.values(cats)}}]}}}});
+
+      // weekly
+      const week = {{}};
+      data.forEach(e=>{ const d=e.date?.toDate?e.date.toDate():new Date(e.date); const k=new Date(d.getFullYear(), d.getMonth(), d.getDate()-d.getDay()+1).toISOString().slice(0,10); week[k]=(week[k]||0)+(e.category==='ingreso'?0:Number(e.amount||0)); });
+      const k=Object.keys(week).sort(); const v=k.map(x=>week[x]);
+      const line=new Chart($id('line'), {{type:'line', data:{{labels:k, datasets:[{{label:'Gasto', data:v}}]}}}});
+    }
+  })();
+  </script>
+</body>
+</html>
