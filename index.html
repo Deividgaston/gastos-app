@@ -1,302 +1,191 @@
-
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>Gastos 2N</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --bg:#0b0b0d; --card:#111114; --ink:#f8f9fb; --muted:#9aa0a6; --blue:#0a84ff;
-      --border: #1d1d22; --accent:#2b2b31;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
-    .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
-    .topbar{position:sticky;top:0;background:rgba(17,17,20,.85);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--border);z-index:20}
-    .topbar .row{display:flex;align-items:center;gap:8px;padding:12px 14px}
-    .logo{font-weight:700;letter-spacing:.2px}
-    .spacer{flex:1}
-    .chip{border:1px solid var(--border);background:var(--accent);padding:8px 12px;border-radius:14px;cursor:pointer}
-    .chip.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none}
-    .chip.ghost{background:transparent}
-    .content{padding:14px;display:grid;gap:14px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.3);padding:12px}
-    .card h2{font-size:16px;margin:0 0 8px 0}
-    .muted{color:var(--muted)}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .hidden{display:none!important}
-    .fab{position:fixed;right:16px;bottom:24px;background:#0a84ff;border-radius:18px;padding:12px 14px;font-weight:600;box-shadow:0 8px 30px rgba(10,132,255,.5);cursor:pointer;z-index:30}
-    .nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .nav a{display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;padding:14px 10px;border-radius:16px;background:linear-gradient(180deg,#131318,#0d0d12);border:1px solid var(--border);text-decoration:none;color:var(--ink)}
-    .nav .ico{font-size:20px}
-    input,select,textarea{width:100%;background:#0f0f14;color:var(--ink);border:1px solid #24242a;border-radius:12px;padding:10px 12px;font:inherit}
-    label{font-size:12px;color:var(--muted)}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:end;justify-content:center}
-    .modal.open{display:flex}
-    .sheet{background:var(--card);border:1px solid var(--border);border-radius:18px 18px 0 0;padding:14px;max-width:480px;width:100%}
-    .sheet header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .btn{border:1px solid var(--border);background:#141419;border-radius:12px;padding:10px 12px;color:var(--ink);cursor:pointer}
-    .btn.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none}
-    .list{display:grid;gap:8px}
-    .item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:14px;background:#0e0e13}
-    .item .left{display:flex;gap:10px;align-items:center;min-width:0}
-    .thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:#16161c}
-    .amount.minus{color:#ff6b6b} .amount.plus{color:#4cd964}
-    .notice{font-size:12px;color:var(--muted)}
-  </style>
-  <!-- Firebase compat SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Gastos 2N · iOS Dark</title>
+<link rel="stylesheet" href="assets/style.css"/>
+<!-- JS libs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 </head>
 
 <body>
-<div class="app">
-  <div class="topbar">
-    <div class="row">
-      <div class="logo">Gastos 2N</div>
-      <div class="spacer"></div>
-      <button id="btnAI" class="chip">🤖 IA</button>
-      <button id="btnLogin" class="chip primary">Entrar</button>
-      <button id="btnLogout" class="chip hidden">Salir</button>
+<header class="topbar">
+  <button class="btn ghost back" onclick="location.href='index.html'"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v16H4V4zm10 6h6v10h-6V10zm0-6h6v4h-6V4z"/></svg> Gastos 2N</button>
+  <span class="badge" id="whoami">No autenticado</span>
+  <button id="btnLogin" class="btn"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 015 5 5 5 0 01-5 5 5 5 0 01-5-5 5 5 0 015-5zm-7 18v-2a5 5 0 0110 0v2H5z"/></svg> Google</button>
+  <button id="btnLogout" class="btn" style="display:none">Salir</button>
+</header>
+<main class="wrap">
+  <div class="card">
+    <h3 class="section-title">Acciones rápidas (iPhone optimizado)</h3>
+    <div class="grid">
+      <button id="scanBtn" class="btn primary"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7h4V5H3v2zm10 0h4V5h-4v2zM3 19h4v-2H3v2zm10 0h4v-2h-4v2z"/></svg> Escanear ticket</button>
+      <button id="addIncome" class="btn"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2z"/></svg> Ingreso manual</button>
+      <button class="btn" onclick="location.href='kms.html'"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 17h16l-2 4H6l-2-4zm2-10l3-3h6l3 3 2 8H4l2-8z"/></svg> Gastos de KM</button>
+      <button class="btn" onclick="location.href='export.html'"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l4 4h-3v7h-2V6H8l4-4zm-7 9h2v9h10v-9h2v11H5V11z"/></svg> Exportar</button>
+      <button class="btn" onclick="location.href='summary.html'"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v16H4V4zm10 6h6v10h-6V10zm0-6h6v4h-6V4z"/></svg> Summary</button>
+      <button id="btnAI" class="btn ghost"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a5 5 0 015 5 5 5 0 01-5 5 5 5 0 01-5-5 5 5 0 015-5zm-7 18v-2a5 5 0 0110 0v2H5z"/></svg> IA / API Key</button>
     </div>
   </div>
 
-  <div class="content">
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <h2>Acciones rápidas</h2>
-          <div id="whoami" class="muted">No autenticado</div>
-        </div>
-      </div>
-      <div class="nav" style="margin-top:8px">
-        <a id="scanBtn"><div class="ico">📸</div><div>Escanear</div></a>
-        <a id="manualBtn"><div class="ico">✍️</div><div>Ingreso manual</div></a>
-        <a href="km.html"><div class="ico">🚗</div><div>Gastos KM</div></a>
-        <a href="export.html"><div class="ico">📁</div><div>Exportar</div></a>
-      </div>
-    </div>
+  <div class="card" style="margin-top:12px">
+    <h3 class="section-title">Actividad</h3>
+    <div id="logs" class="small"></div>
+  </div>
+</main>
 
-    <div class="card">
-      <h2>Últimos gastos</h2>
-      <div class="list" id="lastList"></div>
-      <div class="notice">Las fotos y datos se guardan en tu cuenta de Firebase</div>
+<!-- Modal IA -->
+<div id="aiModal" class="modal">
+  <div class="sheet">
+    <header><strong>Configurar IA</strong><button class="btn" onclick="closeAI()">Cerrar</button></header>
+    <div class="body" style="grid-template-columns:1fr">
+      <div>
+        <label>API Key de Google AI (Gemini)</label>
+        <input id="aiKey" type="password" placeholder="AIza..." />
+        <div class="small">Se guarda en este navegador.</div>
+      </div>
     </div>
+    <footer>
+      <button class="btn" onclick="clearAI()">Borrar</button>
+      <button class="btn primary" onclick="saveAI()">Guardar</button>
+    </footer>
   </div>
 </div>
 
-<!-- Modales -->
-<div id="aiModal" class="modal"><div class="sheet">
-  <header><strong>Configurar IA (Gemini)</strong><button class="btn" id="closeAI">Cerrar</button></header>
-  <div>
-    <label>API Key (se guarda en este dispositivo)</label>
-    <input id="aiKey" type="password" placeholder="AIza..." />
+<!-- Modal Revisar/Guardar -->
+<div id="reviewModal" class="modal">
+  <div class="sheet">
+    <header><strong>Revisar y guardar</strong><button class="btn" onclick="closeReview()">Cerrar</button></header>
+    <div class="body">
+      <div><label>Fecha</label><input id="revDate" type="date"/></div>
+      <div><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"/></div>
+      <div style="grid-column:1/2"><label>Proveedor</label><input id="revProvider" type="text"/></div>
+      <div><label>Categoría</label><select id="revCategory">
+        <option value="varios">Varios</option><option value="comida">Comida</option><option value="gasolina">Gasolina</option>
+        <option value="peajes">Peajes</option><option value="alojamiento">Hotel</option><option value="transporte">Transportes</option>
+        <option value="ocio">Invitaciones</option><option value="servicios">Servicios</option><option value="ingreso">Ingreso</option>
+      </select></div>
+      <div style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
+      <div class="preview"><img id="revThumb" class="thumb"><div id="revInfo" class="small"></div></div>
+      <div style="grid-column:1/3">
+        <label>Foto (opcional)</label>
+        <input id="revFile" type="file" accept="image/*"/>
+      </div>
+    </div>
+    <footer>
+      <button class="btn" onclick="closeReview()">Cancelar</button>
+      <button class="btn primary" id="saveReview">Guardar</button>
+    </footer>
   </div>
-  <div class="row" style="margin-top:10px;justify-content:flex-end">
-    <button class="btn" id="clearAI">Borrar</button>
-    <button class="btn primary" id="saveAI">Guardar</button>
-  </div>
-</div></div>
+</div>
 
-<div id="reviewModal" class="modal"><div class="sheet">
-  <header><strong>Revisar y guardar</strong><button class="btn" id="closeReview">Cerrar</button></header>
-  <div class="grid2">
-    <div><label>Fecha</label><input id="revDate" type="date"></div>
-    <div><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"></div>
-    <div style="grid-column:1/3"><label>Proveedor</label><input id="revProvider" type="text" maxlength="80"></div>
-    <div><label>Categoría</label><select id="revCategory">
-      <option value="varios" selected>Varios</option>
-      <option value="comida">Comida</option>
-      <option value="gasolina">Gasolina</option>
-      <option value="peajes">Peajes</option>
-      <option value="alojamiento">Hotel</option>
-      <option value="transporte">Transportes</option>
-      <option value="ocio">Invitaciones</option>
-      <option value="servicios">Servicios</option>
-      <option value="ingreso">Ingreso</option>
-    </select></div>
-    <div><label>Imagen</label><input id="revFile" type="file" accept="image/*"></div>
-    <div style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
-    <div style="grid-column:1/3" class="row"><img id="revThumb" class="thumb"><div id="revInfo" class="muted"></div></div>
-  </div>
-  <div class="row" style="justify-content:flex-end;margin-top:10px">
-    <button class="btn" id="cancelReview">Cancelar</button>
-    <button class="btn primary" id="saveReview">Guardar</button>
-  </div>
-</div></div>
 
 <script>
-  // ===== UI helpers (modals) =====
-  const $ = (id)=>document.getElementById(id);
-  const open = (el)=>el.classList.add('open');
-  const close = (el)=>el.classList.remove('open');
-
-  // ===== Firebase init =====
-  
-    // ======= CONFIG FIREBASE (TU PROYECTO) =======
-    const firebaseConfig = {
-      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-      authDomain: "gastos-2n.firebaseapp.com",
-      projectId: "gastos-2n",
-      storageBucket: "gastos-2n.firebasestorage.app",
-      messagingSenderId: "55010048795",
-      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
-
-
-  // ===== Auth =====
-  const provider = new firebase.auth.GoogleAuthProvider();
-  $('btnLogin').onclick = async ()=>{ try{ await auth.signInWithPopup(provider);}catch(e){alert(e.message)} };
-  $('btnLogout').onclick = async ()=> auth.signOut();
-  auth.onAuthStateChanged(async (user)=>{
-    if(user){
-      $('whoami').textContent = user.email || user.uid;
-      $('btnLogin').classList.add('hidden'); $('btnLogout').classList.remove('hidden');
-      loadLast();
-    }else{
-      $('whoami').textContent = 'No autenticado';
-      $('btnLogin').classList.remove('hidden'); $('btnLogout').classList.add('hidden');
-      $('lastList').innerHTML = '';
-    }
-  });
-
-  // ===== AI Key modal =====
-  $('btnAI').onclick = ()=>{ $('aiKey').value=localStorage.getItem('gkey')||''; open($('aiModal')); };
-  $('closeAI').onclick = ()=> close($('aiModal'));
-  $('saveAI').onclick = ()=>{ const v=$('aiKey').value.trim(); if(!v){alert('Pega tu API key');return;} localStorage.setItem('gkey', v); close($('aiModal')); };
-  $('clearAI').onclick = ()=>{ localStorage.removeItem('gkey'); $('aiKey').value=''; };
-
-  // ===== OCR helpers (Gemini) =====
-  const fileToBase64 = (file)=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(file); });
-  const downscale = async (file, max=2048,q=0.9)=>{
-    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
-    const s=Math.min(1, max/Math.max(img.width,img.height));
-    const w=Math.round(img.width*s), h=Math.round(img.height*s);
-    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
-    const blob = await new Promise(r=>cv.toBlob(r,'image/jpeg',q)); URL.revokeObjectURL(img.src);
-    return new File([blob], (file.name||'ticket')+'.jpg', {type:'image/jpeg'});
-  };
-  const safeParseJSON=(t)=>{ let s=(t||'').trim(); if(s.startsWith('```')) s=s.replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
-    const a=s.indexOf('{'), b=s.lastIndexOf('}'); if(a>-1&&b>-1) s=s.slice(a,b+1); return JSON.parse(s); };
-  const fallbackParse=(text)=>{ const T=(text||'').replace(/\s+/g,' ').trim();
-    let amount=0; const m=T.match(/(\d+[.,]\d{2})\s*(€|eur)?/i); if(m) amount=Number(m[1].replace(',','.'));
-    let dISO=new Date().toISOString().slice(0,10);
-    const d1=T.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/); const d2=T.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
-    if(d2) dISO=`${d2[1]}-${d2[2]}-${d2[3]}`; else if(d1) dISO=`${d1[3]}-${d1[2]}-${d1[1]}`;
-    let provider='Ticket'; const p=T.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); if(p) provider=p[0].trim(); return {date:dISO, provider, amount}; };
-  async function callGemini(file){
-    const key=(localStorage.getItem('gkey')||'').trim(); if(!key){ open($('aiModal')); throw new Error('Falta API Key'); }
-    const prompt=`Devuelve solo un JSON válido: {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}`;
-    const base64 = await fileToBase64(file);
-    const body={ contents:[{role:'user',parts:[{text:prompt},{inlineData:{mimeType:file.type||'image/jpeg',data:base64}}]}] };
-    const models=['gemini-2.5-flash','gemini-2.0-flash'];
-    for(const model of models){
-      const url=`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-      const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{}
-      if(res.status===429){ await new Promise(r=>setTimeout(r,800)); continue; }
-      if(!res.ok) continue;
-      const text=js?.candidates?.[0]?.content?.parts?.[0]?.text||'';
-      try{ return safeParseJSON(text);}catch{ return fallbackParse(text); }
-    }
-    throw new Error('No se pudo extraer texto');
-  }
-
-  // ===== Review modal state =====
-  const review = { file:null };
-  const setReviewFile = (f)=>{
-    review.file=f;
-    if(f){ $('revThumb').src = URL.createObjectURL(f); $('revInfo').textContent = `${f.name} · ${Math.round(f.size/1024)} KB`; }
-  };
-
-  $('closeReview').onclick = ()=> close($('reviewModal'));
-  $('cancelReview').onclick = ()=> close($('reviewModal'));
-  $('revFile').onchange = (e)=>{ const f=e.target.files?.[0]; if(f) setReviewFile(f); };
-
-  // ===== Scan & Manual =====
-  function pickCamera(){
-    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.click();
-    return new Promise((res,rej)=>{ inp.onchange=()=>{ inp.files&&inp.files[0]?res(inp.files[0]):rej(new Error('Sin imagen')); }; });
-  }
-  document.getElementById('scanBtn').onclick = async ()=>{
-    const user=auth.currentUser; if(!user) return alert('Haz login primero');
-    try{
-      const raw = await pickCamera();
-      const file = await downscale(raw, 2048, .9);
-      const r = await callGemini(file);
-      $('revDate').value = (r.date && /^\d{4}-\d{2}-\d{2}$/.test(r.date))? r.date : new Date().toISOString().slice(0,10);
-      $('revAmount').value = r.amount||'';
-      $('revProvider').value = r.provider||'';
-      $('revCategory').value = 'varios';
-      $('revNotes').value = '';
-      setReviewFile(file);
-      open($('reviewModal'));
-    }catch(e){ alert(e.message||String(e)); }
-  };
-
-  document.getElementById('manualBtn').onclick = ()=>{
-    const user=auth.currentUser; if(!user) return alert('Haz login primero');
-    $('revDate').value = new Date().toISOString().slice(0,10);
-    $('revAmount').value=''; $('revProvider').value=''; $('revCategory').value='varios'; $('revNotes').value='';
-    $('revFile').value=''; $('revThumb').src=''; $('revInfo').textContent='';
-    review.file=null; open($('reviewModal'));
-  };
-
-  // ===== Guardar =====
-  document.getElementById('saveReview').onclick = async ()=>{
-    try{
-      const user=auth.currentUser; if(!user) return alert('Haz login');
-      const dateISO=$('revDate').value||new Date().toISOString().slice(0,10);
-      const amount=Number($('revAmount').value||0); if(!(amount>0)) return alert('Importe > 0');
-      const provider=($('revProvider').value||'Ticket').slice(0,80);
-      const category=$('revCategory').value; const notes=$('revNotes').value||'';
-      const yyyyMM=dateISO.slice(0,7);
-      let photoURL='', photoPath='';
-      if(review.file){
-        const safeProv=provider.replace(/[^a-zA-Z0-9-_ ]/g,'').slice(0,40).replace(/\s+/g,'_');
-        const ext=(review.file.name.split('.').pop()||'jpg').toLowerCase();
-        const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
-        photoPath = `tickets/${user.uid}/${yyyyMM}/${filename}`;
-        await storage.ref(photoPath).put(review.file);
-        photoURL = await storage.ref(photoPath).getDownloadURL();
-      }
-      await db.collection(`users/${user.uid}/entries`).add({
-        date:new Date(dateISO), amount, provider, category, notes,
-        photoURL, photoPath, isExpense: category!=='ingreso',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      close($('reviewModal')); loadLast(); alert('Guardado ✅');
-    }catch(e){ alert(e.message||String(e)); }
-  };
-
-  // ===== Últimos =====
-  async function loadLast(){
-    const user=auth.currentUser; if(!user) return;
-    const snap = await db.collection(`users/${user.uid}/entries`).orderBy('createdAt','desc').limit(10).get();
-    const list=$('lastList'); list.innerHTML='';
-    snap.forEach(doc=>{
-      const d=doc.data(); const dt = d.date?.toDate ? d.date.toDate() : new Date(d.date);
-      const li=document.createElement('div'); li.className='item';
-      li.innerHTML = `<div class="left">
-          ${d.photoURL?`<img class="thumb" src="${d.photoURL}" alt="">`:`<div class="thumb"></div>`}
-          <div><div style="font-weight:600">${(d.provider||'-').toString().slice(0,40)}</div>
-          <div class="muted" style="font-size:12px">${dt.toLocaleDateString('es-ES')} · ${d.category||'-'}</div></div>
-        </div>
-        <div class="amount ${d.isExpense?'minus':'plus'}">${d.isExpense?'-':'+'}${Number(d.amount||0).toFixed(2)} €</div>`;
-      list.appendChild(li);
-    });
-  }
+window.APP = {"apiKey": "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs", "authDomain": "gastos-2n.firebaseapp.com", "projectId": "gastos-2n", "storageBucket": "gastos-2n.firebasestorage.app", "messagingSenderId": "55010048795", "appId": "1:55010048795:web:4fb48d1e0f9006ebf7b1be"};
+firebase.initializeApp(APP);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+const provider = new firebase.auth.GoogleAuthProvider();
+function byId(id){return document.getElementById(id);}
+function fmt€(n){return (Number(n)||0).toLocaleString('es-ES',{style:'currency',currency:'EUR'});}
+function alertMsg(t){alert(t);}
+auth.onAuthStateChanged(u=>{ const w=byId('whoami'); if(w) w.textContent = u? (u.email||u.uid) : 'No autenticado'; if(byId('btnLogin')){byId('btnLogin').style.display=u?'none':'inline-flex';} if(byId('btnLogout')){byId('btnLogout').style.display=u?'inline-flex':'none';} });
 </script>
-</body>
-</html>
+
+<script>
+// Auth buttons
+byId('btnLogin').onclick = ()=> auth.signInWithPopup(provider).catch(e=>alertMsg(e.message));
+byId('btnLogout').onclick = ()=> auth.signOut();
+
+// AI modal
+const aiM = byId('aiModal');
+function openAI(){ aiM.classList.add('open'); byId('aiKey').value = localStorage.getItem('gkey')||''; }
+function closeAI(){ aiM.classList.remove('open'); }
+function saveAI(){ const v=byId('aiKey').value.trim(); if(!v) return alertMsg('Pega tu API Key'); localStorage.setItem('gkey',v); alertMsg('Guardada ✅'); closeAI(); }
+function clearAI(){ localStorage.removeItem('gkey'); byId('aiKey').value=''; alertMsg('Borrada'); }
+byId('btnAI').onclick=openAI;
+
+// Review modal
+const rM = byId('reviewModal');
+function openReview(){ rM.classList.add('open'); }
+function closeReview(){ rM.classList.remove('open'); }
+
+let review = { file:null, dateISO:'', amount:0, provider:'', category:'varios', notes:'', photo:null };
+function setPreview(file){
+  if(!file){ byId('revThumb').src=''; byId('revInfo').textContent=''; return; }
+  const url = URL.createObjectURL(file);
+  byId('revThumb').src = url;
+  byId('revInfo').textContent = `${file.name} · ${Math.round(file.size/1024)} KB`;
+}
+byId('revFile').addEventListener('change', e=>{ if(e.target.files[0]){ review.file=e.target.files[0]; setPreview(e.target.files[0]); } });
+
+// Scan flow
+byId('scanBtn').onclick = async ()=>{
+  const u=auth.currentUser; if(!u) return alertMsg('Haz login primero');
+  const input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.capture='environment';
+  input.onchange=async()=>{
+    const f=input.files[0]; if(!f) return;
+    setPreview(f);
+    const compact = await downscaleImage(f, 2048, 0.9);
+    const b64 = await fileToBase64(compact);
+    try{ const res = await callGemini(b64, compact.type);
+      const d=/^\d{4}-\d{2}-\d{2}$/.test(res.date||'') ? new Date(res.date+'T00:00:00') : new Date();
+      review={ file:compact, dateISO:d.toISOString().slice(0,10), amount:Number(res.amount||0)||0, provider:(res.provider||'Ticket').toString().slice(0,80), category:'varios', notes:'', photo:compact };
+      byId('revDate').value=review.dateISO; byId('revAmount').value=review.amount; byId('revProvider').value=review.provider; byId('revCategory').value=review.category; byId('revNotes').value='';
+      openReview();
+    }catch(e){ alertMsg('OCR error: '+e.message); }
+  };
+  input.click();
+};
+
+// Manual income button -> open empty review (category ingreso)
+byId('addIncome').onclick = ()=>{
+  const u=auth.currentUser; if(!u) return alertMsg('Haz login primero');
+  const today = new Date().toISOString().slice(0,10);
+  review={ file:null, dateISO:today, amount:0, provider:'', category:'ingreso', notes:'', photo:null };
+  byId('revDate').value=today; byId('revAmount').value=''; byId('revProvider').value=''; byId('revCategory').value='ingreso'; byId('revNotes').value='';
+  setPreview(null);
+  openReview();
+};
+
+// Helpers
+function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(file);});}
+async function downscaleImage(file, max=2048, q=.9){ const img=await new Promise((res,rej)=>{const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file);}); const s=Math.min(1,max/Math.max(img.width,img.height)); const w=Math.round(img.width*s), h=Math.round(img.height*s); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',q)); return new File([blob], (file.name||'ticket')+'.jpg', {type:'image/jpeg'}); }
+function safeParseJSON(text){ let s=(text||'').trim(); if(s.startsWith('```')) s=s.replace(/^```(?:json)?/i,'').replace(/```$/i,'').trim(); const a=s.indexOf('{'), b=s.lastIndexOf('}'); if(a!==-1&&b!==-1) s=s.slice(a,b+1); return JSON.parse(s);}
+function fallbackParse(text){ const t=(text||'').replace(/\s+/g,' ').trim(); let amount=0; const m=t.match(/(\d+[.,]\d{2})/); if(m) amount=Number(m[1].replace(',','.')); let dateISO=new Date().toISOString().slice(0,10); let provider='Ticket'; return {date:dateISO, provider, amount}; }
+async function callGemini(base64, mime){ const key=(localStorage.getItem('gkey')||'').trim(); if(!key){openAI(); throw new Error('Falta API Key');} const prompt=`Devuelve solo JSON: {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}`; const body={ contents:[{role:'user', parts:[{text:prompt},{inlineData:{mimeType:mime||'image/jpeg', data:base64}}]}] }; const models=['gemini-2.5-flash','gemini-2.0-flash']; for(const model of models){ const url=`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`; const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{} if(res.status===429){await new Promise(r=>setTimeout(r,800)); continue;} if(!res.ok) continue; const text=js?.candidates?.[0]?.content?.parts?.[0]?.text||''; try{return safeParseJSON(text);}catch{return fallbackParse(text);} } throw new Error('No fue posible extraer datos'); }
+
+// Save entry
+byId('saveReview').onclick = async ()=>{
+  try{ const u=auth.currentUser; if(!u) return alertMsg('Haz login primero');
+    const dateISO = byId('revDate').value||new Date().toISOString().slice(0,10);
+    const amount = Number(byId('revAmount').value||0);
+    const provider = byId('revProvider').value.trim()|| (byId('revCategory').value==='ingreso'?'Ingreso':'Ticket');
+    const category = byId('revCategory').value;
+    const notes = byId('revNotes').value.trim();
+    if(!provider) return alertMsg('Proveedor obligatorio');
+    if(category!=='ingreso' && (!amount || amount<=0)) return alertMsg('Importe > 0');
+    const yyyyMM = dateISO.slice(0,7);
+    let photoURL="", path="";
+    const file = review.file;
+    if(file){ const safeProv=(provider||'ticket').replace(/[^a-zA-Z0-9-_ ]/g,'').slice(0,40).replace(/\s+/g,'_'); const ext=(file.name.split('.').pop()||'jpg').toLowerCase(); const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`; path=`tickets/${u.uid}/${yyyyMM}/${filename}`; await storage.ref(path).put(file); photoURL = await storage.ref(path).getDownloadURL(); }
+    await db.collection(`users/${u.uid}/entries`).add({
+      date: new Date(dateISO), category, provider, notes, amount,
+      photoURL, photoPath:path, isExpense: category!=='ingreso',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alertMsg('Guardado ✅'); closeReview();
+  }catch(e){ alertMsg('Error: '+e.message); }
+};
+</script>
+</body></html>

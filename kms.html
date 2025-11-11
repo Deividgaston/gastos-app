@@ -1,207 +1,110 @@
-
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Gastos 2N</title>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="dns-prefetch" href="https://www.gstatic.com">
-  <style>
-    :root{
-      --bg:#0b0c0f; --card:#12141a; --muted:#8a8f98; --text:#eef2f7;
-      --blue:#0a84ff; --green:#30d158; --red:#ff453a; --sep:rgba(255,255,255,.06);
-      --shadow:0 12px 40px rgba(0,0,0,.35);
-      --radius:22px;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,Segoe UI,Roboto}
-    .safe{padding-top:constant(safe-area-inset-top);padding-top:env(safe-area-inset-top)}
-    .shell{max-width:428px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
-    header.top{position:sticky;top:0;z-index:5;backdrop-filter:saturate(180%) blur(18px);background:rgba(11,12,15,.6);border-bottom:1px solid var(--sep)}
-    .top-inner{display:flex;gap:10px;align-items:center;padding:14px 16px}
-    h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
-    .spacer{flex:1}
-    .iconbtn{background:linear-gradient(180deg,#1a1d24,#12141a);border:1px solid var(--sep);border-radius:14px;padding:10px;display:inline-flex;align-items:center;gap:8px;color:var(--text);box-shadow:var(--shadow);cursor:pointer}
-    .iconbtn.primary{background:linear-gradient(180deg,#0f6bd8,#0a58b5);border-color:rgba(255,255,255,.15)}
-    .iconbtn.green{background:linear-gradient(180deg,#2fbf66,#27a95a)}
-    .grid{display:grid;gap:12px;padding:16px}
-    .card{background:linear-gradient(180deg,#181b23,#12141a);border:1px solid var(--sep);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
-    .row{display:flex;align-items:center;gap:12px}
-    .title{font-size:15px;font-weight:600}
-    .muted{color:var(--muted)}
-    .chip{padding:6px 10px;border-radius:999px;border:1px solid var(--sep);font-size:12px;color:var(--muted)}
-    .bigbtn{display:flex;gap:12px;align-items:center;justify-content:center;padding:14px;border-radius:18px;border:1px solid var(--sep);background:linear-gradient(180deg,#191d25,#141720);box-shadow:var(--shadow);cursor:pointer}
-    .bigbtn .emoji{font-size:22px}
-    .cta{background:linear-gradient(180deg,#0a84ff,#0063e5);color:white;border:0}
-    .hidden{display:none!important}
-    .list{display:grid;gap:8px}
-    .log{background:#0f1116;border:1px solid var(--sep);border-radius:16px;padding:10px;white-space:pre-wrap;max-height:200px;overflow:auto;color:#b7c4d6}
-    a{color:#a3c8ff;text-decoration:none}
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js" type="module"></script>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Gastos de KM · iOS Dark</title>
+<link rel="stylesheet" href="assets/style.css"/>
+<!-- JS libs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 </head>
-<body class="safe">
-  <div class="shell">
-    <header class="top">
-      <div class="top-inner">
-        <a href="index.html" class="iconbtn">←</a>
-        <h1>Gastos KM</h1>
-        <div class="spacer"></div>
-        <span class="chip" id="whoami">Invitado</span>
+
+<body>
+<header class="topbar">
+  <button class="btn back" onclick="location.href='index.html'"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M15 18l-6-6 6-6"/></svg> Volver</button>
+  <h1>Kilometraje</h1>
+  <span class="badge" id="whoami">No autenticado</span>
+</header>
+<main class="wrap">
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Fecha</label><input id="kmDate" type="date"/>
       </div>
-    </header>
-
-    <main class="grid">
-      <section class="card">
-        <div class="title">Nuevo registro</div>
-        <div class="grid" style="grid-template-columns:1fr 1fr">
-          <label>Fecha
-            <input id="fDate" type="date" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-          </label>
-          <label>Destino
-            <input id="fDestino" type="text" placeholder="Cliente/Obra" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-          </label>
-          <label>Km empresa
-            <input id="fKmEmp" type="number" step="0.1" min="0" value="0" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-          </label>
-          <label>Km personal
-            <input id="fKmPer" type="number" step="0.1" min="0" value="0" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-          </label>
-          <label>Precio litro (€)
-            <input id="fPrecio" type="number" step="0.001" min="0" value="1.600" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-          </label>
-          <div class="row" style="align-items:flex-end">
-            <button id="btnAddKM" class="bigbtn cta"><span class="emoji">➕</span> Añadir</button>
-          </div>
-        </div>
-        <div class="muted" id="calcHint"></div>
-      </section>
-
-      <section class="card">
-        <div class="row" style="justify-content:space-between">
-          <div class="title">Resumen mensual</div>
-          <input id="selMonth" type="month" style="padding:8px;border-radius:10px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-        </div>
-        <div class="grid" style="grid-template-columns:1fr 1fr">
-          <div class="card" style="background:#10131a">
-            <div class="muted">KM empresa</div>
-            <div id="sumEmp" style="font-size:22px;font-weight:700">0</div>
-          </div>
-          <div class="card" style="background:#10131a">
-            <div class="muted">KM personal</div>
-            <div id="sumPer" style="font-size:22px;font-weight:700">0</div>
-          </div>
-          <div class="card" style="background:#10131a">
-            <div class="muted">Total KM</div>
-            <div id="sumTot" style="font-size:22px;font-weight:700">0</div>
-          </div>
-          <div class="card" style="background:#10131a">
-            <div class="muted">€ Personal (km*precio)</div>
-            <div id="sumEur" style="font-size:22px;font-weight:700">0.00 €</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="title">Listado</div>
-        <div class="list" id="list"></div>
-      </section>
-    </main>
+      <div>
+        <label>Destino</label><input id="kmDest" type="text" placeholder="Ej. Bilbao → San Sebastián"/>
+      </div>
+      <div>
+        <label>KM Empresa</label><input id="kmBiz" type="number" min="0" step="0.1"/>
+      </div>
+      <div>
+        <label>KM Personal</label><input id="kmPers" type="number" min="0" step="0.1"/>
+      </div>
+      <div>
+        <label>Precio €/L gasolina</label><input id="kmPrice" type="number" min="0" step="0.01"/>
+      </div>
+      <div>
+        <label>Foto del trayecto o ticket (opcional)</label><input id="kmPhoto" type="file" accept="image/*"/>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="small">Total KM coche: <b id="kmTotal">0</b></div>
+      <div class="small">€ personal (kmPers×€/L): <b id="kmEuro">0,00 €</b></div>
+      <button id="saveKM" class="btn primary"><svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2z"/></svg> Guardar KM</button>
+    </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <div class="card" style="margin-top:12px">
+    <h3 class="section-title">Últimos registros</h3>
+    <div id="kmList" class="list"></div>
+  </div>
+</main>
 
+<script>
+window.APP = {"apiKey": "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs", "authDomain": "gastos-2n.firebaseapp.com", "projectId": "gastos-2n", "storageBucket": "gastos-2n.firebasestorage.app", "messagingSenderId": "55010048795", "appId": "1:55010048795:web:4fb48d1e0f9006ebf7b1be"};
+firebase.initializeApp(APP);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+const provider = new firebase.auth.GoogleAuthProvider();
+function byId(id){return document.getElementById(id);}
+function fmt€(n){return (Number(n)||0).toLocaleString('es-ES',{style:'currency',currency:'EUR'});}
+function alertMsg(t){alert(t);}
+auth.onAuthStateChanged(u=>{ const w=byId('whoami'); if(w) w.textContent = u? (u.email||u.uid) : 'No autenticado'; if(byId('btnLogin')){byId('btnLogin').style.display=u?'none':'inline-flex';} if(byId('btnLogout')){byId('btnLogout').style.display=u?'inline-flex':'none';} });
+</script>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-  authDomain: "gastos-2n.firebaseapp.com",
-  projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
-  messagingSenderId: "55010048795",
-  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+<script>
+byId('kmDate').value = new Date().toISOString().slice(0,10);
+function recalc(){
+  const total = (Number(byId('kmBiz').value)||0) + (Number(byId('kmPers').value)||0);
+  byId('kmTotal').textContent = total.toFixed(1);
+  const euro = (Number(byId('kmPers').value)||0) * (Number(byId('kmPrice').value)||0);
+  byId('kmEuro').textContent = fmt€(euro);
+}
+['kmBiz','kmPers','kmPrice'].forEach(id=> byId(id).addEventListener('input', recalc));
+
+byId('saveKM').onclick = async ()=>{
+  try{ const u=auth.currentUser; if(!u) return alertMsg('Haz login primero');
+    const dateISO = byId('kmDate').value;
+    const dest = byId('kmDest').value.trim();
+    const kmBiz = Number(byId('kmBiz').value)||0;
+    const kmPers = Number(byId('kmPers').value)||0;
+    const price = Number(byId('kmPrice').value)||0;
+    let photoURL='', path='';
+    const f=byId('kmPhoto').files[0];
+    if(f){ const yyyyMM = dateISO.slice(0,7); const filename=`km_${dateISO}_${Date.now()}.jpg`; path=`tickets/${u.uid}/${yyyyMM}/${filename}`; await storage.ref(path).put(f); photoURL = await storage.ref(path).getDownloadURL(); }
+    await db.collection(`users/${u.uid}/kms`).add({
+      date:new Date(dateISO), dest, kmBiz, kmPers, price, totalKm:kmBiz+kmPers, euro: kmPers*price, photoURL, photoPath:path,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alertMsg('KM guardado ✅'); loadKMs();
+  }catch(e){ alertMsg('Error: '+e.message); }
 };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const $ = id=>document.getElementById(id);
-    const today = new Date().toISOString().slice(0,10);
-    $("fDate").value = today;
-    $("selMonth").value = new Date().toISOString().slice(0,7);
-
-    onAuthStateChanged(auth, (user)=>{
-      document.getElementById("whoami").textContent = user ? (user.email||user.uid) : "Invitado";
-      if(!user){
-        const prov = new GoogleAuthProvider();
-        signInWithPopup(auth, prov).catch(()=>{});
-      } else {
-        refreshMonth();
-      }
-    });
-
-    async function addKM(){
-      const u = auth.currentUser; if(!u) return alert("Login requerido");
-      const d = document.getElementById("fDate").value || today;
-      const dest = document.getElementById("fDestino").value.trim();
-      const kE = Number(document.getElementById("fKmEmp").value||0);
-      const kP = Number(document.getElementById("fKmPer").value||0);
-      const pL = Number(document.getElementById("fPrecio").value||0);
-      const yM = d.slice(0,7);
-      await addDoc(collection(db, `users/${u.uid}/kms`), {
-        date: new Date(d), month: yM, destino: dest,
-        kmEmpresa: kE, kmPersonal: kP, precioLitro: pL,
-        createdAt: new Date()
-      });
-      document.getElementById("fDestino").value=""; document.getElementById("fKmEmp").value="0"; document.getElementById("fKmPer").value="0";
-      refreshMonth();
-    }
-    document.getElementById("btnAddKM").onclick = addKM;
-
-    async function refreshMonth(){
-      const u = auth.currentUser; if(!u) return;
-      const ym = document.getElementById("selMonth").value;
-      const qy = query(collection(db, `users/${u.uid}/kms`), where("month","==",ym), orderBy("date","asc"));
-      const snap = await getDocs(qy);
-      let emp=0, per=0, items=[];
-      snap.forEach(doc=>{
-        const r = doc.data();
-        const d = r.date?.toDate ? r.date.toDate() : new Date(r.date);
-        const kmE=Number(r.kmEmpresa||0), kmP=Number(r.kmPersonal||0), pL=Number(r.precioLitro||0);
-        emp += kmE; per += kmP;
-        items.push({ fecha: d.toISOString().slice(0,10), destino:r.destino||"", kmE, kmP, pL, eurP:(kmP*pL) });
-      });
-      const tot = emp + per, eur = items.reduce((a,b)=>a+b.eurP,0);
-      document.getElementById("sumEmp").textContent = emp.toFixed(1);
-      document.getElementById("sumPer").textContent = per.toFixed(1);
-      document.getElementById("sumTot").textContent = tot.toFixed(1);
-      document.getElementById("sumEur").textContent = eur.toFixed(2) + " €";
-      const list = document.getElementById("list"); list.innerHTML="";
-      for(const it of items){
-        const card=document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `<div class="row" style="justify-content:space-between">
-          <div>
-            <div class="title">${it.fecha} · ${it.destino}</div>
-            <div class="muted">Emp: ${it.kmE} km — Per: ${it.kmP} km · € per: ${(it.eurP).toFixed(2)}</div>
-          </div>
-        </div>`;
-        list.appendChild(card);
-      }
-    }
-    document.getElementById("selMonth").addEventListener("change", refreshMonth);
-  </script>
-</body>
-</html>
+async function loadKMs(){
+  const u=auth.currentUser; if(!u) return;
+  const snap = await db.collection(`users/${u.uid}/kms`).orderBy('date','desc').limit(20).get();
+  const list = byId('kmList'); list.innerHTML='';
+  snap.docs.forEach(d=>{ const x=d.data(); const dte = x.date?.toDate? x.date.toDate(): new Date(x.date); const el=document.createElement('div'); el.className='item'; el.innerHTML=`<img class="thumb" src="${x.photoURL||''}" onerror="this.style.display='none'"/> <div style="flex:1"><div><b>${dte.toLocaleDateString('es-ES')}</b> · ${x.dest||''}</div><div class='small'>KM: ${(x.totalKm||0).toFixed(1)} · € personal: ${fmt€(x.euro||0)}</div></div>`; list.appendChild(el); });
+}
+auth.onAuthStateChanged(()=>loadKMs());
+</script>
+</body></html>
