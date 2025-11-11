@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gastos 2N — Compat (ZIP XHR)</title>
+  <title>Gastos 2N — Compat (ZIP Auth REST)</title>
   <style>
     :root{--blue:#007aff;--border:#e5e7eb;--muted:#6b7280}
     *{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto}
@@ -84,7 +84,7 @@
     </div>
   </div>
 
-  <!-- JS mínimo para que SIEMPRE funcione el botón de API Key -->
+  <!-- JS mínimo para botón de API Key -->
   <script>
     (function(){
       const $ = (id)=>document.getElementById(id);
@@ -99,17 +99,17 @@
     })();
   </script>
 
-  <!-- Firebase compat SDKs (no módulos) -->
+  <!-- Firebase compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- App principal (compat) -->
+  <!-- App principal -->
   <script>
   (function(){
     const $ = (id)=>document.getElementById(id);
-    const log = (m)=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\\n"; };
+    const log = (m)=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
 
     // Firebase config
     const firebaseConfig = {
@@ -243,48 +243,47 @@ Reglas: solo JSON, punto decimal, total final.`;
     const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
     const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
     function toCSVValue(col, value){ if(col!=="DATE"&&col!=="CLIENT / PROVIDER"&&col!=="DESCRIPTION"){ const n=Number(value||0); return (isFinite(n)?n:0).toFixed(2).replace(".",","); } const s=String(value||"").replace(/"/g,'""'); return `"${s}"`; }
-    function buildCSV(rows, monthlabel, today){ const head=`,,,,,   EXPENSES REPORT,,,,,,,\nNOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}\nPRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\n,,,,,,,,,,,,\n`; const h1=COLUMNS.map(h=>`"${h}"`).join(";")+"\n"; const h2=",,PARKINGS ,,,,,TRAVELING,,,\n"; const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("\n"); return head+h1+h2+data+"\n"; }
+    function buildCSV(rows, monthlabel, today){ const head=`,,,,,   EXPENSES REPORT,,,,,,,
+NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}
+PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,
+,,,,,,,,,,,,
+`; const h1=COLUMNS.map(h=>`"${h}"`).join(";")+"
+"; const h2=",,PARKINGS ,,,,,TRAVELING,,,
+"; const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("
+"); return head+h1+h2+data+"
+"; }
     function monthRange(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
     async function listEntriesMonth(ym, uid){ const [s,e]=monthRange(ym); const snap = await db.collection(`users/${uid}/entries`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get(); return snap.docs.map(d=>({ id:d.id, ...d.data() })); }
     function toCSVRecords(entries){ const rows=[]; for(const e of entries){ if(e.category==="ingreso") continue; const col=MAP[e.category]||"VARIOUS"; const rec={}; COLUMNS.forEach(c=>rec[c]=(["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)?"":0)); const d=e.date?.toDate?e.date.toDate():new Date(e.date); rec["DATE"]=d.toLocaleDateString("es-ES"); rec["CLIENT / PROVIDER"]=e.provider||""; rec["DESCRIPTION"]=e.notes||""; const amount=Number(e.amount||0); if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount; let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0); rec["TOTAL"]=total; rows.push(rec);} return rows; }
 
-    // ---- Descarga robusta con XHR (evita fallos "Failed to fetch") ----
-    function downloadBlobXHR(url){
+    // ---- Descarga autorizada con REST + ID token ----
+    function buildRestURL(bucket, objectPath){
+      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${objectPath}?alt=media`;
+    }
+    function extractObjectFromPhotoURL(photoURL){
+      const m = photoURL.match(/\/o\/([^?]+)\?/);
+      return m ? m[1] : null;
+    }
+    async function downloadWithAuth(url, idToken){
       return new Promise((resolve,reject)=>{
-        const xhr = new XMLHttpRequest();
+        const xhr=new XMLHttpRequest();
         xhr.open("GET", url, true);
-        xhr.responseType = "blob";
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        xhr.responseType="blob";
+        xhr.setRequestHeader("Authorization", "Bearer " + idToken);
+        xhr.onload = ()=>{
+          if (xhr.status>=200 && xhr.status<300) resolve(xhr.response);
           else reject(new Error("HTTP "+xhr.status));
         };
-        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.onerror = ()=> reject(new Error("Network error"));
         xhr.send();
       });
     }
 
-    async function getBlobFromRefOrURL(e, storage){
-      const ref = e.photoPath ? storage.ref(e.photoPath) : storage.refFromURL(e.photoURL);
-      // 1) URL fresca
-      const url = await ref.getDownloadURL();
-      // 2) Primero XHR (suele saltarse bloqueos del fetch en iOS/Chrome)
-      try {
-        return await downloadBlobXHR(url);
-      } catch (err) {
-        // 3) Fallback a fetch
-        const resp = await fetch(url, { cache: "no-store" });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return await resp.blob();
-      }
-    }
-
-    // CSV
     $("btnCSV").addEventListener("click", async ()=>{
       try{ const user=auth.currentUser; if(!user) return alert("Haz login"); const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes"); const entries=await listEntriesMonth(ym,user.uid); if(!entries.length) return alert("Sin gastos"); const rows=toCSVRecords(entries); const monthlabel=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"}); const today=new Date().toLocaleDateString("es-ES"); const csv=buildCSV(rows, monthlabel, today); saveAs(new Blob([csv], {type:"text/csv;charset=utf-8"}), `Informe_Gastos_${ym}.csv`); }
       catch(e){ log(e); alert("CSV error: "+(e.message||"")); }
     });
 
-    // ZIP con XHR
     $("btnZIP").addEventListener("click", async ()=>{
       try{
         const user=auth.currentUser; if(!user) return alert("Haz login");
@@ -293,10 +292,22 @@ Reglas: solo JSON, punto decimal, total final.`;
         const photos=entries.filter(e=>e.photoURL);
         if(!photos.length) return alert("Sin fotos");
 
+        const idToken = await user.getIdToken(true);
+        const bucket = firebaseConfig.storageBucket;
+
         const zip=new JSZip(); let ok=0,fail=0;
         for(const e of photos){
           try{
-            const blob = await getBlobFromRefOrURL(e, storage);
+            let objectPath;
+            if (e.photoPath) {
+              objectPath = e.photoPath.split("/").map(s=>encodeURIComponent(s)).join("%2F");
+            } else {
+              objectPath = extractObjectFromPhotoURL(e.photoURL);
+              if (!objectPath) throw new Error("No se pudo extraer el objeto");
+            }
+            const url = buildRestURL(bucket, objectPath);
+            const blob = await downloadWithAuth(url, idToken);
+
             const d=e.date?.toDate?e.date.toDate():new Date(e.date);
             const dateISO=d.toISOString().slice(0,10);
             const prov=(e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
@@ -305,7 +316,7 @@ Reglas: solo JSON, punto decimal, total final.`;
             ok++;
           }catch(err){
             fail++;
-            log({ fallo_zip_xhr: e.photoURL || e.photoPath, err: err.message || String(err) });
+            log({ fallo_zip_auth: e.photoURL || e.photoPath, err: err.message || String(err) });
           }
         }
 
