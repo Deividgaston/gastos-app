@@ -142,6 +142,19 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
+  <!-- Capa modular SOLO para ZIP (getBlob autenticado, sin CORS) -->
+  <script type="module">
+    import { getStorage as getStorageMod, ref as sref, getBlob } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+    const app = firebase.app();                          // usa el mismo app de compat
+    const storageMod = getStorageMod(app);
+    // expone helper global seguro para ZIP
+    window.__getBlobAuth = async (pathOrUrl) => {
+      const r = sref(storageMod, pathOrUrl);            // acepta path, gs:// o https://
+      const blob = await getBlob(r);                    // descarga autenticado
+      return { blob, name: r.name };
+    };
+  </script>
+
   <!-- App principal -->
   <script>
   (function(){
@@ -372,51 +385,39 @@ Reglas: solo JSON, punto decimal, total final.`;
       }catch(e){ console.error(e); log(e); alert("CSV error: "+(e.message||"")); }
     });
 
-    // ======= ZIP (compat: getDownloadURL -> fetch blob) =======
+    // ======= ZIP usando getBlob (modular, autenticado, sin CORS) =======
     $('btnZIP').addEventListener("click", async ()=>{
       try{
         const user=auth.currentUser; if(!user) return alert("Haz login");
         const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes");
         const entries=await listEntriesMonth(ym,user.uid);
-        const photos=entries.filter(e=>e.photoURL || e.photoPath);
+        const photos=entries.filter(e=>e.photoPath || e.photoURL);
         if(!photos.length) return alert("Sin fotos");
 
         const zip=new JSZip(); let ok=0, fail=0;
 
-        async function blobFromRefPath(pathOrUrl){
-          try{
-            let ref;
-            if (pathOrUrl && pathOrUrl.startsWith('http')) {
-              ref = storage.refFromURL(pathOrUrl);
-            } else {
-              ref = storage.ref(pathOrUrl);
-            }
-            const freshUrl = await ref.getDownloadURL();
-            const res = await fetch(freshUrl, { mode:'cors', cache:'no-store' });
-            if(!res.ok) throw new Error(`HTTP ${res.status}`);
-            const blob = await res.blob();
-            return { blob, name: ref.name };
-          } catch (err){
-            throw err;
-          }
+        function filenameFrom(src, entry){
+          const d = entry.date?.toDate ? entry.date.toDate() : new Date(entry.date);
+          const dateISO = isNaN(d) ? new Date().toISOString().slice(0,10) : d.toISOString().slice(0,10);
+          const prov = (entry.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+          let ext = ".jpg";
+          const lower = (src||"").toLowerCase();
+          if(lower.endsWith(".png")) ext=".png";
+          else if(lower.endsWith(".jpeg")) ext=".jpeg";
+          else if(lower.endsWith(".webp")) ext=".webp";
+          else if(lower.endsWith(".jpg")) ext=".jpg";
+          return `${dateISO}_${prov}${ext}`;
         }
 
         for(const e of photos){
           try{
-            const src = e.photoPath ? e.photoPath : e.photoURL;
-            const { blob, name } = await blobFromRefPath(src);
-            const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
-            const dateISO = d.toISOString().slice(0,10);
-            const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-            let ext = '.jpg';
-            const lower = (name||'').toLowerCase();
-            if (lower.endsWith('.png')) ext = '.png';
-            else if (lower.endsWith('.jpeg')) ext = '.jpeg';
-            else if (lower.endsWith('.webp')) ext = '.webp';
-            zip.file(`${dateISO}_${prov}${ext}`, blob);
+            const src = e.photoPath ? e.photoPath : e.photoURL; // ambos válidos
+            const { blob } = await window.__getBlobAuth(src);   // 🔒 descarga autenticada
+            const name = filenameFrom(src, e);
+            zip.file(name, blob);
             ok++;
           }catch(err){
-            fail++; const msg = { fallo_zip_compat: e.photoPath || e.photoURL, err: err.message || String(err) };
+            fail++; const msg = { fallo_zip_getBlob: (e.photoPath||e.photoURL), err: err.message || String(err) };
             console.log(msg); $("out").textContent += JSON.stringify(msg) + "\n";
           }
         }
