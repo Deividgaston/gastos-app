@@ -18,8 +18,6 @@
     .tabs{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
     .panel{border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-top:12px}
     .muted{color:var(--muted)} pre.log{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:240px;overflow:auto}
-
-    /* Modal revisión */
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px}
     .modal.open{display:flex}
     .sheet{background:#fff;border-radius:18px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden}
@@ -33,41 +31,28 @@
     .preview{grid-column:1/3;border:1px solid var(--border);border-radius:12px;padding:8px;display:flex;gap:12px;align-items:center}
     .preview img{height:72px;width:auto;border-radius:8px}
     .sheet footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
-
-    /* Export */
     .export-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .export-grid .field{height:100%}
   </style>
-  <!-- Librerías para ZIP y descarga de ficheros -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <!-- Inline simple 2N-like logo -->
     <svg viewBox="0 0 120 40" aria-hidden="true"><rect x="0" y="0" width="120" height="40" rx="8" fill="#111827"></rect><text x="60" y="26" text-anchor="middle" fill="#fff" font-family="system-ui,Segoe UI,Roboto" font-weight="700" font-size="20">2N</text></svg>
     <h1>Gastos 2N</h1>
-    <div class="stack">
+    <div class="stack" style="display:flex;gap:8px">
+      <button id="btnAI" class="btn small outline">⚙️ IA / API Key</button>
       <button id="btnLogin" class="btn small">Entrar</button>
       <button id="btnLogout" class="btn small outline">Salir</button>
     </div>
   </header>
 
   <main class="content">
-    <!-- Dashboard -->
     <section class="metric-card">
-      <div class="metric">
-        <h2 id="totalMes">0,00 €</h2>
-        <p>Total del mes</p>
-      </div>
-      <div class="metric">
-        <h2 id="numTickets">0</h2>
-        <p>Tickets del mes</p>
-      </div>
-      <div class="metric">
-        <h2 id="ultimoModelo">—</h2>
-        <p>Modelo OCR activo</p>
-      </div>
+      <div class="metric"><h2 id="totalMes">0,00 €</h2><p>Total del mes</p></div>
+      <div class="metric"><h2 id="numTickets">0</h2><p>Tickets del mes</p></div>
+      <div class="metric"><h2 id="ultimoModelo">—</h2><p>Modelo OCR activo</p></div>
     </section>
 
     <div class="tabs">
@@ -76,14 +61,10 @@
       <button id="expBtn"  class="btn outline">📁 Exportar mes</button>
     </div>
 
-    <!-- Export panel -->
     <section id="exportPanel" class="panel" style="display:none">
       <h3 style="margin:0 0 12px 0">Exportación mensual</h3>
       <div class="export-grid">
-        <div class="field">
-          <label for="expMonth">Mes a exportar</label>
-          <input type="month" id="expMonth" />
-        </div>
+        <div class="field"><label for="expMonth">Mes a exportar</label><input type="month" id="expMonth"/></div>
         <div class="field" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
           <button id="btnCSV" class="btn primary">⬇️ CSV plantilla 2N</button>
           <button id="btnZIP" class="btn">🗜️ ZIP fotos del mes</button>
@@ -99,81 +80,48 @@
     </section>
   </main>
 
-  <!-- Modal de revisión -->
   <div id="reviewModal" class="modal" aria-hidden="true">
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
-      <header>
-        <h3 id="reviewTitle">Revisar y guardar</h3>
-        <button id="btnCloseModal" class="btn small outline">Cerrar</button>
-      </header>
+      <header><h3 id="reviewTitle">Revisar y guardar</h3><button id="btnCloseModal" class="btn small outline">Cerrar</button></header>
       <div class="body">
-        <div class="field">
-          <label for="revDate">Fecha</label>
-          <input type="date" id="revDate" />
-        </div>
-        <div class="field">
-          <label for="revAmount">Importe (€)</label>
-          <input type="number" id="revAmount" min="0.01" step="0.01" />
-        </div>
-        <div class="field" style="grid-column:1/3">
-          <label for="revProvider">Proveedor / Concepto</label>
-          <input type="text" id="revProvider" placeholder="Ej: Repsol, Restaurante X" />
-        </div>
-        <div class="field">
-          <label for="revCategory">Categoría</label>
-          <select id="revCategory">
-            <option value="comida">Comida/Mercado</option>
-            <option value="transporte">Otros Transportes</option>
-            <option value="servicios">Servicios/Varios</option>
-            <option value="ocio">Ocio/Invitaciones</option>
-            <option value="gasolina">Gasolina</option>
-            <option value="peajes">Peajes/Parking</option>
-            <option value="alojamiento">Alojamiento/Hotel</option>
-            <option value="varios" selected>Varios</option>
-            <option value="ingreso">Ingreso</option>
-          </select>
-        </div>
-        <div class="field" style="grid-column:1/3">
-          <label for="revNotes">Notas</label>
-          <textarea id="revNotes" placeholder="Opcional"></textarea>
-        </div>
-        <div class="preview">
-          <img id="revThumb" alt="ticket" />
-          <div>
-            <div style="font-size:12px;color:#6b7280">Vista previa del ticket</div>
-            <div id="revFileInfo" style="font-size:12px"></div>
-          </div>
-        </div>
+        <div class="field"><label for="revDate">Fecha</label><input type="date" id="revDate"/></div>
+        <div class="field"><label for="revAmount">Importe (€)</label><input type="number" id="revAmount" min="0.01" step="0.01"/></div>
+        <div class="field" style="grid-column:1/3"><label for="revProvider">Proveedor / Concepto</label><input type="text" id="revProvider" placeholder="Ej: Repsol, Restaurante X"/></div>
+        <div class="field"><label for="revCategory">Categoría</label><select id="revCategory">
+          <option value="comida">Comida/Mercado</option><option value="transporte">Otros Transportes</option>
+          <option value="servicios">Servicios/Varios</option><option value="ocio">Ocio/Invitaciones</option>
+          <option value="gasolina">Gasolina</option><option value="peajes">Peajes/Parking</option>
+          <option value="alojamiento">Alojamiento/Hotel</option><option value="varios" selected>Varios</option>
+          <option value="ingreso">Ingreso</option></select></div>
+        <div class="field" style="grid-column:1/3"><label for="revNotes">Notas</label><textarea id="revNotes" placeholder="Opcional"></textarea></div>
+        <div class="preview"><img id="revThumb" alt="ticket"/><div><div style="font-size:12px;color:#6b7280">Vista previa del ticket</div><div id="revFileInfo" style="font-size:12px"></div></div></div>
       </div>
-      <footer>
-        <button id="btnCancel" class="btn">Cancelar</button>
-        <button id="btnSave" class="btn primary">Guardar</button>
-      </footer>
+      <footer><button id="btnCancel" class="btn">Cancelar</button><button id="btnSave" class="btn primary">Guardar</button></footer>
     </div>
   </div>
 
-  <!-- ================= SCRIPTS (MÓDULOS) ================= -->
-  <script type="module">
-    // --------- Firebase (CDN módulos) ----------
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-      getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs, where
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import {
-      getStorage, ref, uploadBytes, getDownloadURL, getBlob, getBytes
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+  <div id="aiModal" class="modal" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="aiTitle">
+      <header><h3 id="aiTitle">Configurar IA (Gemini API Key)</h3><button id="btnCloseAI" class="btn small outline">Cerrar</button></header>
+      <div class="body" style="grid-template-columns:1fr">
+        <div class="field"><label for="aiKey">API Key</label><input id="aiKey" type="password" placeholder="AIza..."/><small class="muted">Se guarda localmente en este navegador (localStorage).</small></div>
+      </div>
+      <footer><button id="btnClearAI" class="btn">Borrar</button><button id="btnSaveAI" class="btn primary">Guardar</button></footer>
+    </div>
+  </div>
 
-    // --------- Helpers UI ----------
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, getBlob, getBytes } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
     const $ = (id)=>document.getElementById(id);
-    const log = (m)=>{ const out = $("out"); if(!out) return; out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2)) + "\\n"; };
+    const log = (m)=>{ const out = $("out"); if(!out) return; out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2)) + "\n"; };
     const setTotalMes = (n)=>{ $("totalMes").textContent = new Intl.NumberFormat("es-ES",{minimumFractionDigits:2}).format(n) + " €"; };
     const setNumTickets = (n)=>{ $("numTickets").textContent = n; };
     const setOCRModel = (name)=>{ $("ultimoModelo").textContent = name || "—"; };
 
-    // --------- Config Firebase (tu proyecto) ----------
     const firebaseConfig = {
       apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
       authDomain: "gastos-2n.firebaseapp.com",
@@ -187,529 +135,193 @@
     const db = getFirestore(app);
     const storage = getStorage(app, "gs://gastos-2n.firebasestorage.app");
 
-    // --------- Auth UI ----------
     $("btnLogin").onclick = async () => {
-      try {
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: "select_account" });
-        await signInWithPopup(auth, provider);
-      } catch(e){ log("❌ Login: "+(e.code||e.message)); alert("Error login: "+(e.code||e.message)); }
+      try { const provider = new GoogleAuthProvider(); provider.setCustomParameters({prompt:"select_account"}); await signInWithPopup(auth, provider); }
+      catch(e){ log("❌ Login: "+(e.code||e.message)); alert("Error login: "+(e.code||e.message)); }
     };
     $("btnLogout").onclick = ()=> signOut(auth);
 
     onAuthStateChanged(auth, async (user)=>{
       $("whoami").textContent = user ? `Conectado como ${user.email||user.uid}` : "No autenticado";
-      if (user) {
-        const now = new Date();
-        $("expMonth").value = now.toISOString().slice(0,7);
-        await refrescarDashboard();
-      }
+      if (user) { const now=new Date(); $("expMonth").value = now.toISOString().slice(0,7); await refrescarDashboard(); }
     });
 
-    // --------- Guardar gasto + subir foto ----------
+    const aiModal = $("aiModal");
+    function openAIModal(){ aiModal.classList.add("open"); $("aiKey").value = localStorage.getItem("gkey") || ""; }
+    function closeAIModal(){ aiModal.classList.remove("open"); }
+    $("btnAI").onclick = openAIModal;
+    $("btnCloseAI").onclick = closeAIModal;
+    $("btnSaveAI").onclick = ()=>{ const v=$("aiKey").value.trim(); if(!v) return alert("Pega tu API Key"); localStorage.setItem("gkey", v); alert("API Key guardada ✅"); closeAIModal(); };
+    $("btnClearAI").onclick = ()=>{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("API Key borrada"); };
+
     async function saveExpense({ date, category, provider, notes, amount, file }) {
       const user = auth.currentUser; if(!user) throw new Error("No autenticado");
-
-      let photoURL = "";
-      let storagePath = "";
+      let photoURL="", storagePath="";
       if (file) {
         const yyyyMM = (date ? new Date(date) : new Date()).toISOString().slice(0,7);
-        const safeProv = (provider||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
+        const safeProv = (provider||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
         const ext = (file.name?.split(".").pop()||"jpg").toLowerCase();
         const filename = `${(date?new Date(date):new Date()).toISOString().slice(0,10)}_${safeProv}_${Date.now()}.${ext}`;
         const path = `tickets/${user.uid}/${yyyyMM}/${filename}`;
         const r = ref(storage, path);
         await uploadBytes(r, file);
         photoURL = await getDownloadURL(r);
-        storagePath = path; // guardamos la ruta interna
+        storagePath = path;
       }
-
       const col = collection(db, `users/${user.uid}/entries`);
-      await addDoc(col, {
-        date: date ? new Date(date) : new Date(),
-        category: category || "varios",
-        provider: provider || "",
-        notes: notes || "",
-        amount: Number(amount || 0),
-        photoURL,
-        photoPath: storagePath, // <<< NUEVO
-        isExpense: (category || "varios") !== "ingreso",
-        createdAt: serverTimestamp()
-      });
-
+      await addDoc(col, { date: date?new Date(date):new Date(), category: category||"varios", provider: provider||"", notes: notes||"", amount: Number(amount||0), photoURL, photoPath: storagePath, isExpense: (category||"varios")!=="ingreso", createdAt: serverTimestamp() });
       return { ok:true, photoURL, photoPath: storagePath };
     }
 
-    // --------- Dashboard (mes actual) ----------
     async function refrescarDashboard(){
       const user = auth.currentUser; if(!user) return;
-      const now = new Date();
-      const y = now.getFullYear(); const m = String(now.getMonth()+1).padStart(2,"0");
+      const now = new Date(); const y = now.getFullYear(); const m = String(now.getMonth()+1).padStart(2,"0");
       const monthStart = new Date(`${y}-${m}-01T00:00:00`);
       const nextMonth = new Date(`${m==="12" ? y+1 : y}-${m==="12" ? "01" : String(Number(m)+1).padStart(2,"0")}-01T00:00:00`);
-
       const col = collection(db, `users/${user.uid}/entries`);
       const q = query(col, orderBy("date","desc"));
       const snap = await getDocs(q);
-
-      let total = 0, count = 0;
-      snap.forEach(doc=>{
-        const d = doc.data();
-        if(!d.isExpense) return;
-        const dt = d.date?.toDate ? d.date.toDate() : new Date(d.date);
-        if (dt >= monthStart && dt < nextMonth) {
-          total += Number(d.amount||0);
-          count ++;
-        }
-      });
-      setTotalMes(total);
-      setNumTickets(count);
+      let total=0, count=0;
+      snap.forEach(doc=>{ const d=doc.data(); if(!d.isExpense) return; const dt=d.date?.toDate? d.date.toDate(): new Date(d.date); if(dt>=monthStart && dt<nextMonth){ total+=Number(d.amount||0); count++; } });
+      setTotalMes(total); setNumTickets(count);
     }
 
-    // ===================== OCR + Revisión =====================
     function getApiKey(){
       let k = localStorage.getItem("gkey");
-      if(!k){
-        k = prompt("Pega tu API Key de Google AI (Gemini):");
-        if (k && k.trim()){ localStorage.setItem("gkey", k.trim()); alert("API Key guardada ✅"); }
-        else throw new Error("No hay API Key");
-      }
+      if(!k){ openAIModal(); throw new Error("Falta API Key"); }
       return k.trim();
     }
     function fileToBase64(file){
-      return new Promise((resolve,reject)=>{
-        const rd = new FileReader();
-        rd.onerror = ()=>reject(new Error("No se pudo leer la imagen"));
-        rd.onload = ()=> resolve(String(rd.result).split(",")[1] || "");
-        rd.readAsDataURL(file);
-      });
+      return new Promise((resolve,reject)=>{ const rd = new FileReader(); rd.onerror=()=>reject(new Error("No se pudo leer la imagen")); rd.onload=()=>resolve(String(rd.result).split(",")[1]||""); rd.readAsDataURL(file); });
     }
-
-    // --- NUEVO: downscale para reducir 429/cuota ---
-    async function downscaleImage(file, maxSize = 1600, quality = 0.85) {
-      const img = await new Promise((res, rej) => {
-        const i = new Image();
-        i.onload = () => res(i);
-        i.onerror = rej;
-        i.src = URL.createObjectURL(file);
-      });
-
+    async function downscaleImage(file, maxSize = 2048, quality = 0.9) {
+      const img = await new Promise((res, rej) => { const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
       const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
-
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
       const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", quality));
       URL.revokeObjectURL(img.src);
       return new File([blob], (file.name || "ticket") + ".jpg", { type: "image/jpeg" });
     }
-
     function safeParseJSON(text){
       if(!text) throw new Error("Salida vacía de la IA");
       let cleaned = text.trim();
-      if(cleaned.startsWith("```")){
-        cleaned = cleaned.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
-      }
-      const a = cleaned.indexOf("{"); const b = cleaned.lastIndexOf("}");
-      if (a!==-1 && b!==-1 && b>a) cleaned = cleaned.slice(a,b+1);
+      if(cleaned.startsWith("```")) cleaned = cleaned.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
+      const a = cleaned.indexOf("{"), b = cleaned.lastIndexOf("}"); if (a!==-1 && b!==-1 && b>a) cleaned = cleaned.slice(a,b+1);
       return JSON.parse(cleaned);
     }
-    function normalizeAmount(val){
-      if(val==null) return 0;
-      let s = String(val).trim().replace(/[€$]/g,"").replace(/\\s/g,"").replace(",",".");
-      s = s.replace(/[^\\d.\\-]/g,"");
-      const n = Number(s);
-      return isFinite(n) ? n : 0;
-    }
-    function normalizeDate(val){
-      if(!val) return new Date();
-      if(/^\\d{4}-\\d{2}-\\d{2}$/.test(val)){
-        const d = new Date(val+"T00:00:00"); if(!isNaN(d)) return d;
-      }
-      const d2 = new Date(val); return isNaN(d2) ? new Date() : d2;
+    function fallbackParse(text){
+      const t = (text||"").replace(/\s+/g," ").trim();
+      let amount = 0; const m1 = t.match(/(\d+[.,]\d{2})\s*(€|eur)?/i); if (m1) amount = Number(m1[1].replace(",", "."));
+      let dateISO = new Date().toISOString().slice(0,10);
+      const d1 = t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/); const d2 = t.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+      if (d2) dateISO = `${d2[1]}-${d2[2]}-${d2[3]}`; else if (d1){ const dd=d1[1], mm=d1[2], yy=d1[3]; dateISO = `${yy}-${mm}-${dd}`; }
+      let provider = "Ticket"; const prov = t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); if (prov) provider = prov[0].trim();
+      return { date: dateISO, provider, amount };
     }
 
     async function callGeminiVision(base64, mime){
       const key = getApiKey();
-
-      const prompt = `
-Extrae JSON del ticket con esta estructura exacta:
+      const prompt = `Devuelve *solo* un JSON válido con esta estructura exacta:
 {
   "date": "YYYY-MM-DD",
-  "provider": "Nombre del local o concepto",
+  "provider": "Nombre del local o concepto (máx. 40)",
   "amount": 0.00
 }
 Reglas:
 - No añadas texto fuera del JSON.
 - Usa punto como decimal.
-- Si falta un dato, déjalo vacío ("") o 0.00.
-`;
-
-      const body = {
-        contents: [{
-          role: "user",
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: mime || "image/jpeg", data: base64 } }
-          ]
-        }]
-      };
-
-      // NUEVO: solo modelos válidos en v1
-      const models = ["gemini-2.0-flash", "gemini-2.5-flash"];
-      const maxRetries = 3;
-      let lastErr;
-
+- Si falta un dato, usa "" o 0.00.
+- Si aparecen varios importes, elige el TOTAL / importe final pagado.`;
+      const body = { contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: mime||"image/jpeg", data: base64 } }] }] };
+      const models = ["gemini-2.5-flash","gemini-2.0-flash"];
+      const maxRetries = 2; let lastErr;
       for (const model of models){
         const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
+        for (let attempt=0; attempt<maxRetries; attempt++){
           try{
-            log({ probando_modelo:model, endpoint:url, intento: attempt + 1 });
-            const res = await fetch(url, {
-              method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body)
-            });
-            const raw = await res.text();
-            let json = null; try { json = JSON.parse(raw); } catch {}
-
-            if (res.status === 429) {
-              const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
-              log({ aviso: "Cuota/Rate limit 429, reintentando...", espera_ms: delay });
-              await new Promise(r => setTimeout(r, delay));
-              continue;
-            }
-
-            if (!res.ok){
-              lastErr = new Error(json?.error?.message || `HTTP ${res.status}`);
-              log({ fallo_modelo:model, status: res.status, body: json || raw });
-              break; // no más intentos para este modelo con error no-429
-            }
-
-            const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? json?.text ?? raw;
-            const parsed = safeParseJSON(text);
-            setOCRModel(model);
-            log({ modelo_ok:model });
-            return parsed;
-          }catch(e){
-            lastErr = e; log({ excepcion_modelo:model, error:e.message||String(e) });
-            await new Promise(r => setTimeout(r, 500));
-          }
+            log({ probando_modelo:model, endpoint:url, intento: attempt+1 });
+            const res = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+            const raw = await res.text(); let json=null; try{json=JSON.parse(raw)}catch{}
+            if (res.status===429){ const wait = 800*(attempt+1); log({ aviso:"429 retry", wait_ms:wait }); await new Promise(r=>setTimeout(r,wait)); continue; }
+            if (!res.ok){ lastErr = new Error(json?.error?.message || `HTTP ${res.status}`); log({ fallo_modelo:model, status:res.status, body:json||raw }); break; }
+            const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+            let parsed; try{ parsed = safeParseJSON(text); } catch{ parsed = fallbackParse(text); }
+            setOCRModel(model); log({ modelo_ok:model, IA: parsed }); return parsed;
+          }catch(e){ lastErr=e; log({ excepcion_modelo:model, error:e.message||String(e) }); }
         }
       }
-      throw lastErr || new Error("No fue posible usar OCR (modelos/cuota).");
+      throw lastErr || new Error("No fue posible usar OCR");
     }
 
-    // Cámara (modo A: foto)
     let hiddenInput;
-    function ensureCameraInput(){
-      if(hiddenInput) return hiddenInput;
-      hiddenInput = document.createElement("input");
-      hiddenInput.type = "file";
-      hiddenInput.accept = "image/*";
-      hiddenInput.capture = "environment"; // cámara trasera en móvil
-      hiddenInput.style.display = "none";
-      document.body.appendChild(hiddenInput);
-      return hiddenInput;
-    }
+    function ensureCameraInput(){ if(hiddenInput) return hiddenInput; hiddenInput=document.createElement("input"); hiddenInput.type="file"; hiddenInput.accept="image/*"; hiddenInput.capture="environment"; hiddenInput.style.display="none"; document.body.appendChild(hiddenInput); return hiddenInput; }
 
-    // ------- Estado temporal para revisión -------
     const reviewState = { file:null, provider:"", amount:0, dateISO:"", category:"varios", notes:"" };
+    function openReviewModal(){ $("reviewModal").classList.add("open"); $("revDate").value = reviewState.dateISO || new Date().toISOString().slice(0,10); $("revAmount").value = reviewState.amount ? String(reviewState.amount) : ""; $("revProvider").value = reviewState.provider || ""; $("revCategory").value = reviewState.category || "varios"; $("revNotes").value = reviewState.notes || ""; $("revThumb").src = reviewState.file ? URL.createObjectURL(reviewState.file) : ""; $("revFileInfo").textContent = reviewState.file ? `${reviewState.file.name||"captura"} · ${Math.round(reviewState.file.size/1024)} KB` : ""; }
+    function closeReviewModal(){ $("reviewModal").classList.remove("open"); try { if ($("revThumb").src.startsWith("blob:")) URL.revokeObjectURL($("revThumb").src); } catch {} }
+    $("btnCloseModal").onclick = closeReviewModal; $("btnCancel").onclick = closeReviewModal;
 
-    function openReviewModal(){
-      $("reviewModal").classList.add("open");
-      $("revDate").value = reviewState.dateISO || new Date().toISOString().slice(0,10);
-      $("revAmount").value = reviewState.amount ? String(reviewState.amount) : "";
-      $("revProvider").value = reviewState.provider || "";
-      $("revCategory").value = reviewState.category || "varios";
-      $("revNotes").value = reviewState.notes || "";
-      $("revThumb").src = reviewState.file ? URL.createObjectURL(reviewState.file) : "";
-      $("revFileInfo").textContent = reviewState.file ? `${reviewState.file.name || "captura"} · ${Math.round(reviewState.file.size/1024)} KB` : "";
-    }
-    function closeReviewModal(){
-      $("reviewModal").classList.remove("open");
-      try { if ($("revThumb").src.startsWith("blob:")) URL.revokeObjectURL($("revThumb").src); } catch {}
-    }
-
-    $("btnCloseModal").addEventListener("click", closeReviewModal);
-    $("btnCancel").addEventListener("click", closeReviewModal);
-
-    $("btnSave").addEventListener("click", async ()=>{
-      try{
-        const user = auth.currentUser; if(!user) return alert("Haz login primero");
+    $("btnSave").onclick = async ()=>{
+      try{ const user = auth.currentUser; if(!user) return alert("Haz login primero");
         const dateISO = $("revDate").value || new Date().toISOString().slice(0,10);
         const amount = Number($("revAmount").value || 0);
         const provider = $("revProvider").value.trim();
         const category = $("revCategory").value;
         const notes = $("revNotes").value.trim();
-
         if (!provider) return alert("Proveedor es obligatorio");
         if (!amount || amount <= 0) return alert("Importe debe ser mayor a 0");
-
-        const resp = await saveExpense({
-          date: dateISO,
-          category,
-          provider,
-          notes,
-          amount,
-          file: reviewState.file
-        });
-
-        log("✅ Gasto guardado con foto");
-        if (resp?.photoURL) log({ photoURL: resp.photoURL });
-        alert("Gasto guardado ✅");
-        closeReviewModal();
-        await refrescarDashboard();
-      }catch(e){
-        console.error(e);
-        log({ error: e.message || String(e), details: e.responseJSON || "" });
-        alert("❌ Error al guardar: " + (e.message || "desconocido"));
-      }
-    });
-
-    async function handleScan(){
-      try{
-        const user = auth.currentUser; if(!user) return alert("Haz login primero");
-        const input = ensureCameraInput();
-        const file = await new Promise((resolve,reject)=>{
-          const onChange = ()=>{
-            input.removeEventListener("change", onChange);
-            if (input.files && input.files[0]) resolve(input.files[0]);
-            else reject(new Error("No se seleccionó imagen"));
-          };
-          input.addEventListener("change", onChange, { once:true });
-          input.click();
-        });
-
-        log(`📷 Imagen: ${file.name||"captura"} (${Math.round(file.size/1024)} KB)`);
-
-        // NUEVO: comprimir antes de mandar a la IA
-        const compact = await downscaleImage(file, 1600, 0.85);
-        const b64 = await fileToBase64(compact);
-
-        const result = await callGeminiVision(b64, compact.type);
-        log({ IA: result });
-
-        const dateObj = normalizeDate(result?.date);
-        reviewState.file = compact;
-        reviewState.provider = (result?.provider || "").toString().trim().slice(0,80) || "Ticket";
-        reviewState.amount = normalizeAmount(result?.amount);
-        reviewState.dateISO = dateObj.toISOString().slice(0,10);
-        reviewState.category = "varios";
-        reviewState.notes = "";
-
-        openReviewModal();
-      }catch(e){
-        console.error(e);
-        log({ error: e.message || String(e), details: e.responseJSON || "" });
-        alert("❌ Error en escaneo: " + (e.message || "desconocido"));
-      }
-    }
-    $("scanBtn").addEventListener("click", handleScan);
-
-    // Botón demo -> crea un gasto de 1€ sin foto (para probar conexión)
-    $("demoBtn").addEventListener("click", async ()=>{
-      try{
-        const user = auth.currentUser; if(!user) return alert("Haz login primero");
-        await saveExpense({
-          date: new Date().toISOString().slice(0,10),
-          category: "varios",
-          provider: "Demo",
-          notes: "Gasto de prueba",
-          amount: 1,
-          file: null
-        });
-        log("✅ Gasto demo guardado");
-        await refrescarDashboard();
-      }catch(e){ log(e); alert("Error demo: "+(e.code||e.message)); }
-    });
-
-    // ===================== EXPORTACIÓN =====================
-    const COLUMNS = [
-      "DATE",
-      "CLIENT / PROVIDER",
-      "TOLLS & PARKINGS",
-      "HOTEL",
-      "GASOLINE",
-      "TICKETS TRAVELING",
-      "OTHER TRANSPORTS (Taxi)",
-      "INVITATIONS",
-      "MEALS",
-      "VARIOUS",
-      "TOTAL",
-      "DESCRIPTION"
-    ];
-    const CATEGORY_MAP = {
-      "comida": "MEALS",
-      "transporte": "OTHER TRANSPORTS (Taxi)",
-      "servicios": "VARIOUS",
-      "ocio": "INVITATIONS",
-      "gasolina": "GASOLINE",
-      "peajes": "TOLLS & PARKINGS",
-      "alojamiento": "HOTEL",
-      "varios": "VARIOUS"
+        const resp = await saveExpense({ date: dateISO, category, provider, notes, amount, file: reviewState.file });
+        log("✅ Gasto guardado con foto"); if (resp?.photoURL) log({ photoURL: resp.photoURL });
+        alert("Gasto guardado ✅"); closeReviewModal(); await refrescarDashboard();
+      }catch(e){ console.error(e); log({ error:e.message||String(e) }); alert("❌ Error al guardar: "+(e.message||"desconocido")); }
     };
 
-    function toCSVValue(col, value){
-      if (col !== "DATE" && col !== "CLIENT / PROVIDER" && col !== "DESCRIPTION") {
-        if (typeof value === "number") {
-          return value.toFixed(2).replace(".", ",");
-        }
-        const n = Number(value||0);
-        return isFinite(n) ? n.toFixed(2).replace(".", ",") : "0,00";
-      } else {
-        if (value == null) value = "";
-        const s = String(value).replace(/"/g,'""');
-        return `"${s}"`;
-      }
+    async function handleScan(){
+      try{ const user = auth.currentUser; if(!user) return alert("Haz login primero");
+        const input = ensureCameraInput();
+        const file = await new Promise((resolve,reject)=>{ const onChange=()=>{ input.removeEventListener("change", onChange); if (input.files && input.files[0]) resolve(input.files[0]); else reject(new Error("No se seleccionó imagen")); }; input.addEventListener("change", onChange, {once:true}); input.click(); });
+        log(`📷 Imagen: ${file.name||"captura"} (${Math.round(file.size/1024)} KB)`);
+        const compact = await downscaleImage(file, 2048, 0.9);
+        const b64 = await fileToBase64(compact);
+        const result = await callGeminiVision(b64, compact.type);
+        const dateObj = (function(val){ if(!val) return new Date(); if(/^\d{4}-\d{2}-\d{2}$/.test(val)){ const d=new Date(val+"T00:00:00"); return isNaN(d)?new Date():d; } const d2=new Date(val); return isNaN(d2)?new Date():d2; })(result?.date);
+        reviewState.file = compact;
+        reviewState.provider = (result?.provider||"").toString().trim().slice(0,80) || "Ticket";
+        reviewState.amount = Number((result?.amount ?? 0)) || 0;
+        reviewState.dateISO = dateObj.toISOString().slice(0,10);
+        reviewState.category = "varios"; reviewState.notes = "";
+        openReviewModal();
+      }catch(e){ console.error(e); log({ error:e.message||String(e) }); alert("❌ Error en escaneo: "+(e.message||"desconocido")); }
     }
+    $("scanBtn").onclick = handleScan;
 
-    function buildCSV(rows, monthlabel, todaylabel){
-      const templateHeader =
-        `,,,,,   EXPENSES REPORT,,,,,,,\\n` +
-        `NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${todaylabel}\\n` +
-        `PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\\n` +
-        `,,,,,,,,,,,,\\n`;
+    $("demoBtn").onclick = async ()=>{
+      try{ const user = auth.currentUser; if(!user) return alert("Haz login primero");
+        await saveExpense({ date:new Date().toISOString().slice(0,10), category:"varios", provider:"Demo", notes:"Gasto de prueba", amount:1, file:null });
+        log("✅ Gasto demo guardado"); await refrescarDashboard();
+      }catch(e){ log(e); alert("Error demo: "+(e.code||e.message)); }
+    };
 
-      const headerRow = COLUMNS.map(h=>`"${h}"`).join(";") + "\\n";
-      const headerRow2 = `,,PARKINGS ,,,,,TRAVELING,,,\\n`;
-      const dataRows = rows.map(rec => COLUMNS.map(c => toCSVValue(c, rec[c])).join(";")).join("\\n");
-      return templateHeader + headerRow + headerRow2 + dataRows + "\\n";
-    }
-
-    function monthRange(ym){
-      const start = new Date(ym + "-01T00:00:00");
-      const y = start.getFullYear();
-      const m = start.getMonth();
-      const end = new Date(y, m+1, 1, 0,0,0);
-      return [start, end];
-    }
-
-    async function getEntriesForMonth(ym){
-      const user = auth.currentUser; if(!user) throw new Error("No autenticado");
-      const [start, end] = monthRange(ym);
-      const col = collection(db, `users/${user.uid}/entries`);
-      const q = query(col, where("date", ">=", start), where("date", "<", end), orderBy("date","asc"));
-      const snap = await getDocs(q);
-      const list = [];
-      snap.forEach(doc=>{
-        const d = doc.data();
-        const dateObj = d.date?.toDate ? d.date.toDate() : new Date(d.date);
-        list.push({ ...d, date: dateObj });
-      });
-      return list;
-    }
-
-    function toCSVRecords(entries){
-      const rows = [];
-      for (const e of entries){
-        if (e.category === "ingreso") continue;
-        const colName = CATEGORY_MAP[e.category] || "VARIOUS";
-        const rec = {};
-        COLUMNS.forEach(c => rec[c] = (["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c) ? "" : 0.00));
-
-        rec["DATE"] = e.date.toLocaleDateString("es-ES");
-        rec["CLIENT / PROVIDER"] = e.provider || "";
-        rec["DESCRIPTION"] = e.notes || "";
-
-        const amount = Number(e.amount||0);
-        if (COLUMNS.includes(colName)) rec[colName] = amount; else rec["VARIOUS"] = amount;
-
-        let total = 0;
-        for (let i=2;i<=9;i++) total += Number(rec[COLUMNS[i]]||0);
-        rec["TOTAL"] = total;
-
-        rows.push(rec);
-      }
-      return rows;
-    }
-
-    $("expBtn").addEventListener("click", ()=>{
-      const p = $("exportPanel");
-      p.style.display = (p.style.display==="none") ? "block" : "none";
-    });
-
-    $("btnCSV").addEventListener("click", async ()=>{
-      try{
-        const ym = $("expMonth").value;
-        if(!ym) return alert("Selecciona un mes (YYYY-MM)");
-        const entries = await getEntriesForMonth(ym);
-        if (entries.length === 0) return alert("No hay gastos en ese mes");
-
-        const rows = toCSVRecords(entries);
-        const monthlabel = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
-        const todaylabel = new Date().toLocaleDateString("es-ES");
-
-        const csv = buildCSV(rows, monthlabel, todaylabel);
-        const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-        saveAs(blob, `Informe_Gastos_${ym}.csv`);
-        log(`📄 CSV generado (${rows.length} filas)`);
-      }catch(e){
-        console.error(e);
-        alert("Error generando CSV: " + (e.message||""));
-      }
-    });
-
-    $("btnZIP").addEventListener("click", async ()=>{
-      try{
-        const ym = $("expMonth").value;
-        if(!ym) return alert("Selecciona un mes (YYYY-MM)");
-        const entries = await getEntriesForMonth(ym);
-        const photos = entries.filter(e => e.photoURL);
-        if (photos.length === 0) return alert("No hay fotos en ese mes");
-
-        const zip = new JSZip();
-        let ok = 0, fail = 0;
-
-        const urlToPath = (url) => {
-          try {
-            const afterO = url.split("/o/")[1];
-            if (!afterO) return "";
-            const encodedPath = afterO.split("?")[0];
-            return decodeURIComponent(encodedPath);
-          } catch { return ""; }
-        };
-
-        for (const e of photos){
-          try{
-            const path = e.photoPath || urlToPath(e.photoURL);
-            if (!path) throw new Error("Sin ruta de Storage");
-
-            const r = ref(storage, path);
-            let blob;
-            try {
-              blob = await getBlob(r);
-            } catch {
-              const bytes = await getBytes(r);
-              blob = new Blob([bytes]);
-            }
-
-            const d = e.date instanceof Date ? e.date : new Date(e.date);
-            const dateISO = d.toISOString().slice(0,10);
-            const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
-            const guessedExt = (blob.type && blob.type.includes("/")) ? blob.type.split("/")[1] : "jpg";
-            const name = `${dateISO}_${prov}.${guessedExt}`;
-
-            zip.file(name, blob);
-            ok++;
-          }catch(err){
-            fail++; 
-            log({ fallo_descarga_foto_sdk: e.photoURL || e.photoPath, err: err.message||String(err) });
-          }
-        }
-
-        const out = await zip.generateAsync({type:"blob"});
-        saveAs(out, `Fotos_Gastos_${ym}.zip`);
-        log(`🗜️ ZIP listo: ${ok} fotos OK, ${fail} fallos`);
-      }catch(e){
-        console.error(e);
-        alert("Error creando ZIP: " + (e.message||""));
-      }
-    });
-
+    const COLUMNS = ["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+    const CATEGORY_MAP = { "comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS" };
+    function toCSVValue(col, value){ if (col!=="DATE" && col!=="CLIENT / PROVIDER" && col!=="DESCRIPTION") { if (typeof value === "number") return value.toFixed(2).replace(".", ","); const n = Number(value||0); return isFinite(n) ? n.toFixed(2).replace(".", ",") : "0,00"; } else { if (value==null) value=""; const s=String(value).replace(/"/g,'""'); return `"${s}"`; } }
+    function buildCSV(rows, monthlabel, todaylabel){ const templateHeader = `,,,,,   EXPENSES REPORT,,,,,,,
+` + `NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${todaylabel}
+` + `PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,
+` + `,,,,,,,,,,,,
+`; const headerRow = COLUMNS.map(h=>`"${h}"`).join(";") + "
+"; const headerRow2 = `,,PARKINGS ,,,,,TRAVELING,,,
+`; const dataRows = rows.map(rec => COLUMNS.map(c => toCSVValue(c, rec[c])).join(";")).join("
+"); return templateHeader + headerRow + headerRow2 + dataRows + "
+"; }
+    function monthRange(ym){ const start=new Date(ym+"-01T00:00:00"); const y=start.getFullYear(); const m=start.getMonth(); const end=new Date(y,m+1,1,0,0,0); return [start,end]; }
+    async function getEntriesForMonth(ym){ const user = auth.currentUser; if(!user) throw new Error("No autenticado"); const [start,end] = monthRange(ym); const col = collection(db, `users/${user.uid}/entries`); const q = query(col, where("date", ">=", start), where("date", "<", end), orderBy("date","asc")); const snap = await getDocs(q); const list=[]; snap.forEach(doc=>{ const d=doc.data(); const dateObj = d.date?.toDate? d.date.toDate(): new Date(d.date); list.push({ ...d, date: dateObj }); }); return list; }
+    function toCSVRecords(entries){ const rows=[]; for (const e of entries){ if (e.category==="ingreso") continue; const colName = CATEGORY_MAP[e.category] || "VARIOUS"; const rec={}; COLUMNS.forEach(c=>rec[c] = (["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c) ? "" : 0.00)); rec["DATE"]= e.date.toLocaleDateString("es-ES"); rec["CLIENT / PROVIDER"]= e.provider||""; rec["DESCRIPTION"]= e.notes||""; const amount= Number(e.amount||0); if (COLUMNS.includes(colName)) rec[colName]=amount; else rec["VARIOUS"]=amount; let total=0; for(let i=2;i<=9;i++) total += Number(rec[COLUMNS[i]]||0); rec["TOTAL"]= total; rows.push(rec);} return rows; }
+    $("expBtn").onclick = ()=>{ const p=$("exportPanel"); p.style.display = (p.style.display==="none") ? "block" : "none"; };
+    $("btnCSV").onclick = async ()=>{ try{ const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes (YYYY-MM)"); const entries= await getEntriesForMonth(ym); if(entries.length===0) return alert("No hay gastos en ese mes"); const rows = toCSVRecords(entries); const monthlabel = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"}); const todaylabel = new Date().toLocaleDateString("es-ES"); const csv = buildCSV(rows, monthlabel, todaylabel); const blob = new Blob([csv], {type:"text/csv;charset=utf-8"}); saveAs(blob, `Informe_Gastos_${ym}.csv`); log(`📄 CSV generado (${rows.length} filas)`); }catch(e){ console.error(e); alert("Error generando CSV: "+(e.message||"")); } };
+    $("btnZIP").onclick = async ()=>{ try{ const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes (YYYY-MM)"); const entries= await getEntriesForMonth(ym); const photos = entries.filter(e=>e.photoURL); if(photos.length===0) return alert("No hay fotos en ese mes"); const zip = new JSZip(); let ok=0, fail=0; const urlToPath = (url)=>{ try{ const afterO=url.split("/o/")[1]; if(!afterO) return ""; const encodedPath=afterO.split("?")[0]; return decodeURIComponent(encodedPath);}catch{return "";} }; for (const e of photos){ try{ const path = e.photoPath || urlToPath(e.photoURL); if(!path) throw new Error("Sin ruta de Storage"); const r = ref(storage, path); let blob; try{ blob = await getBlob(r);}catch{ const bytes = await getBytes(r); blob = new Blob([bytes]);} const d = e.date instanceof Date ? e.date : new Date(e.date); const dateISO = d.toISOString().slice(0,10); const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_"); const guessedExt = (blob.type && blob.type.includes("/")) ? blob.type.split("/")[1] : "jpg"; const name = `${dateISO}_${prov}.${guessedExt}`; zip.file(name, blob); ok++; }catch(err){ fail++; log({ fallo_descarga_foto_sdk: e.photoURL || e.photoPath, err: err.message||String(err) }); } } const out = await zip.generateAsync({type:"blob"}); saveAs(out, `Fotos_Gastos_${ym}.zip`); log(`🗜️ ZIP listo: ${ok} fotos OK, ${fail} fallos`); }catch(e){ console.error(e); alert("Error creando ZIP: "+(e.message||"")); } };
   </script>
 </body>
 </html>
