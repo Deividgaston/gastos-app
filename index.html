@@ -372,7 +372,7 @@ Reglas: solo JSON, punto decimal, total final.`;
       }catch(e){ console.error(e); log(e); alert("CSV error: "+(e.message||"")); }
     });
 
-    // ======= ZIP (SDK getBytes: sin CORS) =======
+    // ======= ZIP (compat: getDownloadURL -> fetch blob) =======
     $('btnZIP').addEventListener("click", async ()=>{
       try{
         const user=auth.currentUser; if(!user) return alert("Haz login");
@@ -381,45 +381,53 @@ Reglas: solo JSON, punto decimal, total final.`;
         const photos=entries.filter(e=>e.photoURL || e.photoPath);
         if(!photos.length) return alert("Sin fotos");
 
-        const maxBytes = 12 * 1024 * 1024;
         const zip=new JSZip(); let ok=0, fail=0;
 
-        async function fetchBlobForEntry(entry){
-          // preferible: usar photoPath guardado
-          if (entry.photoPath) {
-            const ref = storage.ref(entry.photoPath);
-            const bytes = await ref.getBytes(maxBytes);
-            const mime = ref.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-            return new Blob([bytes], {type: mime});
+        async function blobFromRefPath(pathOrUrl){
+          try{
+            let ref;
+            if (pathOrUrl && pathOrUrl.startsWith('http')) {
+              ref = storage.refFromURL(pathOrUrl);
+            } else {
+              ref = storage.ref(pathOrUrl);
+            }
+            const freshUrl = await ref.getDownloadURL();
+            const res = await fetch(freshUrl, { mode:'cors', cache:'no-store' });
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            return { blob, name: ref.name };
+          } catch (err){
+            throw err;
           }
-          // compat: derivar desde URL
-          if (entry.photoURL){
-            const ref = storage.refFromURL(entry.photoURL);
-            const bytes = await ref.getBytes(maxBytes);
-            const mime = ref.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-            return new Blob([bytes], {type: mime});
-          }
-          throw new Error("Sin referencia de foto");
         }
 
         for(const e of photos){
           try{
-            const blob = await fetchBlobForEntry(e);
+            const src = e.photoPath ? e.photoPath : e.photoURL;
+            const { blob, name } = await blobFromRefPath(src);
             const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
             const dateISO = d.toISOString().slice(0,10);
             const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-            const ext = (blob.type==='image/png')?'.png':'.jpg';
+            let ext = '.jpg';
+            const lower = (name||'').toLowerCase();
+            if (lower.endsWith('.png')) ext = '.png';
+            else if (lower.endsWith('.jpeg')) ext = '.jpeg';
+            else if (lower.endsWith('.webp')) ext = '.webp';
             zip.file(`${dateISO}_${prov}${ext}`, blob);
             ok++;
           }catch(err){
-            fail++; log({fallo_zip_sdk: e.photoURL||e.photoPath, err: err.message||String(err)});
+            fail++; const msg = { fallo_zip_compat: e.photoPath || e.photoURL, err: err.message || String(err) };
+            console.log(msg); $("out").textContent += JSON.stringify(msg) + "\n";
           }
         }
 
-        const outBlob = await zip.generateAsync({type:"blob"});
+        const outBlob = await zip.generateAsync({ type:"blob" });
         saveAs(outBlob, `Fotos_Gastos_${ym}.zip`);
-        log(`🗜️ ZIP listo: ${ok} ok, ${fail} fallos`);
-      }catch(e){ console.error(e); log(e); alert("ZIP error: "+(e.message||"")); }
+        $("out").textContent += `🗜️ ZIP listo: ${ok} ok, ${fail} fallos\n`;
+      }catch(e){
+        console.error(e); $("out").textContent += (e.message||String(e)) + "\n";
+        alert("ZIP error: " + (e.message||""));
+      }
     });
 
   })();
