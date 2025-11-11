@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Gastos 2N — KM</title>
+  <link rel="stylesheet" href="assets/style.css"/>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+  <script src="assets/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>KM</h1>
+    <a class="btn" href="index.html">Volver</a>
+    <span class="badge" style="margin-left:auto" id="whoami">...</span>
+  </header>
+  <main class="content">
+    <div class="panel grid2">
+      <div class="field"><label>Fecha</label><input id="d" type="date"/></div>
+      <div class="field"><label>Destino</label><input id="dest" type="text" placeholder="Cliente / Ciudad"/></div>
+      <div class="field"><label>KM Empresa</label><input id="kme" type="number" step="0.1" min="0"/></div>
+      <div class="field"><label>KM Personal</label><input id="kmp" type="number" step="0.1" min="0"/></div>
+      <div class="field"><label>€/L gasolina</label><input id="pl" type="number" step="0.01" min="0"/></div>
+      <div class="field"><label>Foto ticket (opcional)</label><input id="ph" type="file" accept="image/*"/></div>
+      <div class="field"><label>Total KM registro</label><input id="kt" type="number" disabled/></div>
+      <div class="field"><label>Coste personal (kmp × €/L)</label><input id="cp" type="number" disabled/></div>
+      <div style="grid-column:1/3;display:flex;gap:8px"><button id="save" class="btn primary">Guardar</button><button id="clr" class="btn">Limpiar</button></div>
+    </div>
+    <div class="panel">
+      <strong>Últimos registros</strong>
+      <div id="list" class="list"></div>
+    </div>
+  </main>
+  <script>
+  (function(){
+    const {auth,db,st}=App; AfterRedirect(); requireAuth(load);
+    function setToday(){ const t=new Date().toISOString().slice(0,10); d.value=t; }
+    function calc(){ kt.value=(Number(kme.value||0)+Number(kmp.value||0)).toFixed(1); cp.value=(Number(kmp.value||0)*Number(pl.value||0)).toFixed(2); }
+    const d=$id('d'), dest=$id('dest'), kme=$id('kme'), kmp=$id('kmp'), pl=$id('pl'), ph=$id('ph'), kt=$id('kt'), cp=$id('cp');
+    [kme,kmp,pl].forEach(i=>i.oninput=calc);
+    function clear(){ dest.value=''; kme.value=''; kmp.value=''; pl.value=''; ph.value=null; calc(); }
+    $id('clr').onclick=clear;
+    setToday(); calc();
+
+    async function load(u){
+      // list
+      db.collection(`users/${u.uid}/kms`).orderBy('date','desc').limit(20).onSnapshot(snap=>{
+        const el=$id('list'); el.innerHTML='';
+        snap.forEach(doc=>{
+          const r=doc.data();
+          const div=document.createElement('div'); div.className='card';
+          div.innerHTML=`<img src="${r.photoURL||''}" onerror="this.style.display='none'"/>
+            <div><div><strong>${(r.dest||'-')}</strong> <span class="small">${new Date(r.date).toLocaleDateString('es-ES')}</span></div>
+            <div class="small">Emp:${r.kmEmpresa||0} · Per:${r.kmPersonal||0} · €/L:${r.pricePerLitre||0} · CostePers:${r.costPersonal||0}</div></div>`;
+          el.appendChild(div);
+        });
+      });
+    }
+
+    $id('save').onclick = async ()=>{
+      try{
+        const u=auth.currentUser; if(!u) return alert('Login primero');
+        const dateISO=d.value||new Date().toISOString().slice(0,10);
+        let photoURL="", photoPath="";
+        const f=ph.files[0];
+        if(f){
+          const fn=`kms_${dateISO}_${Date.now()}_${f.name.split('.').pop()}`;
+          photoPath=`kms/${u.uid}/${dateISO.slice(0,7)}/${fn}`;
+          await st.ref(photoPath).put(f);
+          photoURL=await st.ref(photoPath).getDownloadURL();
+        }
+        const rec={
+          date:new Date(dateISO), dest:dest.value.trim(),
+          kmEmpresa:Number(kme.value||0), kmPersonal:Number(kmp.value||0),
+          pricePerLitre:Number(pl.value||0), totalKm:Number(kme.value||0)+Number(kmp.value||0),
+          costPersonal:Number(kmp.value||0)*Number(pl.value||0),
+          photoURL, photoPath, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await db.collection(`users/${u.uid}/kms`).add(rec);
+        alert('KM guardado ✅'); clear(); setToday();
+      }catch(e){ alert('Error: '+(e.message||e)); }
+    }
+  })();
+  </script>
+</body>
+</html>
