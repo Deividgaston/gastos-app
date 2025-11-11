@@ -142,6 +142,30 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
+  <!-- ES Module auxiliar SOLO para ZIP (usa getBytes del SDK modular) -->
+  <script type="module">
+    import { getStorage, ref as sRef, getBytes } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+    // expone una función global segura para descargar blobs autenticados
+    window.__zipHelper = {
+      async fetchBlobByPath(path, maxBytes = 12 * 1024 * 1024) {
+        const storage = getStorage(); // usa app por defecto
+        const r = sRef(storage, path);
+        const bytes = await getBytes(r, maxBytes);
+        // deducir mime por nombre
+        const mime = (r.name || "").toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+        return new Blob([bytes], { type: mime });
+      },
+      async fetchBlobByURL(url, maxBytes = 12 * 1024 * 1024) {
+        const storage = getStorage();
+        const r = sRef(storage, url);
+        const bytes = await getBytes(r, maxBytes);
+        const mime = (r.name || "").toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+        return new Blob([bytes], { type: mime });
+      }
+    };
+  </script>
+
   <!-- App principal -->
   <script>
   (function(){
@@ -329,8 +353,8 @@ Reglas: solo JSON, punto decimal, total final.`;
       const head=`,,,,,   EXPENSES REPORT,,,,,,,\nNOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}\nPRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\n,,,,,,,,,,,,\n`;
       const h1=COLUMNS.map(h=>`"${h}"`).join(";")+"\n";
       const h2=",,PARKINGS ,,,,,TRAVELING,,,\n";
-      const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("\n");
-      return head+h1+h2+data+"\n";
+      const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("\\n");
+      return head+h1+h2+data+"\\n";
     }
     function monthRange(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
     async function listEntriesMonth(ym, uid){
@@ -372,7 +396,7 @@ Reglas: solo JSON, punto decimal, total final.`;
       }catch(e){ console.error(e); log(e); alert("CSV error: "+(e.message||"")); }
     });
 
-    // ======= ZIP (SDK getBytes: sin CORS) =======
+    // ======= ZIP usando helper modular getBytes() =======
     $('btnZIP').addEventListener("click", async ()=>{
       try{
         const user=auth.currentUser; if(!user) return alert("Haz login");
@@ -381,30 +405,15 @@ Reglas: solo JSON, punto decimal, total final.`;
         const photos=entries.filter(e=>e.photoURL || e.photoPath);
         if(!photos.length) return alert("Sin fotos");
 
-        const maxBytes = 12 * 1024 * 1024;
         const zip=new JSZip(); let ok=0, fail=0;
-
-        async function fetchBlobForEntry(entry){
-          // preferible: usar photoPath guardado
-          if (entry.photoPath) {
-            const ref = storage.ref(entry.photoPath);
-            const bytes = await ref.getBytes(maxBytes);
-            const mime = ref.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-            return new Blob([bytes], {type: mime});
-          }
-          // compat: derivar desde URL
-          if (entry.photoURL){
-            const ref = storage.refFromURL(entry.photoURL);
-            const bytes = await ref.getBytes(maxBytes);
-            const mime = ref.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-            return new Blob([bytes], {type: mime});
-          }
-          throw new Error("Sin referencia de foto");
-        }
 
         for(const e of photos){
           try{
-            const blob = await fetchBlobForEntry(e);
+            let blob;
+            if (e.photoPath) blob = await window.__zipHelper.fetchBlobByPath(e.photoPath);
+            else if (e.photoURL) blob = await window.__zipHelper.fetchBlobByURL(e.photoURL);
+            else throw new Error("Sin referencia de foto");
+
             const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
             const dateISO = d.toISOString().slice(0,10);
             const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
@@ -412,7 +421,7 @@ Reglas: solo JSON, punto decimal, total final.`;
             zip.file(`${dateISO}_${prov}${ext}`, blob);
             ok++;
           }catch(err){
-            fail++; log({fallo_zip_sdk: e.photoURL||e.photoPath, err: err.message||String(err)});
+            fail++; log({fallo_zip: e.photoURL||e.photoPath, err: err.message||String(err)});
           }
         }
 
