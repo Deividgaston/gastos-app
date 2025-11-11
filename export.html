@@ -2,199 +2,222 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gastos 2N — Exportar</title>
   <style>
-    :root{--ink:#0b0b0f;--muted:#6b7280;--b:#e5e7eb;--brand:#007aff}
-    *{box-sizing:border-box}body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:#f7f7fb;color:var(--ink)}
-    header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--b);padding:10px 14px;display:flex;gap:8px;align-items:center;z-index:5}
-    header h1{font-size:18px;margin:0;flex:1}
-    .btn{border:1px solid var(--b);background:#fff;border-radius:12px;padding:8px 12px;cursor:pointer}
-    .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
-    main{max-width:960px;margin:0 auto;padding:14px}
-    .panel{background:#fff;border:1px solid var(--b);border-radius:16px;padding:12px 14px;margin-top:12px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    :root{--blue:#007aff;--border:#e5e7eb;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:#f7f7fb;color:#111827}
+    .topbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:#fff;z-index:5}
+    .topbar h1{margin:0;flex:1;font-size:18px}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:8px 12px;cursor:pointer}
+    .btn.primary{background:var(--blue);color:#fff;border:none}
+    .content{max-width:960px;margin:0 auto;padding:16px}
+    .panel{border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-top:12px;background:#fff}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field input{padding:9px 10px;border:1px solid var(--border);border-radius:10px;font:inherit}
     .muted{color:var(--muted)}
     pre{white-space:pre-wrap;background:#fafafa;border:1px dashed #eaeaea;border-radius:12px;padding:10px;max-height:260px;overflow:auto}
-    .hidden{display:none!important}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Gastos 2N — Exportar</h1>
+    <button id="btnLogin" class="btn">🟢 Entrar con Google</button>
+    <button id="btnLogout" class="btn" style="display:none">Salir</button>
+    <span id="whoami" class="muted" style="margin-left:8px">No autenticado</span>
+  </header>
+
+  <main class="content">
+    <div class="panel">
+      <div class="row">
+        <div class="field">
+          <label>Mes</label>
+          <input id="expMonth" type="month" />
+        </div>
+        <button id="btnCSV" class="btn primary">⬇️ CSV</button>
+        <button id="btnZIP" class="btn">🗜️ ZIP fotos</button>
+      </div>
+      <p class="muted" style="margin-top:8px">
+        Las fotos se descargan del bucket <code>gs://gastos-2n.firebasestorage.app</code> con el SDK (sesión privada).
+      </p>
+    </div>
+
+    <div class="panel">
+      <strong>Logs</strong>
+      <pre id="out"></pre>
+    </div>
+  </main>
+
   <!-- Firebase compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-</head>
-<body>
-  <header>
-    <h1>Gastos 2N — Exportar</h1>
-    <span id="who" class="muted">Comprobando sesión…</span>
-    <button id="login" class="btn">Entrar</button>
-    <button id="logout" class="btn hidden">Salir</button>
-  </header>
-  <main>
-    <div class="panel grid">
-      <div>
-        <label class="muted">Mes</label><br/>
-        <input id="month" type="month"/>
-      </div>
-      <div style="display:flex;gap:8px;align-items:end;justify-content:flex-start">
-        <button id="btnCSV" class="btn">⬇️ CSV</button>
-        <button id="btnZIP" class="btn primary">🗜️ Descargar ZIP (fotos)</button>
-      </div>
-    </div>
-    <div class="panel">
-      <strong>Logs</strong>
-      <pre id="out"></pre>
-      <p class="muted">Si ves <code>storage/unauthorized</code>, revisa las reglas de Storage y que estés autenticado.</p>
-    </div>
-  </main>
+
   <script>
-    (function(){
-      const $=id=>document.getElementById(id);
-      const log=(m)=>{$("out").textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\\n"};
+  (function(){
+    const $ = (id)=>document.getElementById(id);
+    const log = (m)=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
 
-      // === Firebase ===
-      const firebaseConfig = {
-        apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-        authDomain: "gastos-2n.firebaseapp.com",
-        projectId: "gastos-2n",
-        storageBucket: "gastos-2n.firebasestorage.app",
-        messagingSenderId: "55010048795",
-        appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-      };
-      firebase.initializeApp(firebaseConfig);
-      const auth=firebase.auth(); const db=firebase.firestore(); const storage=firebase.storage();
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    // ======= FIREBASE CONFIG (gastos-2n) =======
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
 
-      const provider=new firebase.auth.GoogleAuthProvider();
-      $("login").onclick=()=>auth.signInWithPopup(provider).catch(e=>alert(e.message));
-      $("logout").onclick=()=>auth.signOut();
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const BUCKET_GS = "gs://gastos-2n.firebasestorage.app";
 
-      auth.onAuthStateChanged((u)=>{
-        if(u){
-          $("who").textContent = "Conectado como " + (u.email||u.uid);
-          $("login").classList.add("hidden"); $("logout").classList.remove("hidden");
-          if(!$("month").value) $("month").value=new Date().toISOString().slice(0,7);
-        }else{
-          $("who").textContent = "No autenticado";
-          $("login").classList.remove("hidden"); $("logout").classList.add("hidden");
-        }
-      });
-
-      function monthRange(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
-      async function listEntriesMonth(ym, uid){
-        const [s,e]=monthRange(ym);
-        const snap=await db.collection("users/"+uid+"/entries").where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
-        return snap.docs.map(d=>({id:d.id, ...d.data()}));
+    // ======= AUTH =======
+    const provider = new firebase.auth.GoogleAuthProvider();
+    $("btnLogin").onclick = async () => {
+      try { await auth.signInWithPopup(provider); }
+      catch (e) { alert("Error login: "+(e.message||"")); log(e); }
+    };
+    $("btnLogout").onclick = async ()=> auth.signOut();
+    auth.onAuthStateChanged((user)=>{
+      if(user){
+        $("whoami").textContent = "Conectado como " + (user.email||user.uid);
+        $("btnLogin").style.display="none";
+        $("btnLogout").style.display="inline-block";
+        if(!$("expMonth").value) $("expMonth").value=new Date().toISOString().slice(0,7);
+      }else{
+        $("whoami").textContent = "No autenticado";
+        $("btnLogin").style.display="inline-block";
+        $("btnLogout").style.display="none";
       }
+    });
 
-      // Try to derive a storage path from a downloadURL
-      function pathFromDownloadURL(url){
+    // ======= HELPERS MES/ENTRIES =======
+    function monthRange(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1,1); return [s,e]; }
+    async function listEntriesMonth(ym, uid){
+      const [s,e]=monthRange(ym);
+      const snap=await db.collection(`users/${uid}/entries`)
+        .where("date",">=",s).where("date","<",e).orderBy("date","asc").get();
+      return snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    }
+
+    // ======= CSV =======
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+    const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+    function toCSVValue(col, value){
+      if(col!=="DATE"&&col!=="CLIENT / PROVIDER"&&col!=="DESCRIPTION"){
+        const n=Number(value||0); return (isFinite(n)?n:0).toFixed(2).replace(".",",");
+      }
+      const s=String(value||"").replace(/"/g,'""'); return `"${s}"`;
+    }
+    function toCSVRecords(entries){
+      const rows=[];
+      for(const e of entries){
+        if(e.category==="ingreso") continue;
+        const col=MAP[e.category]||"VARIOUS";
+        const rec={}; COLUMNS.forEach(c=>rec[c]=(["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)?"":0));
+        const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+        rec["DATE"]=d.toLocaleDateString("es-ES");
+        rec["CLIENT / PROVIDER"]=e.provider||"";
+        rec["DESCRIPTION"]=e.notes||"";
+        const amount=Number(e.amount||0);
+        if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount;
+        let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0);
+        rec["TOTAL"]=total; rows.push(rec);
+      }
+      return rows;
+    }
+    function buildCSV(rows, monthlabel, today){
+      const head=`,,,,,   EXPENSES REPORT,,,,,,,
+NOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}
+PRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,
+,,,,,,,,,,,,
+`;
+      const h1=COLUMNS.map(h=>`"${h}"`).join(";")+"\n";
+      const h2=",,PARKINGS ,,,,,TRAVELING,,,\n";
+      const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("\n");
+      return head+h1+h2+data+"\n";
+    }
+    $("btnCSV").addEventListener("click", async ()=>{
+      try{
+        const user=auth.currentUser; if(!user) return alert("Haz login");
+        const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes");
+        const entries=await listEntriesMonth(ym,user.uid);
+        if(!entries.length) return alert("Sin gastos");
+        const rows=toCSVRecords(entries);
+        const monthlabel=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+        const today=new Date().toLocaleDateString("es-ES");
+        const csv=buildCSV(rows, monthlabel, today);
+        saveAs(new Blob([csv], {type:"text/csv;charset=utf-8"}), `Informe_Gastos_${ym}.csv`);
+      }catch(e){ console.error(e); log(e); alert("CSV error: "+(e.message||"")); }
+    });
+
+    // ======= ZIP (getBytes con gs://) =======
+    function inferPhotoPath(entry){
+      if (entry.photoPath) return entry.photoPath; // ya guardado por la app
+      if (entry.photoURL && entry.photoURL.includes("/o/")){
+        // Parsear la parte después de /o/ y antes de ?
         try{
-          const u=new URL(url);
-          // expect .../o/<encodedPath>?alt=media&token=...
-          const m = u.pathname.match(/\/o\/(.+)$/);
-          if(!m) return null;
-          const enc = m[1].split("?")[0];
-          return decodeURIComponent(enc);
-        }catch(_){ return null; }
+          const raw = entry.photoURL.split("/o/")[1].split("?")[0];
+          return decodeURIComponent(raw);
+        }catch{}
       }
+      return null;
+    }
+    function extToMime(name){
+      const n=name.toLowerCase();
+      if(n.endsWith(".png")) return "image/png";
+      if(n.endsWith(".webp")) return "image/webp";
+      return "image/jpeg";
+    }
+    $("btnZIP").addEventListener("click", async ()=>{
+      try{
+        const user=auth.currentUser; if(!user) return alert("Haz login");
+        const ym=$("expMonth").value; if(!ym) return alert("Selecciona un mes");
+        const entries=await listEntriesMonth(ym,user.uid);
+        const fotos = entries.filter(e=>inferPhotoPath(e));
+        if(!fotos.length) return alert("Sin fotos en ese mes");
 
-      async function getBlobForEntry(e){
-        // Prefer server path stored in DB
-        if(e.photoPath){
-          const ref = storage.ref(e.photoPath);
-          // Use getBlob to avoid size caps and keep mime
-          return ref.getBlob();
-        }
-        if(e.photoURL){
-          // Derive a path and access via SDK (auth)
-          const p = pathFromDownloadURL(e.photoURL);
-          if(p){
-            const ref = storage.ref(p);
-            return ref.getBlob();
-          }
-        }
-        throw new Error("Sin foto");
-      }
+        const zip = new JSZip(); let ok=0, fail=0;
+        const maxBytes = 12 * 1024 * 1024;
 
-      $("btnZIP").onclick = async () => {
-        try{
-          const u=auth.currentUser; if(!u) return alert("Haz login primero");
-          const ym=$("month").value; if(!ym) return alert("Selecciona mes");
-          const entries=await listEntriesMonth(ym,u.uid);
-          const photos=entries.filter(x=>x.photoPath||x.photoURL);
-          if(!photos.length) return alert("Sin fotos ese mes");
-
-          const zip = new JSZip(); let ok=0, fail=0;
-          for(const e of photos){
-            try{
-              const blob = await getBlobForEntry(e);
-              const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
-              const dateISO = d.toISOString().slice(0,10);
-              const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-              const ext = blob.type==="image/png" ? ".png" : ".jpg";
-              zip.file(`${dateISO}_${prov}${ext}`, blob);
-              ok++;
-            }catch(err){
-              fail++; log({fallo_zip_getBlob: e.photoURL||e.photoPath, err: (err && err.message) || String(err)});
+        for (const e of fotos){
+          const photoPath = inferPhotoPath(e);
+          try{
+            // Seguridad: comprobar que la ruta pertenece al mismo uid
+            if (!photoPath.startsWith(`tickets/${user.uid}/`)) {
+              throw new Error("Ruta de foto no pertenece al usuario actual");
             }
-          }
-          const out = await zip.generateAsync({type:"blob"});
-          saveAs(out, `Fotos_Gastos_${ym}.zip`);
-          log(`🗜️ ZIP listo: ${ok} ok, ${fail} fallos`);
-        }catch(e){ console.error(e); log(e); alert("ZIP error: " + (e.message||"")); }
-      };
+            const gsUrl = `${BUCKET_GS}/${photoPath}`;
+            const ref = storage.refFromURL(gsUrl);
+            const bytes = await ref.getBytes(maxBytes);
+            const blob = new Blob([bytes], {type: extToMime(ref.name)});
 
-      // Minimal CSV as well
-      const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
-      const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
-      function toCSVValue(col, value){
-        if(col!=="DATE"&&col!=="CLIENT / PROVIDER"&&col!=="DESCRIPTION"){
-          const n=Number(value||0); return (isFinite(n)?n:0).toFixed(2).replace(".",",");
+            const d = e.date?.toDate ? e.date.toDate() : new Date(e.date);
+            const dateISO = d.toISOString().slice(0,10);
+            const prov = (e.provider||"ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+            const ext = ref.name.includes(".") ? ref.name.slice(ref.name.lastIndexOf(".")) : ".jpg";
+            zip.file(`${dateISO}_${prov}${ext}`, blob);
+            ok++;
+          }catch(err){
+            fail++; log({fallo_zip_getBytes: photoPath || e.photoURL, err: (err && err.message) ? err.message : String(err)});
+          }
         }
-        const s=String(value||"").replace(/"/g,'""'); return `"${s}"`;
-      }
-      function buildCSV(rows, monthlabel, today){
-        const head=`,,,,,   EXPENSES REPORT,,,,,,,\nNOM,,Gaston Ortigosa,,,,,,,,,DATE:,,${today}\nPRENOM:,David,COST CENTER:,7420,,MONTH/YEAR:,,${monthlabel},,,,,,\n,,,,,,,,,,,,\n`;
-        const h1=COLUMNS.map(h=>`"${h}"`).join(";")+"\\n";
-        const h2=",,PARKINGS ,,,,,TRAVELING,,,\\n";
-        const data=rows.map(r=>COLUMNS.map(c=>toCSVValue(c,r[c])).join(";")).join("\\n");
-        return head+h1+h2+data+"\\n";
-      }
-      function toCSVRecords(entries){
-        const rows=[];
-        for(const e of entries){
-          if(e.category==="ingreso") continue;
-          const col=MAP[e.category]||"VARIOUS";
-          const rec={}; COLUMNS.forEach(c=>rec[c]=(["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)?"":0));
-          const d=e.date?.toDate?e.date.toDate():new Date(e.date);
-          rec["DATE"]=d.toLocaleDateString("es-ES");
-          rec["CLIENT / PROVIDER"]=e.provider||"";
-          rec["DESCRIPTION"]=e.notes||"";
-          const amount=Number(e.amount||0);
-          if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount;
-          let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0);
-          rec["TOTAL"]=total; rows.push(rec);
-        }
-        return rows;
-      }
-      $("btnCSV").onclick = async ()=>{
-        try{
-          const u=auth.currentUser; if(!u) return alert("Haz login primero");
-          const ym=$("month").value; if(!ym) return alert("Selecciona mes");
-          const entries=await listEntriesMonth(ym,u.uid);
-          if(!entries.length) return alert("Sin gastos");
-          const rows=toCSVRecords(entries);
-          const monthlabel=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
-          const today=new Date().toLocaleDateString("es-ES");
-          const csv=buildCSV(rows, monthlabel, today);
-          saveAs(new Blob([csv],{type:"text/csv;charset=utf-8"}),`Informe_Gastos_${ym}.csv`);
-        }catch(e){ console.error(e); log(e); alert("CSV error: "+(e.message||"")); }
-      };
-    })();
+
+        const outBlob = await zip.generateAsync({type:"blob"});
+        saveAs(outBlob, `Fotos_Gastos_${ym}.zip`);
+        log(`🗜️ ZIP listo: ${ok} ok, ${fail} fallos`);
+      }catch(e){ console.error(e); log(e); alert("ZIP error: "+(e.message||"")); }
+    });
+
+  })();
   </script>
 </body>
 </html>
