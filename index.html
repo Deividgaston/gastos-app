@@ -1,222 +1,325 @@
-
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Gastos 2N</title>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="dns-prefetch" href="https://www.gstatic.com">
+  <meta name="theme-color" content="#0a84ff" />
   <style>
-    :root{
-      --bg:#0b0c0f; --card:#12141a; --muted:#8a8f98; --text:#eef2f7;
-      --blue:#0a84ff; --green:#30d158; --red:#ff453a; --sep:rgba(255,255,255,.06);
-      --shadow:0 12px 40px rgba(0,0,0,.35);
-      --radius:22px;
-    }
+    :root{--bg:#f7f7fb;--card:#ffffff;--ink:#0b0b0f;--muted:#6b7280;--blue:#0a84ff;--border:#e5e7eb;--ok:#34c759;--danger:#ff3b30}
     *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,Segoe UI,Roboto}
-    .safe{padding-top:constant(safe-area-inset-top);padding-top:env(safe-area-inset-top)}
-    .shell{max-width:428px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
-    header.top{position:sticky;top:0;z-index:5;backdrop-filter:saturate(180%) blur(18px);background:rgba(11,12,15,.6);border-bottom:1px solid var(--sep)}
-    .top-inner{display:flex;gap:10px;align-items:center;padding:14px 16px}
-    h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
-    .spacer{flex:1}
-    .iconbtn{background:linear-gradient(180deg,#1a1d24,#12141a);border:1px solid var(--sep);border-radius:14px;padding:10px;display:inline-flex;align-items:center;gap:8px;color:var(--text);box-shadow:var(--shadow);cursor:pointer}
-    .iconbtn.primary{background:linear-gradient(180deg,#0f6bd8,#0a58b5);border-color:rgba(255,255,255,.15)}
-    .iconbtn.green{background:linear-gradient(180deg,#2fbf66,#27a95a)}
-    .grid{display:grid;gap:12px;padding:16px}
-    .card{background:linear-gradient(180deg,#181b23,#12141a);border:1px solid var(--sep);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
-    .row{display:flex;align-items:center;gap:12px}
-    .title{font-size:15px;font-weight:600}
+    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Inter,Helvetica,Arial;background:var(--bg);color:var(--ink)}
+    .safe{padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left))}
+    .topbar{position:sticky;top:0;z-index:10;background:var(--card);backdrop-filter:saturate(180%) blur(20px);
+      border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px}
+    .title{font-weight:700;font-size:18px;letter-spacing:.2px}
+    .btn{appearance:none;border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:14px;padding:10px 12px;font:inherit;cursor:pointer}
+    .btn.primary{border:none;background:var(--blue);color:#fff;box-shadow:0 6px 16px rgba(10,132,255,.25)}
+    .btn.icon{display:inline-flex;align-items:center;gap:8px}
+    .btn.ghost{border:1px dashed var(--border);background:transparent}
+    .chip{font-size:12px;color:#fff;background:#111;border-radius:999px;padding:6px 10px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px}
+    .row{display:flex;gap:10px;align-items:center}
+    .grid{display:grid;gap:12px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .muted{color:var(--muted)}
-    .chip{padding:6px 10px;border-radius:999px;border:1px solid var(--sep);font-size:12px;color:var(--muted)}
-    .bigbtn{display:flex;gap:12px;align-items:center;justify-content:center;padding:14px;border-radius:18px;border:1px solid var(--sep);background:linear-gradient(180deg,#191d25,#141720);box-shadow:var(--shadow);cursor:pointer}
-    .bigbtn .emoji{font-size:22px}
-    .cta{background:linear-gradient(180deg,#0a84ff,#0063e5);color:white;border:0}
     .hidden{display:none!important}
-    .list{display:grid;gap:8px}
-    .log{background:#0f1116;border:1px solid var(--sep);border-radius:16px;padding:10px;white-space:pre-wrap;max-height:200px;overflow:auto;color:#b7c4d6}
-    a{color:#a3c8ff;text-decoration:none}
+    .footer{position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--border);padding:10px 14px;display:flex;gap:10px}
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;padding:0;background:rgba(0,0,0,.35)}
+    .modal.open{display:flex}
+    .sheet{width:100%;max-width:560px;background:var(--card);border-top-left-radius:18px;border-top-right-radius:18px;
+      box-shadow:0 -8px 40px rgba(0,0,0,.25);border:1px solid var(--border)}
+    .sheet header,.sheet footer{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .sheet footer{border-top:1px solid var(--border);border-bottom:none}
+    .sheet .body{padding:12px 14px;display:grid;gap:10px;grid-template-columns:1fr 1fr}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field input,.field select,.field textarea{padding:10px;border:1px solid var(--border);border-radius:12px;font:inherit;background:#fff}
+    .preview{grid-column:1/3;display:flex;gap:10px;align-items:center;border:1px solid var(--border);padding:8px;border-radius:12px}
+    .preview img{height:72px;width:auto;border-radius:10px}
+    .link{color:var(--blue);text-decoration:none}
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js" type="module"></script>
-
 </head>
-<body class="safe">
-  <div class="shell">
-    <header class="top">
-      <div class="top-inner">
-        <h1>Gastos 2N</h1>
-        <span class="chip" id="whoami">Invitado</span>
-        <div class="spacer"></div>
-        <button id="btnAI" class="iconbtn" title="API Key IA">⚙️</button>
-        <button id="btnLogin" class="iconbtn primary" title="Entrar Google">➕</button>
-        <button id="btnLogout" class="iconbtn hidden" title="Salir">↩︎</button>
+<body>
+  <header class="topbar safe">
+    <div class="row">
+      <span class="title">Gastos 2N</span>
+      <span id="whoami" class="chip hidden"></span>
+    </div>
+    <div class="row">
+      <button id="btnAI" class="btn icon" title="Guardar API Key de Gemini">⚙️ IA</button>
+      <button id="btnLogin" class="btn icon">🔐 Google</button>
+      <button id="btnLogout" class="btn icon hidden">Salir</button>
+    </div>
+  </header>
+
+  <main class="safe grid" style="max-width:428px;margin:0 auto">
+    <section class="card grid">
+      <div class="actions">
+        <button id="btnScan" class="btn primary icon">📸 Escanear ticket</button>
+        <button id="btnIngreso" class="btn icon">➕ Ingreso manual</button>
       </div>
-    </header>
+      <div class="actions">
+        <a class="btn icon" id="goExport">📁 Exportar</a>
+        <a class="btn icon" id="goKM">🚗 Gastos de KM</a>
+      </div>
+      <small class="muted">Optimizado para iPhone 16 Pro Max (también funciona en escritorio).</small>
+    </section>
 
-    <main class="grid">
-      <section class="card">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <div class="title">Capturar ticket</div>
-            <div class="muted">Usa la cámara del iPhone para OCR</div>
-          </div>
-          <button id="scanBtn" class="bigbtn cta"><span class="emoji">📸</span> Escanear</button>
-        </div>
-      </section>
+    <section class="card">
+      <b>Registro rápido</b>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <span class="muted">Los tickets se guardan con foto y OCR.</span>
+        <a href="#" id="lastMonth" class="link muted">Ver último mes →</a>
+      </div>
+    </section>
 
-      <section class="grid" style="grid-template-columns:1fr 1fr">
-        <a class="bigbtn" href="export-dashboard.html"><span class="emoji">📊</span> Exportar</a>
-        <a class="bigbtn" href="kms.html"><span class="emoji">🚗</span> Gastos KM</a>
-      </section>
+    <section class="card">
+      <b>Logs</b>
+      <pre id="out" class="muted" style="white-space:pre-wrap;max-height:200px;overflow:auto;margin:8px 0 0 0"></pre>
+    </section>
+  </main>
 
-      <section class="card">
-        <div class="title">Actividad</div>
-        <div class="log" id="out"></div>
-      </section>
-    </main>
+  <!-- Review / Guardar -->
+  <div id="reviewModal" class="modal" aria-hidden="true">
+    <div class="sheet">
+      <header>
+        <strong>Revisar y guardar</strong>
+        <button class="btn" id="closeReview">Cerrar</button>
+      </header>
+      <div class="body">
+        <div class="field"><label>Fecha</label><input id="revDate" type="date"/></div>
+        <div class="field"><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"/></div>
+        <div class="field" style="grid-column:1/2"><label>Proveedor</label><input id="revProvider" type="text"/></div>
+        <div class="field"><label>Categoría</label><select id="revCategory">
+          <option value="varios" selected>Varios</option>
+          <option value="comida">Comida</option>
+          <option value="gasolina">Gasolina</option>
+          <option value="peajes">Peajes</option>
+          <option value="alojamiento">Hotel</option>
+          <option value="transporte">Transportes</option>
+          <option value="ocio">Invitaciones</option>
+          <option value="servicios">Servicios</option>
+          <option value="ingreso">Ingreso</option>
+        </select></div>
+        <div class="field" style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2" placeholder="Opcional"></textarea></div>
+        <div class="preview"><img id="revThumb"><div id="revFileInfo" class="muted" style="font-size:12px"></div></div>
+      </div>
+      <footer>
+        <button class="btn" id="cancelReview">Cancelar</button>
+        <button class="btn primary" id="saveReview">Guardar</button>
+      </footer>
+    </div>
   </div>
 
-  <dialog id="aiDlg" style="max-width:420px;background:#12141a;color:#eef2f7;border:1px solid var(--sep);border-radius:18px">
-    <form method="dialog" style="padding:16px;display:grid;gap:12px">
-      <h3 style="margin:0">Configurar IA</h3>
-      <label>API Key Gemini
-        <input id="aiKey" type="password" placeholder="AIza..." style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--sep);background:#0f1116;color:#fff">
-      </label>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button id="aiClear" class="iconbtn">Borrar</button>
-        <button id="aiSave" class="iconbtn primary">Guardar</button>
+  <!-- IA Key -->
+  <div id="aiModal" class="modal" aria-hidden="true">
+    <div class="sheet">
+      <header><strong>Configurar IA</strong><button class="btn" id="closeAI">Cerrar</button></header>
+      <div class="body" style="grid-template-columns:1fr">
+        <div class="field">
+          <label>API Key de Google AI (Gemini)</label>
+          <input id="aiKey" type="password" placeholder="AIza..." />
+          <small class="muted">Se guarda localmente en este navegador.</small>
+        </div>
       </div>
-    </form>
-  </dialog>
+      <footer>
+        <button class="btn" id="clearAI">Borrar</button>
+        <button class="btn primary" id="saveAI">Guardar</button>
+      </footer>
+    </div>
+  </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
+  <script>
+  (function(){
+    const $ = (id)=>document.getElementById(id);
+    const log = (m)=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\\n"; };
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-  authDomain: "gastos-2n.firebaseapp.com",
-  projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
-  messagingSenderId: "55010048795",
-  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-};
+    // Firebase (tu proyecto: gastos-2n)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth=firebase.auth(), db=firebase.firestore(), storage=firebase.storage();
 
+    // ===== Navegación =====
+    $("goExport").href = "./export.html";
+    $("goKM").href = "./km.html"; // (placeholder si luego la creamos)
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getFirestore(app);
-    const stg  = getStorage(app, "gs://gastos-2n.firebasestorage.app");
+    // ===== IA modal =====
+    (function(){
+      const aiModal=$("aiModal");
+      const open=()=>{ aiModal.classList.add("open"); $("aiKey").value=localStorage.getItem("gkey")||""; };
+      const close=()=> aiModal.classList.remove("open");
+      $("btnAI").onclick=open; $("closeAI").onclick=close;
+      $("saveAI").onclick=()=>{ const v=$("aiKey").value.trim(); if(!v) return alert("Pega tu API Key"); localStorage.setItem("gkey",v); alert("Guardada ✅"); close(); };
+      $("clearAI").onclick=()=>{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("Borrada"); };
+      window.__ai={open,close};
+    })();
 
-    const $ = id=>document.getElementById(id);
-    const log = m=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; out.scrollTop=out.scrollHeight; };
+    // ===== Auth Google =====
+    const provider = new firebase.auth.GoogleAuthProvider();
+    $("btnLogin").onclick = async ()=>{
+      try{ await auth.signInWithPopup(provider); }catch(e){ console.error(e); alert("Login error: "+(e.message||"")); }
+    };
+    $("btnLogout").onclick = async ()=>{ await auth.signOut(); };
 
-    const dlg = $("aiDlg");
-    $("btnAI").onclick = ()=>{ $("aiKey").value=localStorage.getItem("gkey")||""; dlg.showModal(); };
-    $("aiClear").onclick = (e)=>{ e.preventDefault(); localStorage.removeItem("gkey"); $("aiKey").value=""; };
-    $("aiSave").onclick = (e)=>{ e.preventDefault(); const v=$("aiKey").value.trim(); if(!v) return; localStorage.setItem("gkey", v); dlg.close(); };
-
-    const provider = new GoogleAuthProvider();
-    $("btnLogin").onclick = async ()=>{ try{ await signInWithPopup(auth, provider); }catch(e){ log(e); alert(e.message||"Login error"); } };
-    $("btnLogout").onclick = async ()=>{ await signOut(auth); };
-    onAuthStateChanged(auth, (user)=>{
-      if(user){ $("whoami").textContent = user.email||user.uid; $("btnLogin").classList.add("hidden"); $("btnLogout").classList.remove("hidden"); }
-      else { $("whoami").textContent = "Invitado"; $("btnLogin").classList.remove("hidden"); $("btnLogout").classList.add("hidden"); }
+    auth.onAuthStateChanged((user)=>{
+      if(user){
+        $("whoami").textContent = user.email||user.uid;
+        $("whoami").classList.remove("hidden");
+        $("btnLogin").classList.add("hidden");
+        $("btnLogout").classList.remove("hidden");
+      }else{
+        $("whoami").classList.add("hidden");
+        $("btnLogin").classList.remove("hidden");
+        $("btnLogout").classList.add("hidden");
+      }
     });
 
-    function ensureInput(){
-      const i=document.createElement("input");
-      i.type="file"; i.accept="image/*"; i.capture="environment"; i.style.display="none"; document.body.appendChild(i);
-      return i;
+    // ===== OCR helpers =====
+    let current = { file:null, base64:"", mime:"image/jpeg", isManual:false };
+    function ensureCameraInput(){
+      const el=document.createElement("input");
+      el.type="file"; el.accept="image/*"; el.capture="environment"; el.style.display="none";
+      document.body.appendChild(el); return el;
     }
-    function downscale(file, max=2048, q=0.9){
-      return new Promise((resolve,reject)=>{
-        const img = new Image();
-        img.onload = ()=>{
-          const s = Math.min(1, max/Math.max(img.width,img.height));
-          const w = Math.round(img.width*s), h = Math.round(img.height*s);
-          const c = document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h);
-          c.toBlob(b=>resolve(new File([b], (file.name||"ticket")+".jpg", {type:"image/jpeg"})), "image/jpeg", q);
-        };
-        img.onerror = reject;
-        img.src = URL.createObjectURL(file);
-      });
+    function fileToBase64(file){
+      return new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(",")[1]||""); rd.onerror=()=>reject(new Error("No se pudo leer")); rd.readAsDataURL(file); });
     }
-    function toBase64(file){
-      return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]||""); r.onerror=rej; r.readAsDataURL(file); });
+    async function downscale(file, max=2048, q=0.9){
+      const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+      const scale=Math.min(1,max/Math.max(img.width,img.height));
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h);
+      const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",q)); URL.revokeObjectURL(img.src);
+      return new File([blob], (file.name||"ticket")+".jpg", {type:"image/jpeg"});
     }
-    function safeParse(text){
-      try{ let t=(text||"").trim(); if(t.startsWith("```")) t=t.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim(); const a=t.indexOf("{"), b=t.lastIndexOf("}"); if(a>-1&&b>-1) t=t.slice(a,b+1); return JSON.parse(t); }catch{}
-      return null;
+    function safeParseJSON(text){
+      let s=(text||"").trim(); if(s.startsWith("```")) s=s.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
+      const a=s.indexOf("{"), b=s.lastIndexOf("}"); if(a!==-1 && b!==-1) s=s.slice(a,b+1);
+      return JSON.parse(s);
     }
-    async function callGemini(b64){
-      const key=(localStorage.getItem("gkey")||"").trim(); if(!key) throw new Error("Falta API Key (pulsa ⚙️)");
-      const body = { contents:[{ role:"user", parts:[
-        {text:`Devuelve solo JSON válido: {\"date\":\"YYYY-MM-DD\",\"provider\":\"Nombre\",\"amount\":0.00}`},
-        {inlineData:{mimeType:"image/jpeg", data:b64}}
-      ] }]};
-      const models = ["gemini-2.5-flash","gemini-2.0-flash"];
-      for(const m of models){
-        const url=`https://generativelanguage.googleapis.com/v1/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
-        const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
-        const txt = await r.text(); let js=null; try{ js=JSON.parse(txt) }catch{}
-        if(!r.ok){ log({modelo:m,status:r.status,body:js||txt}); if(r.status===429) await new Promise(X=>setTimeout(X,800)); continue; }
-        const text = js?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const parsed = safeParse(text);
-        if(parsed) return parsed;
+    function fallbackParse(text){
+      const t=(text||"").replace(/\s+/g," ").trim();
+      let amount=0; const m=t.match(/(\d+[.,]\d{2})\s*(€|eur)?/i); if(m) amount=Number(m[1].replace(",", "."));
+      let dateISO=new Date().toISOString().slice(0,10);
+      const d1=t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/); const d2=t.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+      if(d2) dateISO=`${d2[1]}-${d2[2]}-${d2[3]}`; else if(d1) dateISO=`${d1[3]}-${d1[2]}-${d1[1]}`;
+      let provider="Ticket"; const prov=t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); if(prov) provider=prov[0].trim();
+      return { date:dateISO, provider, amount };
+    }
+    async function callGemini(base64, mime){
+      const key=(localStorage.getItem("gkey")||"").trim();
+      if(!key){ window.__ai.open(); throw new Error("Falta API Key de Gemini"); }
+      const prompt='Devuelve solo JSON: {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00} (total final, punto decimal).';
+      const body={ contents:[{ role:"user", parts:[{text:prompt},{inlineData:{mimeType:mime||"image/jpeg",data:base64}}]}] };
+      const models=["gemini-2.5-flash","gemini-2.0-flash"];
+      for(const model of models){
+        const url=`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+        const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+        const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{}
+        if(res.status===429){ await new Promise(r=>setTimeout(r,700)); continue; }
+        if(!res.ok){ log({fallo_modelo:model,status:res.status,body:js||txt}); continue; }
+        const text=js?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        try{ return safeParseJSON(text); }catch{ return fallbackParse(text); }
       }
-      throw new Error("OCR sin respuesta válida");
+      throw new Error("No fue posible extraer datos");
     }
 
-    async function saveEntry(file, data){
-      const user=auth.currentUser; if(!user) throw new Error("Login requerido");
-      const dateISO = /^\d{4}-\d{2}-\d{2}$/.test(data.date||"") ? data.date : new Date().toISOString().slice(0,10);
-      const yyyyMM = dateISO.slice(0,7);
-      const prov = (data.provider||"Ticket").toString().replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
-      const name = `${dateISO}_${prov}_${Date.now()}.jpg`;
-      const path = `tickets/${user.uid}/${yyyyMM}/${name}`;
-      const r = ref(stg, path);
-      await uploadBytes(r, file);
-      const url = await getDownloadURL(r);
-      await addDoc(collection(db, `users/${user.uid}/entries`), {
-        date: new Date(dateISO),
-        category: "varios",
-        provider: data.provider||"Ticket",
-        notes: "",
-        amount: Number(data.amount||0)||0,
-        isExpense: true,
-        photoURL: url,
-        photoPath: path,
-        createdAt: serverTimestamp()
-      });
-      log("✅ Guardado");
+    // ===== Review Modal =====
+    const review = { file:null, dateISO:"", amount:0, provider:"", category:"varios", notes:"" };
+    function openReview(){
+      $("reviewModal").classList.add("open");
+      $("revDate").value = review.dateISO || new Date().toISOString().slice(0,10);
+      $("revAmount").value = review.amount || "";
+      $("revProvider").value = review.provider || "";
+      $("revCategory").value = review.category;
+      $("revNotes").value = review.notes || "";
+      $("revThumb").src = review.file ? URL.createObjectURL(review.file) : "";
+      $("revFileInfo").textContent = review.file ? `${review.file.name||"captura"} · ${Math.round(review.file.size/1024)} KB` : "Sin imagen";
     }
+    function closeReview(){ $("reviewModal").classList.remove("open"); }
+    $("closeReview").onclick=closeReview; $("cancelReview").onclick=closeReview;
 
-    document.getElementById("scanBtn").onclick = async ()=>{
+    $("saveReview").onclick = async ()=>{
       try{
-        const u=auth.currentUser; if(!u) return alert("Haz login con Google");
-        const inp=ensureInput();
-        const file = await new Promise((resolve,reject)=>{ const once=()=>{ inp.removeEventListener("change", once); if(inp.files&&inp.files[0]) resolve(inp.files[0]); else reject(new Error("Sin imagen")); }; inp.addEventListener("change", once, {once:true}); inp.click(); });
-        const compact = await downscale(file, 2048, .9);
-        log(`📷 ${compact.name} (${Math.round(compact.size/1024)} KB)`);
-        const b64 = await toBase64(compact);
-        const data = await callGemini(b64);
-        await saveEntry(compact, data);
-        alert("Ticket guardado ✅");
-      }catch(e){ console.error(e); log(e); alert(e.message||"Error"); }
+        const user=auth.currentUser; if(!user) return alert("Haz login primero");
+        const dateISO=$("revDate").value||new Date().toISOString().slice(0,10);
+        const amount=Number($("revAmount").value||0);
+        const provider=$("revProvider").value.trim()||"Ticket";
+        const category=$("revCategory").value;
+        const notes=$("revNotes").value.trim();
+        if(!amount || amount<=0) return alert("Importe > 0");
+
+        const yyyyMM=dateISO.slice(0,7);
+        let photoURL="", photoPath="";
+        if(current.file){
+          const safeProv=provider.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+          const ext=(current.file.name.split(".").pop()||"jpg").toLowerCase();
+          const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
+          photoPath=`tickets/${user.uid}/${yyyyMM}/${filename}`;
+          await storage.ref(photoPath).put(current.file);
+          photoURL = await storage.ref(photoPath).getDownloadURL();
+        }
+
+        await db.collection(`users/${user.uid}/entries`).add({
+          date:new Date(dateISO),
+          category, provider, notes, amount,
+          photoURL, photoPath,
+          isExpense: category!=="ingreso",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert("Guardado ✅");
+        closeReview();
+        current={file:null,base64:"",mime:"image/jpeg",isManual:false};
+      }catch(e){ console.error(e); alert("Error guardando: "+(e.message||"")); }
     };
+
+    // ===== Botón ESCANEAR =====
+    $("btnScan").onclick = async ()=>{
+      try{
+        const user=auth.currentUser; if(!user) return alert("Haz login primero");
+        const picker=ensureCameraInput();
+        const file=await new Promise((resolve,reject)=>{
+          const fn=()=>{ picker.removeEventListener("change",fn); if(picker.files&&picker.files[0]) resolve(picker.files[0]); else reject(new Error("Sin imagen")); };
+          picker.addEventListener("change",fn,{once:true}); picker.click();
+        });
+        const small=await downscale(file,2048,0.9);
+        const b64=await fileToBase64(small);
+        const res=await callGemini(b64, small.type);
+        const d=/^\d{4}-\d{2}-\d{2}$/.test(res.date||"") ? new Date(res.date+"T00:00:00") : new Date();
+        current={ file:small, base64:b64, mime:small.type, isManual:false };
+        review.dateISO=d.toISOString().slice(0,10);
+        review.amount=Number(res.amount||0)||0;
+        review.provider=(res.provider||"").toString().slice(0,80)||"Ticket";
+        review.category="varios"; review.notes="";
+        openReview();
+      }catch(e){ console.error(e); alert("OCR error: "+(e.message||"")); }
+    };
+
+    // ===== Ingreso manual (sin foto) =====
+    $("btnIngreso").onclick = ()=>{
+      current={file:null,base64:"",mime:"image/jpeg",isManual:true};
+      review.dateISO=new Date().toISOString().slice(0,10);
+      review.amount=0; review.provider="Ingreso"; review.category="ingreso"; review.notes="";
+      openReview();
+    };
+
+    // Acceso rápido último mes
+    $("lastMonth").onclick=(ev)=>{ ev.preventDefault(); location.href="./export.html"; };
+  })();
   </script>
 </body>
 </html>
