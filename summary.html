@@ -1,233 +1,67 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Gastos 2N — Summary</title>
-<style>
-:root{
-  --bg:#0b0f14;
-  --card:#11161c;
-  --muted:#97a3b6;
-  --accent:#0a84ff;
-  --border:#1b2530;
-  --ok:#30d158;
-  --warn:#ffd60a;
-  --bad:#ff453a;
-  --txt:#e6edf6;
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--txt)}
-a{color:var(--accent);text-decoration:none}
-.btn{border:1px solid var(--border);background:linear-gradient(180deg,#17202a,#11161c);
-  color:var(--txt);padding:10px 14px;border-radius:14px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
-.btn:active{transform:scale(.98)}
-.btn.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none;color:#fff}
-.btn.ghost{background:transparent}
-.btn.warn{background:linear-gradient(180deg,#ffd60a,#bda107);border:none;color:#1a1a1a}
-.btn.ok{background:linear-gradient(180deg,#30d158,#248a3d);border:none;color:#061307}
-.badge{padding:4px 8px;border-radius:999px;background:#0f1520;border:1px solid var(--border);color:var(--muted);font-size:12px}
-.topbar{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;padding:12px 14px;background:rgba(11,15,20,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
-.topbar h1{margin:0;font-size:18px;letter-spacing:.3px}
-.container{max-width:920px;margin:0 auto;padding:14px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px}
-.grid{display:grid;gap:12px}
-.grid.cols-2{grid-template-columns:1fr 1fr}
-.grid.cols-3{grid-template-columns:1fr 1fr 1fr}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.input,select,textarea{width:100%;background:#0e141b;border:1px solid var(--border);border-radius:12px;color:var(--txt);padding:10px;font:inherit}
-label{font-size:12px;color:var(--muted)}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-.muted{color:var(--muted)}
-.hidden{display:none!important}
-.list{display:grid;gap:10px}
-.item{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border);background:#0e141b;border-radius:14px;padding:10px}
-.item .left{min-width:0}
-.item .left p{margin:0}
-.item small{color:var(--muted)}
-.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.kpi .k{background:#0e141b;border:1px solid var(--border);border-radius:16px;padding:12px}
-.kpi .v{font-weight:700;font-size:18px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px}
-.modal.open{display:flex}
-.sheet{background:var(--card);border:1px solid var(--border);border-radius:20px;max-width:520px;width:100%;overflow:hidden}
-.sheet header,.sheet footer{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center}
-.sheet footer{border-top:1px solid var(--border);border-bottom:none}
-.sheet .body{padding:14px;display:grid;gap:10px;grid-template-columns:1fr 1fr}
-.preview{grid-column:1/3;display:flex;gap:10px;align-items:center;border:1px dashed var(--border);padding:10px;border-radius:12px}
-</style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-
-<!-- Firebase compat SDKs -->
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-  authDomain: "gastos-2n.firebaseapp.com",
-  projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
-  messagingSenderId: "55010048795",
-  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-const storage = firebase.storage();
-</script>
-
-</head>
-<body>
-
-<header class="topbar">
-  <h1>Gastos 2N</h1>
-  <span id="whoami" class="badge">No autenticado</span>
-  <span style="flex:1"></span>
-  <a class="btn ghost" href="./index.html">🏠 Inicio</a>
-  <a class="btn ghost" href="./export.html">📁 Export</a>
-  <a class="btn ghost" href="./kms.html">🛣️ KMs</a>
-  <a class="btn ghost" href="./summary.html">📊 Summary</a>
-  <button id="btnLogin" class="btn">🔐 Google</button>
-  <button id="btnLogout" class="btn hidden">Salir</button>
-</header>
-<script>
-  const who = ()=>document.getElementById('whoami');
-  auth.onAuthStateChanged(u=>{
-    if(u){ who().textContent = u.email||u.uid;
-      document.getElementById('btnLogin').classList.add('hidden');
-      document.getElementById('btnLogout').classList.remove('hidden');
-    }else{
-      who().textContent = 'No autenticado';
-      document.getElementById('btnLogin').classList.remove('hidden');
-      document.getElementById('btnLogout').classList.add('hidden');
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Gastos 2N</title>
+  <meta name="theme-color" content="#0b0b0f">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{
+      --bg:#0b0b0f; --card:#11131a; --muted:#9aa0aa; --text:#e8ecf1; --primary:#0a84ff; --border:#1b1e27;
     }
-  });
-  document.getElementById('btnLogin').onclick = async ()=>{
-    try{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ alert(e.message||'Login error'); }
-  };
-  document.getElementById('btnLogout').onclick = ()=>auth.signOut();
-</script>
+    html,body{background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased}
+    .ios-card{background:var(--card); border:1px solid var(--border); border-radius:22px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    .ios-btn{border-radius:14px; border:1px solid var(--border); padding:.65rem .9rem; background:linear-gradient(180deg,#171a22,#0f1118);}
+    .ios-btn-primary{background:linear-gradient(180deg,#1391ff,#0062de); border-color:#0051ba}
+    .pill{border:1px solid var(--border); border-radius:9999px; padding:.25rem .6rem; color:var(--muted)}
+    .muted{color:var(--muted)}
+    .tap{transition:transform .07s ease; } .tap:active{transform:scale(.98)}
+    .grid-kpi{display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem}
+    .kpi{padding:.7rem; border-radius:16px; background:linear-gradient(180deg,#141824,#0f121a); border:1px solid var(--border)}
+    .toolbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(8px); background:rgba(11,11,15,.75); border-bottom:1px solid var(--border)}
+    .icon{font-style:normal}
+    .chip{display:inline-flex; align-items:center; gap:.35rem; border:1px solid var(--border); padding:.35rem .6rem; border-radius:999px; background:#121521}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:.6rem}
+    .list{display:flex; flex-direction:column; gap:.6rem}
+    .shadow-soft{box-shadow:0 12px 30px rgba(0,0,0,.35)}
+    img.ticket{border-radius:12px; border:1px solid var(--border)}
+    .btn-bar{display:flex; gap:.5rem; flex-wrap:wrap}
+    .xs{font-size:.75rem}
+    .chart-wrap{height:180px}
+    a { color: #8ab4ff; }
+  </style>
 
-<main class="container grid">
-  <section class="card grid cols-2">
-    <div class="field"><label>Mes</label><input id="sumMonth" class="input" type="month"/></div>
-    <div class="row" style="align-items:flex-end">
-      <button id="btnPDF" class="btn primary">🧾 PDF plantilla 2N</button>
-    </div>
-  </section>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <section class="card grid cols-3">
-    <div class="k"><div class="muted">Gasto</div><div id="gasto" class="v">0 €</div></div>
-    <div class="k"><div class="muted">Ingreso</div><div id="ingreso" class="v">0 €</div></div>
-    <div class="k"><div class="muted">Neto</div><div id="neto" class="v">0 €</div></div>
-  </section>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 
-  <section class="card grid cols-2">
-    <canvas id="cats" style="height:220px"></canvas>
-    <canvas id="evo" style="height:220px"></canvas>
-  </section>
-
-  <section id="tpl" class="card">
-    <strong>Plantilla 2N (HTML para PDF)</strong>
-    <div id="tplBody" class="grid" style="margin-top:10px"></div>
-  </section>
-
-  <section class="card">
-    <strong>Logs</strong>
-    <pre id="out" class="mono" style="max-height:240px;overflow:auto"></pre>
-  </section>
-</main>
-
-<script>
-const $=id=>document.getElementById(id);
-const log=m=>{ const out=$('out'); out.textContent += (typeof m==='string'?m:JSON.stringify(m,null,2))+"\\n"; };
-
-function monthRange(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
-async function listEntriesMonth(ym, uid){
-  const [s,e]=monthRange(ym);
-  const snap=await db.collection(`users/${uid}/entries`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
-  return snap.docs.map(d=>({id:d.id,...d.data()}));
-}
-async function listKmMonth(ym, uid){
-  const [s,e]=monthRange(ym);
-  const snap=await db.collection(`users/${uid}/kms`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
-  return snap.docs.map(d=>d.data());
-}
-
-let ym='';
-auth.onAuthStateChanged(async u=>{ if(!u) return; const def=new Date().toISOString().slice(0,7); $('sumMonth').value=def; ym=def; await refresh(); });
-$('sumMonth').onchange = async ()=>{ ym=$('sumMonth').value; await refresh(); };
-
-let chCats=null, chEvo=null;
-async function refresh(){
-  const u=auth.currentUser; if(!u) return alert('Login');
-  const entries=await listEntriesMonth(ym,u.uid);
-  const kms=await listKmMonth(ym,u.uid);
-
-  let g=0,i=0; for(const e of entries) (e.category==='ingreso'?(i+=Number(e.amount||0)):(g+=Number(e.amount||0)));
-  const kmPersonal = kms.reduce((acc,k)=>acc+Number(k.km_pers||0),0);
-  const priceAvg = kms.length? (kms.reduce((a,k)=>a+Number(k.price_per_liter||0),0)/kms.length):0;
-  const costeKmPersonal = kmPersonal * priceAvg;
-  $('gasto').textContent=(g).toFixed(2)+' €';
-  $('ingreso').textContent=(i).toFixed(2)+' €';
-  $('neto').textContent=(i-g-costeKmPersonal).toFixed(2)+' €';
-
-  const cats={}; for(const e of entries){ if(e.category==='ingreso') continue; cats[e.category]=(cats[e.category]||0)+Number(e.amount||0); }
-  const labels=Object.keys(cats), data=labels.map(k=>cats[k]);
-  if(chCats) chCats.destroy();
-  chCats=new Chart($('cats').getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data}]},
-    options:{plugins:{legend:{labels:{color:'#e6edf6'}}}}, responsive:true, maintainAspectRatio:false});
-
-  const byDay={}; for(const e of entries){ const d=(e.date?.toDate?e.date.toDate():new Date(e.date)).toISOString().slice(0,10);
-    byDay[d]=(byDay[d]||0)+ (e.category==='ingreso'?-Number(e.amount||0):Number(e.amount||0)); }
-  const dLabels=Object.keys(byDay).sort(), dData=dLabels.map(k=>byDay[k]);
-  if(chEvo) chEvo.destroy();
-  chEvo=new Chart($('evo').getContext('2d'),{type:'line',data:{labels:dLabels,datasets:[{label:'Flujo',data:dData}]},
-    options:{plugins:{legend:{labels:{color:'#e6edf6'}}}, scales:{x:{ticks:{color:'#97a3b6'}}, y:{ticks:{color:'#97a3b6'}}}, responsive:true, maintainAspectRatio:false});
-
-  const body=$('tplBody'); body.innerHTML='';
-  const header=document.createElement('div'); header.className='grid cols-3';
-  header.innerHTML=`
-    <div><div class='muted'>NOM</div><div><strong>Gaston Ortigosa</strong></div></div>
-    <div><div class='muted'>PRENOM</div><div>David</div></div>
-    <div><div class='muted'>COST CENTER</div><div>7420</div></div>
-    <div><div class='muted'>MONTH/YEAR</div><div>${ym}</div></div>
-    <div><div class='muted'>DATE</div><div>${new Date().toLocaleDateString('es-ES')}</div></div>
-  `;
-  body.appendChild(header);
-
-  const tbl=document.createElement('table');
-  tbl.style.width='100%'; tbl.style.borderCollapse='collapse'; tbl.style.marginTop='12px';
-  function th(s){ return `<th style="border:1px solid var(--border);padding:6px;color:#bcd; font-size:12px">${s}</th>`; }
-  function td(s){ return `<td style="border:1px solid var(--border);padding:6px; font-size:12px">${s}</td>`; }
-  const cols=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
-  tbl.innerHTML = `<thead><tr>${cols.map(th).join('')} </tr></thead><tbody></tbody>`;
-  const map={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
-  const tbody = tbl.querySelector('tbody');
-  for(const e of entries){ if(e.category==='ingreso') continue;
-    const d=e.date?.toDate?e.date.toDate():new Date(e.date);
-    const rec={}; cols.forEach(c=>rec[c]="");
-    rec["DATE"]=d.toLocaleDateString('es-ES'); rec["CLIENT / PROVIDER"]=e.provider||""; rec["DESCRIPTION"]=e.notes||"";
-    const c=map[e.category]||"VARIOUS"; rec[c]=Number(e.amount||0).toFixed(2);
-    let total=0; for(let i=2;i<=9;i++) total+=Number(rec[cols[i]]||0);
-    rec["TOTAL"]=total.toFixed(2);
-    const tr=document.createElement('tr'); tr.innerHTML=cols.map(k=>td(rec[k])).join(''); tbody.appendChild(tr);
-  }
-  body.appendChild(tbl);
-
-  const kmBlock=document.createElement('div'); kmBlock.className='card';
-  kmBlock.innerHTML=`<div class='row'><strong>KM personales del mes</strong><span class='badge'>${kmPersonal} km</span><span class='badge'>Precio medio: ${priceAvg.toFixed(2)} €/l</span><span class='badge'>Coste: ${costeKmPersonal.toFixed(2)} €</span></div>`;
-  body.appendChild(kmBlock);
-}
-
-$('btnPDF').onclick = ()=>{ 
-  const el=document.getElementById('tpl');
-  html2pdf().from(el).set({margin:10, filename:`Plantilla_2N_${document.getElementById('sumMonth').value}.pdf`, 
-    image:{type:'jpeg', quality:0.95}, html2canvas:{scale:2}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}}).save();
-};
-</script>
-</body>
-</html>
+  <script>
+    window.__FB_CFG__ = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    window.App = {
+      initFirebase(){
+        if (!firebase.apps.length) firebase.initializeApp(window.__FB_CFG__);
+        return { auth: firebase.auth(), db: firebase.firestore(), storage: firebase.storage() };
+      },
+      ui:{ log(msg){ const el=document.getElementById('out'); if(!el) return; el.textContent+=(typeof msg==='string'?msg:JSON.stringify(msg,null,2))+'\n'; el.scrollTop=el.scrollHeight; } },
+      ymNow(){ return new Date().toISOString().slice(0,7); },
+      monthRange(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+    };
+  </script>
+</head>
+<body>Summary OK</body></html>
