@@ -1,146 +1,233 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Summary · Gastos 2N</title>
-  <meta name="theme-color" content="#0b0b0f">
-  <style>
-    :root{--bg:#0b0b0f;--card:#12121a;--card2:#161622;--muted:#a1a1b2;--text:#f5f6fb;--blue:#0a84ff;--border:#232333;--radius:18px}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:linear-gradient(180deg,#0b0b0f,#0e0e14);color:var(--text)}
-    .topbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:12px 14px;background:rgba(10,10,14,.6);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--border)}
-    .btn{border:none;border-radius:14px;padding:10px 14px;background:var(--card2);color:var(--text);display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border)}
-    .btn.pri{background:linear-gradient(135deg,#0a84ff,#6a5cff);border:none}
-    .grid{max-width:980px;margin:0 auto;padding:14px;display:grid;gap:12px}
-    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
-    .muted{color:var(--muted)}
-    .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (min-width:820px){ .cards{grid-template-columns:repeat(3,1fr)} }
-    canvas{max-height:220px!important}
-    .out{white-space:pre-wrap;color:#c7c7d1;font-size:12px;max-height:200px;overflow:auto;background:#0f0f16;border:1px dashed var(--border);padding:10px;border-radius:12px}
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Gastos 2N — Summary</title>
+<style>
+:root{
+  --bg:#0b0f14;
+  --card:#11161c;
+  --muted:#97a3b6;
+  --accent:#0a84ff;
+  --border:#1b2530;
+  --ok:#30d158;
+  --warn:#ffd60a;
+  --bad:#ff453a;
+  --txt:#e6edf6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--txt)}
+a{color:var(--accent);text-decoration:none}
+.btn{border:1px solid var(--border);background:linear-gradient(180deg,#17202a,#11161c);
+  color:var(--txt);padding:10px 14px;border-radius:14px;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:linear-gradient(180deg,#0a84ff,#0066cc);border:none;color:#fff}
+.btn.ghost{background:transparent}
+.btn.warn{background:linear-gradient(180deg,#ffd60a,#bda107);border:none;color:#1a1a1a}
+.btn.ok{background:linear-gradient(180deg,#30d158,#248a3d);border:none;color:#061307}
+.badge{padding:4px 8px;border-radius:999px;background:#0f1520;border:1px solid var(--border);color:var(--muted);font-size:12px}
+.topbar{position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;padding:12px 14px;background:rgba(11,15,20,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.topbar h1{margin:0;font-size:18px;letter-spacing:.3px}
+.container{max-width:920px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px}
+.grid{display:grid;gap:12px}
+.grid.cols-2{grid-template-columns:1fr 1fr}
+.grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.input,select,textarea{width:100%;background:#0e141b;border:1px solid var(--border);border-radius:12px;color:var(--txt);padding:10px;font:inherit}
+label{font-size:12px;color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.list{display:grid;gap:10px}
+.item{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border);background:#0e141b;border-radius:14px;padding:10px}
+.item .left{min-width:0}
+.item .left p{margin:0}
+.item small{color:var(--muted)}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi .k{background:#0e141b;border:1px solid var(--border);border-radius:16px;padding:12px}
+.kpi .v{font-weight:700;font-size:18px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.sheet{background:var(--card);border:1px solid var(--border);border-radius:20px;max-width:520px;width:100%;overflow:hidden}
+.sheet header,.sheet footer{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center}
+.sheet footer{border-top:1px solid var(--border);border-bottom:none}
+.sheet .body{padding:14px;display:grid;gap:10px;grid-template-columns:1fr 1fr}
+.preview{grid-column:1/3;display:flex;gap:10px;align-items:center;border:1px dashed var(--border);padding:10px;border-radius:12px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+
+<!-- Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+  authDomain: "gastos-2n.firebaseapp.com",
+  projectId: "gastos-2n",
+  storageBucket: "gastos-2n.firebasestorage.app",
+  messagingSenderId: "55010048795",
+  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+</script>
+
 </head>
 <body>
-  <div class="topbar">
-    <button class="btn" onclick="location.href='index.html'">⬅️ Volver</button>
-    <div style="flex:1"></div>
-    <span id="whoami" class="muted small">No autenticado</span>
-  </div>
 
-  <main class="grid">
-    <section class="panel" style="display:grid;gap:10px;grid-template-columns:1fr auto;align-items:center">
-      <div class="muted">Resumen completo del mes, incluyendo <b>deducción por KM personales</b>.</div>
-      <input id="ym" type="month" style="background:#0f0f16;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:8px">
-    </section>
-
-    <section class="panel cards">
-      <div><canvas id="c1"></canvas></div>
-      <div><canvas id="c2"></canvas></div>
-      <div><canvas id="c3"></canvas></div>
-    </section>
-
-    <section class="panel">
-      <div id="numbers" class="muted"></div>
-    </section>
-  </main>
-
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-
-  <script>
-  (function(){
-    const $=id=>document.getElementById(id);
-    const firebaseConfig = {
-      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-      authDomain: "gastos-2n.firebaseapp.com",
-      projectId: "gastos-2n",
-      storageBucket: "gastos-2n.firebasestorage.app",
-      messagingSenderId: "55010048795",
-      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth=firebase.auth();
-    const db=firebase.firestore();
-
-    $('ym').value = new Date().toISOString().slice(0,7);
-    $('ym').onchange = refresh;
-
-    auth.onAuthStateChanged(async (user)=>{
-      document.getElementById('whoami').textContent = user? (user.email||user.uid) : 'No autenticado';
-      if(user) await refresh();
-    });
-
-    function rangeMonth(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
-    async function listEntries(ym, uid){
-      const [s,e]=rangeMonth(ym);
-      const q=await db.collection(`users/${uid}/entries`).where('date','>=',s).where('date','<',e).get();
-      return q.docs.map(d=>({id:d.id,...d.data()}));
+<header class="topbar">
+  <h1>Gastos 2N</h1>
+  <span id="whoami" class="badge">No autenticado</span>
+  <span style="flex:1"></span>
+  <a class="btn ghost" href="./index.html">🏠 Inicio</a>
+  <a class="btn ghost" href="./export.html">📁 Export</a>
+  <a class="btn ghost" href="./kms.html">🛣️ KMs</a>
+  <a class="btn ghost" href="./summary.html">📊 Summary</a>
+  <button id="btnLogin" class="btn">🔐 Google</button>
+  <button id="btnLogout" class="btn hidden">Salir</button>
+</header>
+<script>
+  const who = ()=>document.getElementById('whoami');
+  auth.onAuthStateChanged(u=>{
+    if(u){ who().textContent = u.email||u.uid;
+      document.getElementById('btnLogin').classList.add('hidden');
+      document.getElementById('btnLogout').classList.remove('hidden');
+    }else{
+      who().textContent = 'No autenticado';
+      document.getElementById('btnLogin').classList.remove('hidden');
+      document.getElementById('btnLogout').classList.add('hidden');
     }
-    async function listKMs(ym, uid){
-      const q=await db.collection(`users/${uid}/kms`).where('ym','==',ym).get();
-      return q.docs.map(d=>d.data());
-    }
+  });
+  document.getElementById('btnLogin').onclick = async ()=>{
+    try{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ alert(e.message||'Login error'); }
+  };
+  document.getElementById('btnLogout').onclick = ()=>auth.signOut();
+</script>
 
-    async function refresh(){
-      const user=auth.currentUser; if(!user) return;
-      const ym=$('ym').value;
-      const [entries, kms] = await Promise.all([listEntries(ym,user.uid), listKMs(ym,user.uid)]);
+<main class="container grid">
+  <section class="card grid cols-2">
+    <div class="field"><label>Mes</label><input id="sumMonth" class="input" type="month"/></div>
+    <div class="row" style="align-items:flex-end">
+      <button id="btnPDF" class="btn primary">🧾 PDF plantilla 2N</button>
+    </div>
+  </section>
 
-      let gastos=0, ingresos=0;
-      const byCat={};
-      const byDay={};
-      for(const e of entries){
-        const v=Number(e.amount||0);
-        const d=e.date?.toDate?e.date.toDate():new Date(e.date);
-        const day=d.toISOString().slice(0,10);
-        if(e.category==='ingreso'){ ingresos+=v; byDay[day]=(byDay[day]||0)-v; }
-        else{ gastos+=v; byCat[e.category]=(byCat[e.category]||0)+v; byDay[day]=(byDay[day]||0)+v; }
-      }
-      // KM personales
-      let kmPersonal=0, kmEmp=0, precioMedio=0, costPersonal=0;
-      if(kms.length){
-        let sumPrecio=0;
-        kms.forEach(k=>{ kmPersonal+=Number(k.km_pers||0); kmEmp+=Number(k.km_emp||0); sumPrecio+=Number(k.price_per_liter||0); });
-        precioMedio = sumPrecio / kms.length;
-        costPersonal = kmPersonal * precioMedio;
-      }
-      const netoAntes = ingresos - gastos;
-      const netoFinal = netoAntes - costPersonal;
+  <section class="card grid cols-3">
+    <div class="k"><div class="muted">Gasto</div><div id="gasto" class="v">0 €</div></div>
+    <div class="k"><div class="muted">Ingreso</div><div id="ingreso" class="v">0 €</div></div>
+    <div class="k"><div class="muted">Neto</div><div id="neto" class="v">0 €</div></div>
+  </section>
 
-      renderCharts(byCat, byDay, {ingresos, gastos, netoFinal});
-      renderNumbers({ym, ingresos, gastos, netoAntes, kmPersonal, kmEmp, precioMedio, costPersonal, netoFinal});
-    }
+  <section class="card grid cols-2">
+    <canvas id="cats" style="height:220px"></canvas>
+    <canvas id="evo" style="height:220px"></canvas>
+  </section>
 
-    function renderNumbers(n){
-      const fmt = (x)=>Number(x||0).toLocaleString('es-ES',{minimumFractionDigits:2});
-      $('numbers').innerHTML = `
-        <div><b>Mes:</b> ${n.ym}</div>
-        <div><b>Ingresos:</b> ${fmt(n.ingresos)} €</div>
-        <div><b>Gastos:</b> ${fmt(n.gastos)} €</div>
-        <div><b>Neto antes de KM:</b> ${fmt(n.netoAntes)} €</div>
-        <div><b>KM personales:</b> ${fmt(n.kmPersonal)} km · <b>Precio/l (medio):</b> ${fmt(n.precioMedio)} €</div>
-        <div><b>Coste a descontar por KM personales:</b> ${fmt(n.costPersonal)} €</div>
-        <div><b>Neto final (tras descuento KM):</b> ${fmt(n.netoFinal)} €</div>
-      `;
-    }
+  <section id="tpl" class="card">
+    <strong>Plantilla 2N (HTML para PDF)</strong>
+    <div id="tplBody" class="grid" style="margin-top:10px"></div>
+  </section>
 
-    function renderCharts(byCat, byDay, totals){
-      const labelsCat=Object.keys(byCat); const dataCat=Object.values(byCat);
-      const labelsDay=Object.keys(byDay).sort(); const dataDay=labelsDay.map(k=>byDay[k]);
+  <section class="card">
+    <strong>Logs</strong>
+    <pre id="out" class="mono" style="max-height:240px;overflow:auto"></pre>
+  </section>
+</main>
 
-      const ctx1=document.getElementById('c1').getContext('2d');
-      const ctx2=document.getElementById('c2').getContext('2d');
-      const ctx3=document.getElementById('c3').getContext('2d');
-      if(window._s1) window._s1.destroy(); if(window._s2) window._s2.destroy(); if(window._s3) window._s3.destroy();
-      window._s1=new Chart(ctx1,{type:'doughnut',data:{labels:labelsCat,datasets:[{data:dataCat}]},options:{plugins:{legend:{display:false}}}});
-      window._s2=new Chart(ctx2,{type:'line',data:{labels:labelsDay,datasets:[{data:dataDay}]},options:{plugins:{legend:{display:false}}}});
-      window._s3=new Chart(ctx3,{type:'bar',data:{labels:['Ingresos','Gastos','Neto final'],datasets:[{data:[totals.ingresos, totals.gastos, totals.netoFinal]}]},options:{plugins:{legend:{display:false}}}});
-    }
-  })();
-  </script>
+<script>
+const $=id=>document.getElementById(id);
+const log=m=>{ const out=$('out'); out.textContent += (typeof m==='string'?m:JSON.stringify(m,null,2))+"\\n"; };
+
+function monthRange(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+async function listEntriesMonth(ym, uid){
+  const [s,e]=monthRange(ym);
+  const snap=await db.collection(`users/${uid}/entries`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function listKmMonth(ym, uid){
+  const [s,e]=monthRange(ym);
+  const snap=await db.collection(`users/${uid}/kms`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+  return snap.docs.map(d=>d.data());
+}
+
+let ym='';
+auth.onAuthStateChanged(async u=>{ if(!u) return; const def=new Date().toISOString().slice(0,7); $('sumMonth').value=def; ym=def; await refresh(); });
+$('sumMonth').onchange = async ()=>{ ym=$('sumMonth').value; await refresh(); };
+
+let chCats=null, chEvo=null;
+async function refresh(){
+  const u=auth.currentUser; if(!u) return alert('Login');
+  const entries=await listEntriesMonth(ym,u.uid);
+  const kms=await listKmMonth(ym,u.uid);
+
+  let g=0,i=0; for(const e of entries) (e.category==='ingreso'?(i+=Number(e.amount||0)):(g+=Number(e.amount||0)));
+  const kmPersonal = kms.reduce((acc,k)=>acc+Number(k.km_pers||0),0);
+  const priceAvg = kms.length? (kms.reduce((a,k)=>a+Number(k.price_per_liter||0),0)/kms.length):0;
+  const costeKmPersonal = kmPersonal * priceAvg;
+  $('gasto').textContent=(g).toFixed(2)+' €';
+  $('ingreso').textContent=(i).toFixed(2)+' €';
+  $('neto').textContent=(i-g-costeKmPersonal).toFixed(2)+' €';
+
+  const cats={}; for(const e of entries){ if(e.category==='ingreso') continue; cats[e.category]=(cats[e.category]||0)+Number(e.amount||0); }
+  const labels=Object.keys(cats), data=labels.map(k=>cats[k]);
+  if(chCats) chCats.destroy();
+  chCats=new Chart($('cats').getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data}]},
+    options:{plugins:{legend:{labels:{color:'#e6edf6'}}}}, responsive:true, maintainAspectRatio:false});
+
+  const byDay={}; for(const e of entries){ const d=(e.date?.toDate?e.date.toDate():new Date(e.date)).toISOString().slice(0,10);
+    byDay[d]=(byDay[d]||0)+ (e.category==='ingreso'?-Number(e.amount||0):Number(e.amount||0)); }
+  const dLabels=Object.keys(byDay).sort(), dData=dLabels.map(k=>byDay[k]);
+  if(chEvo) chEvo.destroy();
+  chEvo=new Chart($('evo').getContext('2d'),{type:'line',data:{labels:dLabels,datasets:[{label:'Flujo',data:dData}]},
+    options:{plugins:{legend:{labels:{color:'#e6edf6'}}}, scales:{x:{ticks:{color:'#97a3b6'}}, y:{ticks:{color:'#97a3b6'}}}, responsive:true, maintainAspectRatio:false});
+
+  const body=$('tplBody'); body.innerHTML='';
+  const header=document.createElement('div'); header.className='grid cols-3';
+  header.innerHTML=`
+    <div><div class='muted'>NOM</div><div><strong>Gaston Ortigosa</strong></div></div>
+    <div><div class='muted'>PRENOM</div><div>David</div></div>
+    <div><div class='muted'>COST CENTER</div><div>7420</div></div>
+    <div><div class='muted'>MONTH/YEAR</div><div>${ym}</div></div>
+    <div><div class='muted'>DATE</div><div>${new Date().toLocaleDateString('es-ES')}</div></div>
+  `;
+  body.appendChild(header);
+
+  const tbl=document.createElement('table');
+  tbl.style.width='100%'; tbl.style.borderCollapse='collapse'; tbl.style.marginTop='12px';
+  function th(s){ return `<th style="border:1px solid var(--border);padding:6px;color:#bcd; font-size:12px">${s}</th>`; }
+  function td(s){ return `<td style="border:1px solid var(--border);padding:6px; font-size:12px">${s}</td>`; }
+  const cols=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+  tbl.innerHTML = `<thead><tr>${cols.map(th).join('')} </tr></thead><tbody></tbody>`;
+  const map={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+  const tbody = tbl.querySelector('tbody');
+  for(const e of entries){ if(e.category==='ingreso') continue;
+    const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+    const rec={}; cols.forEach(c=>rec[c]="");
+    rec["DATE"]=d.toLocaleDateString('es-ES'); rec["CLIENT / PROVIDER"]=e.provider||""; rec["DESCRIPTION"]=e.notes||"";
+    const c=map[e.category]||"VARIOUS"; rec[c]=Number(e.amount||0).toFixed(2);
+    let total=0; for(let i=2;i<=9;i++) total+=Number(rec[cols[i]]||0);
+    rec["TOTAL"]=total.toFixed(2);
+    const tr=document.createElement('tr'); tr.innerHTML=cols.map(k=>td(rec[k])).join(''); tbody.appendChild(tr);
+  }
+  body.appendChild(tbl);
+
+  const kmBlock=document.createElement('div'); kmBlock.className='card';
+  kmBlock.innerHTML=`<div class='row'><strong>KM personales del mes</strong><span class='badge'>${kmPersonal} km</span><span class='badge'>Precio medio: ${priceAvg.toFixed(2)} €/l</span><span class='badge'>Coste: ${costeKmPersonal.toFixed(2)} €</span></div>`;
+  body.appendChild(kmBlock);
+}
+
+$('btnPDF').onclick = ()=>{ 
+  const el=document.getElementById('tpl');
+  html2pdf().from(el).set({margin:10, filename:`Plantilla_2N_${document.getElementById('sumMonth').value}.pdf`, 
+    image:{type:'jpeg', quality:0.95}, html2canvas:{scale:2}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}}).save();
+};
+</script>
 </body>
 </html>
