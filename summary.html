@@ -7,10 +7,12 @@
   <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
 <body>
 <header class="topbar">
-  <h1>📊 Sumario</h1>
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 📊 Sumario</h1>
   <a class="badge" href="index.html">← Volver</a>
 </header>
 <main class="content">
@@ -61,7 +63,7 @@
   };
   firebase.initializeApp(firebaseConfig);
   const auth=firebase.auth();
-  const db=firebase.firestore();
+  const db=firebase.firestore(); let lastFotos=[];
 
   $("sumMonth").value=new Date().toISOString().slice(0,7);
   auth.onAuthStateChanged(u=>{ if(!u) location.href="index.html"; else cargar(); });
@@ -81,7 +83,7 @@
       const isExp=e.category!=="ingreso"; const a=Number(e.amount||0);
       if(isExp) gasto+=a; else ingreso+=a;
       if(isExp && e.paidWith==="mio") mi+=a;
-      if(e.photoURL) fotos.push(e.photoURL);
+      if(e.photoURL) fotos.push(e.photoURL); lastFotos=fotos;
     });
     let kmCost=0; kms.forEach(k=>{ kmCost += Number(k.kmPer||0)*Number(k.precio||0); });
     $("sGasto").textContent=gasto.toFixed(2)+" €";
@@ -107,6 +109,20 @@
       pdf.addImage(img,"PNG",30,30,imgW,imgH);
       pdf.save(`Sumario_${ym}.pdf`);
     };
+    
+    $("btnPhotos").onclick=async()=>{
+      const fotos = lastFotos||[]; if(!fotos.length) return alert("No hay fotos este mes");
+      const zip=new JSZip();
+      let i=1;
+      for(const url of fotos){
+        const res=await fetch(url); const blob=await res.blob();
+        zip.file(`ticket_${String(i).padStart(2,'0')}.jpg`, blob);
+        i++;
+      }
+      const out=await zip.generateAsync({type:"blob"});
+      saveAs(out, `Tickets_${$("sumMonth").value}.zip`);
+    };
+
   }
 })();
 </script>

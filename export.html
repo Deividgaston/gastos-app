@@ -10,7 +10,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1>📁 Exportar</h1>
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 📁 Exportar</h1>
   <a class="badge" href="index.html">← Volver</a>
 </header>
 <main class="content">
@@ -28,7 +28,7 @@
     <div class="card">
       <h2>Dashboard</h2>
       <div class="kpi">
-        <div class="tile"><div class="small">Gastos del mes</div><div id="kpiGastos" class="v">0.00 €</div></div>
+        <div class="tile"><div class="small">Gastos personales del mes</div><div id="kpiGastos" class="v">0.00 €</div></div>
         <div class="tile"><div class="small">Ingresos del mes</div><div id="kpiIngresos" class="v">0.00 €</div></div>
         <div class="tile"><div class="small">Pagado con mi dinero</div><div id="kpiMi" class="v">0.00 €</div></div>
         <div class="tile"><div class="small">Coste KM personales</div><div id="kpiKm" class="v">0.00 €</div></div>
@@ -108,7 +108,7 @@
     }
 
     const kmCost = Number(localStorage.getItem("km_per_cost_mes")||"0");
-    $("kpiGastos").textContent = gastos.toFixed(2)+" €";
+    $("kpiGastos").textContent = pagadoMio.toFixed(2)+" €";
     $("kpiIngresos").textContent = ingresos.toFixed(2)+" €";
     $("kpiMi").textContent = pagadoMio.toFixed(2)+" €";
     $("kpiKm").textContent = kmCost.toFixed(2)+" €";
@@ -137,7 +137,7 @@
     const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
     const rows=[COLUMNS];
 
-    let totalMes=0;
+    let totalMes=0, totalPersonal=0;
     for(const e of entries){
       if(e.category==="ingreso") continue;
       const d=e.date?.toDate?e.date.toDate():new Date(e.date);
@@ -154,7 +154,7 @@
       const col = map[e.category] || "VARIOUS";
       rec[col] = amount;
       rec.TOTAL = amount;
-      totalMes += amount;
+      totalMes += amount; if(e.paidWith==="mio") totalPersonal += amount;
       rows.append?rows.append(COLUMNS.map(k=> rec[k])):rows.push(COLUMNS.map(k=> rec[k]));
     }
 

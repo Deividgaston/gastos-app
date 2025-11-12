@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1>🚗 Kilómetros</h1>
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 🚗 Kilómetros</h1>
   <a href="index.html" class="badge">← Volver</a>
 </header>
 <main class="content">
@@ -71,7 +71,7 @@
   };
   firebase.initializeApp(firebaseConfig);
   const auth=firebase.auth();
-  const db=firebase.firestore();
+  const db=firebase.firestore(); const LS_KEY='kms_local';
 
   $("fDate").value = new Date().toISOString().slice(0,10);
 
@@ -79,13 +79,15 @@
 
   $("btnGuardar").onclick=async ()=>{
     try{
-      const u=auth.currentUser; if(!u) return;
+      const u=auth.currentUser; /*permite local aunque no haya usuario*/
       const date=$("fDate").value;
       const destino=$("fDestino").value.trim();
       const kmEmp=Number($("fKmEmp").value||0);
       const kmPer=Number($("fKmPer").value||0);
       const precio=Number($("fPrecio").value||0);
-      await db.collection(`users/${u.uid}/kms`).add({
+      try{
+        if(!auth.currentUser) throw new Error("local");
+        await db.collection(`users/${auth.currentUser.uid}/kms`).add({
         date:new Date(date), destino, kmEmp, kmPer, precio, createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       $("kmsMsg").textContent="Guardado ✅"; cargar();
@@ -96,7 +98,7 @@
   function rangoMes(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
 
   async function cargar(){
-    const u=auth.currentUser; if(!u) return;
+    const u=auth.currentUser; /*permite local aunque no haya usuario*/
     const ym=new Date().toISOString().slice(0,7);
     const [s,e]=rangoMes(ym);
     const snapAll=await db.collection(`users/${u.uid}/kms`).orderBy("date","desc").get();

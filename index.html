@@ -10,7 +10,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1>Gastos 2N</h1>
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> Gastos 2N</h1>
   <a class="badge" href="kms.html" title="Gastos de KM">🚗 KM</a>
   <a class="badge" href="export.html" title="Exportar">📁 Export</a>
   <a class="badge" href="summary.html" title="Sumario">📊 Sumary</a>
@@ -68,7 +68,7 @@
         <option value="mio">Mi dinero</option>
       </select></div>
       <div class="field" style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
-      <div class="preview"><img id="revThumb" style="height:72px;width:auto;border-radius:8px"><div id="revFileInfo" class="small"></div></div>
+      <div class="row"><button id="btnPick" class="btn">📎 Adjuntar foto</button><button id="btnCam" class="btn">📷 Tomar foto</button></div><div class="preview"><img id="revThumb" style="height:72px;width:auto;border-radius:8px"><div id="revFileInfo" class="small"></div></div>
     </div>
     <footer><div class="left"><span class="small">Se guardará en tu Firestore</span></div><div class="right"><button class="btn" id="cancelReview">Cancelar</button><button class="btn primary" id="saveReview">Guardar</button></div></footer>
   </div>
@@ -138,7 +138,32 @@
     }
   });
 
-  // ======= OCR helpers =======
+  
+  // ======= Botones de foto =======
+  $("btnPick").onclick=()=>{
+    const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+    inp.onchange=async()=>{
+      if(!inp.files||!inp.files[0]) return;
+      const downs=await downscaleImage(inp.files[0], 2048, 0.9);
+      review.file=downs;
+      $("revThumb").src=URL.createObjectURL(downs);
+      $("revFileInfo").textContent = downs.name+" · "+Math.round(downs.size/1024)+" KB";
+    };
+    inp.click();
+  };
+  $("btnCam").onclick=()=>{ 
+    const inp=ensureCameraInput();
+    inp.onchange=async()=>{
+      if(!inp.files||!inp.files[0]) return;
+      const downs=await downscaleImage(inp.files[0], 2048, 0.9);
+      review.file=downs;
+      $("revThumb").src=URL.createObjectURL(downs);
+      $("revFileInfo").textContent = downs.name+" · "+Math.round(downs.size/1024)+" KB";
+      inp.remove();
+    };
+    inp.click();
+  };
+// ======= OCR helpers =======
   let review = { file:null, dateISO:"", amount:0, provider:"", category:"varios", notes:"", paidWith:"empresa" };
   function fileToBase64(file){
     return new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(",")[1]||""); rd.onerror=()=>reject(new Error("No se pudo leer imagen")); rd.readAsDataURL(file); });
@@ -227,7 +252,16 @@
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       alert("Guardado ✅"); closeReview(); cargarUltimos();
-    }catch(e){ console.error(e); log(e); alert("Error guardando: "+(e.message||"")); }
+    }catch(e){ console.error(e);
+      try{
+        const b64 = review.file ? await fileToBase64(review.file) : null;
+        const loc = JSON.parse(localStorage.getItem("entries_local")||"[]");
+        loc.push({date:dateISO, category, provider, notes, amount, paidWith, photoData:b64, isExpense: category!=="ingreso"});
+        localStorage.setItem("entries_local", JSON.stringify(loc));
+        alert("Guardado en local (sin permisos). Se sincronizará más tarde.");
+        closeReview(); cargarUltimos();
+      }catch(err){ alert("Error guardando: "+(e.message||"")); }
+    }og(e); alert("Error guardando: "+(e.message||"")); }
   };
 
   // Ingreso manual
@@ -258,7 +292,16 @@
       const d=/^\d{4}-\d{2}-\d{2}$/.test(res.date||"") ? new Date(res.date+"T00:00:00") : new Date();
       review={ file:compact, dateISO:d.toISOString().slice(0,10), amount:Number(res.amount||0)||0, provider:(res.provider||"Ticket").toString().slice(0,80), category:"varios", notes:"", paidWith:"empresa" };
       openReview();
-    }catch(e){ console.error(e); log(e); alert("OCR error: "+(e.message||"")); }
+    }catch(e){ console.error(e);
+      try{
+        const b64 = review.file ? await fileToBase64(review.file) : null;
+        const loc = JSON.parse(localStorage.getItem("entries_local")||"[]");
+        loc.push({date:dateISO, category, provider, notes, amount, paidWith, photoData:b64, isExpense: category!=="ingreso"});
+        localStorage.setItem("entries_local", JSON.stringify(loc));
+        alert("Guardado en local (sin permisos). Se sincronizará más tarde.");
+        closeReview(); cargarUltimos();
+      }catch(err){ alert("Error guardando: "+(e.message||"")); }
+    }og(e); alert("OCR error: "+(e.message||"")); }
   };
 
   // Listado últimos
