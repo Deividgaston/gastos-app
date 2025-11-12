@@ -1,52 +1,144 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Summary — Gastos 2N</title>
-  <link rel="stylesheet" href="assets/style.css"/>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-  <script src="assets/app.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Summary · Gastos 2N</title>
+  <meta name="theme-color" content="#0b0b0f">
+  <style>
+    :root{--bg:#0b0b0f;--card:#12121a;--card2:#161622;--muted:#a1a1b2;--text:#f5f6fb;--blue:#0a84ff;--border:#232333;--radius:18px}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:linear-gradient(180deg,#0b0b0f,#0e0e14);color:var(--text)}
+    .topbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:12px 14px;background:rgba(10,10,14,.6);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--border)}
+    .btn{border:none;border-radius:14px;padding:10px 14px;background:var(--card2);color:var(--text);display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border)}
+    .btn.pri{background:linear-gradient(135deg,#0a84ff,#6a5cff);border:none}
+    .grid{max-width:980px;margin:0 auto;padding:14px;display:grid;gap:12px}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+    .muted{color:var(--muted)}
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (min-width:820px){ .cards{grid-template-columns:repeat(3,1fr)} }
+    canvas{max-height:220px!important}
+    .out{white-space:pre-wrap;color:#c7c7d1;font-size:12px;max-height:200px;overflow:auto;background:#0f0f16;border:1px dashed var(--border);padding:10px;border-radius:12px}
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <h1>Summary</h1>
-    <a class="btn" href="index.html">Volver</a>
-    <span class="badge" style="margin-left:auto" id="whoami">...</span>
-  </header>
-  <main class="content">
-    <div class="panel">
-      <div class="grid2">
-        <div><div class="small">Gasto total</div><div id="totG" style="font-size:24px">-</div></div>
-        <div><div class="small">Ingresos</div><div id="totI" style="font-size:24px">-</div></div>
-      </div>
-    </div>
-    <div class="panel"><strong>Por categorías</strong><canvas id="pie" height="260"></canvas></div>
-    <div class="panel"><strong>Evolución semanal</strong><canvas id="line" height="260"></canvas></div>
+  <div class="topbar">
+    <button class="btn" onclick="location.href='index.html'">⬅️ Volver</button>
+    <div style="flex:1"></div>
+    <span id="whoami" class="muted small">No autenticado</span>
+  </div>
+
+  <main class="grid">
+    <section class="panel" style="display:grid;gap:10px;grid-template-columns:1fr auto;align-items:center">
+      <div class="muted">Resumen completo del mes, incluyendo <b>deducción por KM personales</b>.</div>
+      <input id="ym" type="month" style="background:#0f0f16;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:8px">
+    </section>
+
+    <section class="panel cards">
+      <div><canvas id="c1"></canvas></div>
+      <div><canvas id="c2"></canvas></div>
+      <div><canvas id="c3"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div id="numbers" class="muted"></div>
+    </section>
   </main>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
   <script>
   (function(){
-    const {auth,db}=App; AfterRedirect(); requireAuth(load);
-    async function load(u){
-      const snap = await db.collection(`users/${u.uid}/entries`).orderBy('date','asc').get();
-      const data = snap.docs.map(d=>({id:d.id, ...d.data()}));
-      const totals = data.reduce((a,e)=>{ if(e.category==='ingreso') a.ing+=Number(e.amount||0); else a.exp+=Number(e.amount||0); return a; },{exp:0,ing:0});
-      $id('totG').textContent = totals.exp.toFixed(2)+' €';
-      $id('totI').textContent = totals.ing.toFixed(2)+' €';
+    const $=id=>document.getElementById(id);
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth=firebase.auth();
+    const db=firebase.firestore();
 
-      const cats = {{comida:0,gasolina:0,peajes:0,alojamiento:0,transporte:0,ocio:0,servicios:0,varios:0}};
-      data.forEach(e=>{ if(e.category!=='ingreso') cats[e.category||'varios'] += Number(e.amount||0); });
-      const pie = new Chart($id('pie'), {{type:'doughnut', data:{{labels:Object.keys(cats), datasets:[{{data:Object.values(cats)}}]}}}});
+    $('ym').value = new Date().toISOString().slice(0,7);
+    $('ym').onchange = refresh;
 
-      // weekly
-      const week = {{}};
-      data.forEach(e=>{ const d=e.date?.toDate?e.date.toDate():new Date(e.date); const k=new Date(d.getFullYear(), d.getMonth(), d.getDate()-d.getDay()+1).toISOString().slice(0,10); week[k]=(week[k]||0)+(e.category==='ingreso'?0:Number(e.amount||0)); });
-      const k=Object.keys(week).sort(); const v=k.map(x=>week[x]);
-      const line=new Chart($id('line'), {{type:'line', data:{{labels:k, datasets:[{{label:'Gasto', data:v}}]}}}});
+    auth.onAuthStateChanged(async (user)=>{
+      document.getElementById('whoami').textContent = user? (user.email||user.uid) : 'No autenticado';
+      if(user) await refresh();
+    });
+
+    function rangeMonth(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+    async function listEntries(ym, uid){
+      const [s,e]=rangeMonth(ym);
+      const q=await db.collection(`users/${uid}/entries`).where('date','>=',s).where('date','<',e).get();
+      return q.docs.map(d=>({id:d.id,...d.data()}));
+    }
+    async function listKMs(ym, uid){
+      const q=await db.collection(`users/${uid}/kms`).where('ym','==',ym).get();
+      return q.docs.map(d=>d.data());
+    }
+
+    async function refresh(){
+      const user=auth.currentUser; if(!user) return;
+      const ym=$('ym').value;
+      const [entries, kms] = await Promise.all([listEntries(ym,user.uid), listKMs(ym,user.uid)]);
+
+      let gastos=0, ingresos=0;
+      const byCat={};
+      const byDay={};
+      for(const e of entries){
+        const v=Number(e.amount||0);
+        const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+        const day=d.toISOString().slice(0,10);
+        if(e.category==='ingreso'){ ingresos+=v; byDay[day]=(byDay[day]||0)-v; }
+        else{ gastos+=v; byCat[e.category]=(byCat[e.category]||0)+v; byDay[day]=(byDay[day]||0)+v; }
+      }
+      // KM personales
+      let kmPersonal=0, kmEmp=0, precioMedio=0, costPersonal=0;
+      if(kms.length){
+        let sumPrecio=0;
+        kms.forEach(k=>{ kmPersonal+=Number(k.km_pers||0); kmEmp+=Number(k.km_emp||0); sumPrecio+=Number(k.price_per_liter||0); });
+        precioMedio = sumPrecio / kms.length;
+        costPersonal = kmPersonal * precioMedio;
+      }
+      const netoAntes = ingresos - gastos;
+      const netoFinal = netoAntes - costPersonal;
+
+      renderCharts(byCat, byDay, {ingresos, gastos, netoFinal});
+      renderNumbers({ym, ingresos, gastos, netoAntes, kmPersonal, kmEmp, precioMedio, costPersonal, netoFinal});
+    }
+
+    function renderNumbers(n){
+      const fmt = (x)=>Number(x||0).toLocaleString('es-ES',{minimumFractionDigits:2});
+      $('numbers').innerHTML = `
+        <div><b>Mes:</b> ${n.ym}</div>
+        <div><b>Ingresos:</b> ${fmt(n.ingresos)} €</div>
+        <div><b>Gastos:</b> ${fmt(n.gastos)} €</div>
+        <div><b>Neto antes de KM:</b> ${fmt(n.netoAntes)} €</div>
+        <div><b>KM personales:</b> ${fmt(n.kmPersonal)} km · <b>Precio/l (medio):</b> ${fmt(n.precioMedio)} €</div>
+        <div><b>Coste a descontar por KM personales:</b> ${fmt(n.costPersonal)} €</div>
+        <div><b>Neto final (tras descuento KM):</b> ${fmt(n.netoFinal)} €</div>
+      `;
+    }
+
+    function renderCharts(byCat, byDay, totals){
+      const labelsCat=Object.keys(byCat); const dataCat=Object.values(byCat);
+      const labelsDay=Object.keys(byDay).sort(); const dataDay=labelsDay.map(k=>byDay[k]);
+
+      const ctx1=document.getElementById('c1').getContext('2d');
+      const ctx2=document.getElementById('c2').getContext('2d');
+      const ctx3=document.getElementById('c3').getContext('2d');
+      if(window._s1) window._s1.destroy(); if(window._s2) window._s2.destroy(); if(window._s3) window._s3.destroy();
+      window._s1=new Chart(ctx1,{type:'doughnut',data:{labels:labelsCat,datasets:[{data:dataCat}]},options:{plugins:{legend:{display:false}}}});
+      window._s2=new Chart(ctx2,{type:'line',data:{labels:labelsDay,datasets:[{data:dataDay}]},options:{plugins:{legend:{display:false}}}});
+      window._s3=new Chart(ctx3,{type:'bar',data:{labels:['Ingresos','Gastos','Neto final'],datasets:[{data:[totals.ingresos, totals.gastos, totals.netoFinal]}]},options:{plugins:{legend:{display:false}}}});
     }
   })();
   </script>

@@ -3,352 +3,288 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Gastos 2N — iOS</title>
-  <meta name="theme-color" content="#0a0a0a"/>
+  <title>Gastos 2N · iOS Dark</title>
+  <meta name="theme-color" content="#0b0b0f">
   <style>
     :root{
-      --bg: #0a0a0a; --card:#111214; --text:#eaeaea; --muted:#9aa0a6;
-      --brand:#0a84ff; --ok:#30d158; --warn:#ffd60a; --danger:#ff453a; --border:#1f2124;
-      --glass: rgba(255,255,255,0.06);
+      --bg:#0b0b0f; --card:#12121a; --card2:#161622; --muted:#a1a1b2; --text:#f5f6fb;
+      --blue:#0a84ff; --green:#30d158; --red:#ff453a; --border:#232333;
+      --radius:18px;
     }
-    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;}
-    .safe{padding:auto; padding-bottom: env(safe-area-inset-bottom);}
-    .topbar{
-      position:sticky; top:0; z-index:10; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-      background: linear-gradient(180deg, rgba(0,0,0,.7), rgba(0,0,0,.2)); border-bottom:1px solid var(--glass);
-      display:flex; gap:10px; align-items:center; padding:14px 16px;
+    body{
+      margin:0; font-family: -apple-system, system-ui, Segoe UI, Roboto, "SF Pro Text", "SF Pro Display";
+      background:linear-gradient(180deg,#0b0b0f,#0e0e14 35%,#10101a 100%); color:var(--text);
     }
-    .title{font-weight:700; font-size:18px; letter-spacing:.2px}
-    .tag{font-size:12px; color:var(--muted)}
-    .who{margin-left:auto; font-size:12px; color:var(--muted)}
-    .content{max-width:520px; margin:0 auto; padding:12px 14px; display:grid; gap:12px}
-    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:18px; padding:12px 12px}
-    .cta{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-    .btn{
-      appearance:none; border:none; border-radius:14px; padding:12px 14px; color:var(--text); cursor:pointer;
-      background: #191a1d; border:1px solid var(--border); display:flex; gap:10px; align-items:center; justify-content:center;
-      font-weight:600;
+    .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;
+      padding:14px 16px;backdrop-filter:saturate(160%) blur(16px);
+      background:rgba(10,10,14,.6); border-bottom:1px solid var(--border);
     }
-    .btn.primary{background: var(--brand); border-color: transparent; color: #fff;}
-    .btn.ghost{background:transparent; border:1px dashed var(--border); color:var(--muted)}
-    .btn.full{width:100%}
-    .btn .em{font-size:18px}
-    .quick{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-    .mini{font-size:12px; color:var(--muted)}
-    .grid-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
-    .pill{padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:#0f1012; font-size:12px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#0cf,#60f)}
+    .brand h1{margin:0;font-size:17px;letter-spacing:.2px}
+    .spacer{flex:1}
+    .chip{font-size:12px;color:var(--muted)}
+    .btn{appearance:none;border:none;border-radius:14px;padding:10px 14px;background:var(--card2);color:var(--text);
+      display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:transform .08s ease, opacity .2s ease; border:1px solid var(--border);
+    }
+    .btn:active{transform:scale(.98)}
+    .btn.pri{background:linear-gradient(135deg,#0a84ff,#6a5cff); border:none; box-shadow:0 8px 26px rgba(10,132,255,.25)}
+    .btn.warn{background:linear-gradient(135deg,#ff7a7a,#ff3b30); border:none}
+    .grid{display:grid;gap:12px;padding:14px;max-width:980px;margin:0 auto}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (min-width:520px){ .actions{grid-template-columns:repeat(3,1fr)} }
+    @media (min-width:820px){ .actions{grid-template-columns:repeat(5,1fr)} }
+    .icon{font-size:18px}
+    .kpi{display:flex;gap:12px;align-items:center}
+    .kpi strong{font-size:20px}
     .muted{color:var(--muted)}
-    .hidden{display:none !important}
-    .imgthumb{width:64px;height:64px;border-radius:12px;object-fit:cover;border:1px solid var(--border)}
+    .hidden{display:none!important}
+    .out{white-space:pre-wrap;color:#c7c7d1;font-size:12px;max-height:240px;overflow:auto;background:#0f0f16;border:1px dashed var(--border);padding:10px;border-radius:12px}
     /* Modal */
-    .modal{position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; z-index:20; background:rgba(0,0,0,.55)}
+    .modal{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;padding:0;z-index:20}
     .modal.open{display:flex}
-    .sheet{background:var(--card); width:100%; max-width:560px; border-top-left-radius:18px; border-top-right-radius:18px; border:1px solid var(--border); overflow:hidden}
-    .sheet header{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border)}
-    .sheet .body{padding:12px 14px; display:grid; gap:10px}
-    .sheet footer{padding:12px 14px; border-top:1px solid var(--border); display:flex; gap:10px}
-    .field{display:flex; flex-direction:column; gap:6px}
-    .field label{font-size:12px; color:var(--muted)}
-    input,select,textarea{
-      width:100%; padding:11px 12px; border-radius:12px; background:#0e0f11; border:1px solid var(--border); color:var(--text); font:inherit;
-    }
-    textarea{min-height:66px; resize:vertical}
-    .actions{display:flex; gap:10px}
-    .seg{display:flex; gap:6px; align-items:center}
+    .sheet{width:100%;max-width:640px;background:var(--card);border:1px solid var(--border);
+      border-top-left-radius:22px;border-top-right-radius:22px;box-shadow:0 -20px 60px rgba(0,0,0,.35)}
+    .sheet header,.sheet footer{display:flex;align-items:center;justify-content:space-between;padding:14px;border-bottom:1px solid var(--border)}
+    .sheet footer{border-top:1px solid var(--border);border-bottom:none}
+    .body{display:grid;gap:12px;padding:14px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field input,.field select,.field textarea{background:#0f0f16;border:1px solid var(--border);color:var(--text);
+      border-radius:12px;padding:10px 12px;font:inherit}
+    .preview{display:flex;gap:12px;align-items:center;border:1px dashed var(--border);padding:10px;border-radius:14px}
+    .tag{font-size:12px;color:var(--muted)}
   </style>
-  <!-- Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <!-- Firebase compat -->
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span><h1>Gastos 2N</h1></div>
+    <div class="spacer"></div>
+    <span id="whoami" class="chip">No autenticado</span>
+    <button id="btnAI" class="btn" title="Configurar IA"><span class="icon">⚙️</span><span>IA</span></button>
+    <button id="btnLogin" class="btn pri"><span class="icon"></span><span>Entrar</span></button>
+    <button id="btnLogout" class="btn hidden">Salir</button>
+  </div>
+
+  <main class="grid">
+    <section class="panel">
+      <div class="actions">
+        <button id="btnScan" class="btn pri"><span>📷</span><span>Escanear ticket</span></button>
+        <button id="btnManual" class="btn"><span>➕</span><span>Ingreso manual</span></button>
+        <button id="btnKM" class="btn"><span>🚗</span><span>Gastos KM</span></button>
+        <button id="btnExport" class="btn"><span>📁</span><span>Exportar</span></button>
+        <button id="btnSummary" class="btn"><span>📊</span><span>Summary</span></button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="kpi"><span class="icon">💳</span><div><div class="muted">Este mes</div><strong id="kpiMonth">0,00 €</strong></div></div>
+      <div class="tag">Los tickets se guardan en <code>tickets/&lt;uid&gt;/YYYY-MM/archivo</code></div>
+    </section>
+
+    <section class="panel">
+      <strong>Logs</strong>
+      <div id="out" class="out"></div>
+    </section>
+  </main>
+
+  <!-- Modal Revisión -->
+  <div id="reviewModal" class="modal" aria-hidden="true">
+    <div class="sheet">
+      <header>
+        <strong>Revisar y guardar</strong>
+        <button class="btn" id="closeReview">Cerrar</button>
+      </header>
+      <div class="body" style="grid-template-columns:1fr 1fr">
+        <div class="field"><label>Fecha</label><input id="revDate" type="date"></div>
+        <div class="field"><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"></div>
+        <div class="field" style="grid-column:1/3"><label>Proveedor</label><input id="revProvider" type="text"></div>
+        <div class="field"><label>Categoría</label>
+          <select id="revCategory">
+            <option value="varios" selected>Varios</option>
+            <option value="comida">Comida</option>
+            <option value="gasolina">Gasolina</option>
+            <option value="peajes">Peajes</option>
+            <option value="alojamiento">Hotel</option>
+            <option value="transporte">Transportes</option>
+            <option value="ocio">Invitaciones</option>
+            <option value="servicios">Servicios</option>
+            <option value="ingreso">Ingreso</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
+        <div class="preview" style="grid-column:1/3"><img id="revThumb" style="height:72px;width:auto;border-radius:10px"><div id="revInfo" class="muted"></div></div>
+        <div class="field" style="grid-column:1/3"><input id="revFile" type="file" accept="image/*" capture="environment"></div>
+      </div>
+      <footer>
+        <button class="btn" id="cancelReview">Cancelar</button>
+        <button class="btn pri" id="saveReview">Guardar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal IA -->
+  <div id="aiModal" class="modal" aria-hidden="true">
+    <div class="sheet">
+      <header>
+        <strong>Configurar IA (Gemini)</strong>
+        <button class="btn" id="closeAI">Cerrar</button>
+      </header>
+      <div class="body">
+        <div class="field"><label>API Key</label><input id="aiKey" type="password" placeholder="AIza..."><div class="tag">Se guarda localmente (solo en este navegador)</div></div>
+      </div>
+      <footer><button class="btn" id="clearAI">Borrar</button><button class="btn pri" id="saveAI">Guardar</button></footer>
+    </div>
+  </div>
+
+  <!-- Firebase compat SDKs -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-</head>
-<body>
-  <div class="topbar">
-    <div class="title">Gastos 2N <span class="tag">iOS</span></div>
-    <button id="btnAI" class="pill">⚙️ IA</button>
-    <button id="btnLogin" class="pill">🟢 Google</button>
-    <button id="btnLogout" class="pill hidden">Salir</button>
-    <div id="who" class="who">No autenticado</div>
-  </div>
 
-  <main class="content">
-    <section class="card">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <div class="muted mini">Acciones rápidas</div>
-        </div>
-        <div class="seg">
-          <span class="mini">iPhone optimizado</span>
-          <span class="pill">📱 16 Pro Max</span>
-        </div>
-      </div>
-      <div class="cta" style="margin-top:10px">
-        <button id="btnScan" class="btn primary"><span class="em">📸</span> Escanear</button>
-        <button id="btnManual" class="btn"><span class="em">➕</span> Ingreso manual</button>
-        <button onclick="location.href='km.html'" class="btn"><span class="em">🚗</span> Gastos de KM</button>
-        <button onclick="location.href='export.html'" class="btn"><span class="em">📤</span> Exportar</button>
-      </div>
-    </section>
+  <!-- App -->
+  <script>
+  (function(){
+    const $=id=>document.getElementById(id);
+    const log = (m)=>{ const o=$('out'); o.textContent += (typeof m==='string'?m:JSON.stringify(m,null,2))+'\\n'; o.scrollTop=o.scrollHeight; };
 
-    <section class="card">
-      <div class="row" style="justify-content:space-between">
-        <strong>Actividad</strong>
-        <span class="mini">Logs</span>
-      </div>
-      <pre id="log" style="margin-top:8px; white-space:pre-wrap; background:#0e0f11; border:1px dashed var(--border); padding:10px; border-radius:12px; max-height:200px; overflow:auto"></pre>
-    </section>
-  </main>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth=firebase.auth();
+    const db=firebase.firestore();
+    const storage=firebase.storage();
 
-  <!-- Modal AI Key -->
-  <div id="aiModal" class="modal">
-    <div class="sheet">
-      <header><strong>Configurar IA (Gemini)</strong><button class="pill" id="closeAI">Cerrar</button></header>
-      <div class="body">
-        <div class="field">
-          <label>API Key de Google AI</label>
-          <input id="aiKey" type="password" placeholder="AIza..." />
-          <div class="mini">Se guarda en este navegador.</div>
-        </div>
-      </div>
-      <footer>
-        <button class="btn" id="clearAI">Borrar</button>
-        <button class="btn primary" id="saveAI">Guardar</button>
-      </footer>
-    </div>
-  </div>
+    const provider = new firebase.auth.GoogleAuthProvider();
+    $('btnLogin').onclick = async ()=>{ try{ await auth.signInWithPopup(provider);}catch(e){ log(e); alert(e.message||'Login error'); } };
+    $('btnLogout').onclick = async ()=>{ await auth.signOut(); };
 
-  <!-- Modal Review / Save -->
-  <div id="revModal" class="modal">
-    <div class="sheet">
-      <header><strong>Revisar y guardar</strong><button class="pill" id="closeRev">Cerrar</button></header>
-      <div class="body">
-        <div class="grid-3">
-          <div class="field">
-            <label>Fecha</label>
-            <input id="revDate" type="date"/>
-          </div>
-          <div class="field">
-            <label>Importe (€)</label>
-            <input id="revAmount" type="number" step="0.01" min="0"/>
-          </div>
-          <div class="field">
-            <label>Categoría</label>
-            <select id="revCat">
-              <option value="varios">Varios</option>
-              <option value="comida">Comida</option>
-              <option value="gasolina">Gasolina</option>
-              <option value="peajes">Peajes</option>
-              <option value="alojamiento">Hotel</option>
-              <option value="transporte">Transportes</option>
-              <option value="ocio">Invitaciones</option>
-              <option value="servicios">Servicios</option>
-              <option value="ingreso">Ingreso</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label>Proveedor / Cliente</label>
-          <input id="revProvider" type="text" placeholder="Ej: Repsol, Restaurante X"/>
-        </div>
-        <div class="field">
-          <label>Notas</label>
-          <textarea id="revNotes" placeholder="Opcional"></textarea>
-        </div>
-        <div class="row">
-          <img id="revThumb" class="imgthumb" alt=""/>
-          <div class="mini" id="revInfo"></div>
-        </div>
-        <div class="field">
-          <label>Foto (opcional)</label>
-          <input id="revPhoto" type="file" accept="image/*;capture=camera"/>
-        </div>
-      </div>
-      <footer>
-        <button class="btn" id="cancelRev">Cancelar</button>
-        <button class="btn primary" id="saveRev">Guardar</button>
-      </footer>
-    </div>
-  </div>
-
-<script>
-(function(){
-  const $ = (id)=>document.getElementById(id);
-  const log = (m)=>{ const el=$("log"); el.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\\n"; el.scrollTop=el.scrollHeight; };
-
-  // ==== Firebase ====
-  const firebaseConfig = {
-    apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-    authDomain: "gastos-2n.firebaseapp.com",
-    projectId: "gastos-2n",
-    storageBucket: "gastos-2n.firebasestorage.app",
-    messagingSenderId: "55010048795",
-    appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-  const storage = firebase.storage();
-
-  // ==== Auth ====
-  const provider = new firebase.auth.GoogleAuthProvider();
-  $("btnLogin").onclick = async ()=>{
-    try{ await auth.signInWithPopup(provider); }catch(e){ alert("Login: "+(e.message||e)); }
-  };
-  $("btnLogout").onclick = async ()=>{ await auth.signOut(); };
-  auth.onAuthStateChanged((u)=>{
-    if(u){
-      $("who").textContent = u.email||u.uid;
-      $("btnLogin").classList.add("hidden"); $("btnLogout").classList.remove("hidden");
-    }else{
-      $("who").textContent = "No autenticado";
-      $("btnLogin").classList.remove("hidden"); $("btnLogout").classList.add("hidden");
-    }
-  });
-
-  // ==== AI Modal ====
-  const aiModal=$("aiModal");
-  $("btnAI").onclick = ()=>{ aiModal.classList.add("open"); $("aiKey").value=localStorage.getItem("gkey")||""; };
-  $("closeAI").onclick = ()=> aiModal.classList.remove("open");
-  $("saveAI").onclick = ()=>{ const v=$("aiKey").value.trim(); if(!v) return alert("Pega tu API Key"); localStorage.setItem("gkey",v); aiModal.classList.remove("open"); alert("Guardada ✅"); };
-  $("clearAI").onclick = ()=>{ localStorage.removeItem("gkey"); $("aiKey").value=""; };
-
-  // ==== Review modal helpers ====
-  const revModal=$("revModal");
-  const review = { file:null, isManual:false };
-  const openRev = ()=>{
-    $("revDate").value = (review.dateISO || new Date().toISOString().slice(0,10));
-    $("revAmount").value = (review.amount || "");
-    $("revProvider").value = (review.provider || "");
-    $("revCat").value = (review.category || "varios");
-    $("revNotes").value = (review.notes || "");
-    $("revThumb").src = review.previewURL || "";
-    $("revInfo").textContent = review.file ? (review.file.name+" · "+Math.round(review.file.size/1024)+" KB") : "Sin imagen";
-    $("revPhoto").value = "";
-    revModal.classList.add("open");
-  };
-  const closeRev = ()=> revModal.classList.remove("open");
-  $("closeRev").onclick = closeRev;
-  $("cancelRev").onclick = closeRev;
-
-  // ==== Camera helper ====
-  function pickCamera(){
-    return new Promise((resolve,reject)=>{
-      const input=document.createElement("input");
-      input.type="file"; input.accept="image/*"; input.capture="environment";
-      input.onchange=()=>{ if(input.files&&input.files[0]) resolve(input.files[0]); else reject(new Error("Sin imagen")); };
-      input.click();
+    auth.onAuthStateChanged(async (user)=>{
+      if(user){ $('whoami').textContent=user.email||user.uid; $('btnLogin').classList.add('hidden'); $('btnLogout').classList.remove('hidden'); await calcKPI(); }
+      else{ $('whoami').textContent='No autenticado'; $('btnLogin').classList.remove('hidden'); $('btnLogout').classList.add('hidden'); }
     });
-  }
-  function downscale(file, max=2048, q=0.9){
-    return new Promise((resolve,reject)=>{
-      const img=new Image(); img.onload=()=>{
-        const s=Math.min(1, max/Math.max(img.width,img.height));
-        const w=Math.round(img.width*s), h=Math.round(img.height*s);
-        const cv=document.createElement("canvas"); cv.width=w; cv.height=h; const cx=cv.getContext("2d"); cx.drawImage(img,0,0,w,h);
-        cv.toBlob(b=>resolve(new File([b], (file.name||"ticket")+".jpg", {type:"image/jpeg"})), "image/jpeg", q);
-      }; img.onerror=reject; img.src=URL.createObjectURL(file);
-    });
-  }
-  function toBase64(file){ return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.onerror=rej; fr.readAsDataURL(file); }); }
 
-  // ==== Gemini OCR ====
-  function safeParseJSON(text){
-    let s=(text||"").trim(); if(s.startsWith("```")) s=s.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
-    const a=s.indexOf("{"), b=s.lastIndexOf("}"); if(a!==-1 && b!==-1) s=s.slice(a,b+1);
-    return JSON.parse(s);
-  }
-  function fallbackParse(text){
-    const t=(text||"").replace(/\s+/g," ").trim();
-    let amount=0; const m=t.match(/(\d+[.,]\d{2})/); if(m) amount=Number(m[1].replace(",", "."));
-    let dateISO=new Date().toISOString().slice(0,10);
-    const d2=t.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/); const d1=t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
-    if(d2) dateISO=`${d2[1]}-${d2[2]}-${d2[3]}`; else if(d1) dateISO=`${d1[3]}-${d1[2]}-${d1[1]}`;
-    const prov=t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); const provider=prov?prov[0].trim():"Ticket";
-    return { date:dateISO, provider, amount };
-  }
-  async function callGemini(base64, mime){
-    const key=(localStorage.getItem("gkey")||"").trim();
-    if(!key){ $("btnAI").click(); throw new Error("Falta API Key de IA"); }
-    const prompt=`Devuelve SOLO JSON válido con: {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}`;
-    const body={ contents:[{ role:"user", parts:[{text:prompt},{inlineData:{mimeType:mime||"image/jpeg", data:base64}}]}] };
-    const models=["gemini-2.5-flash","gemini-2.0-flash"];
-    for(const model of models){
-      const url=`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-      const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-      const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{}
-      if(res.status===429){ await new Promise(r=>setTimeout(r,800)); continue; }
-      if(!res.ok){ log({fallo_modelo:model,status:res.status,body:js||txt}); continue; }
-      const text=js?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      try{ return safeParseJSON(text); }catch{ return fallbackParse(text); }
+    // Navegación
+    $('btnKM').onclick = ()=> location.href='km.html';
+    $('btnExport').onclick = ()=> location.href='export.html';
+    $('btnSummary').onclick = ()=> location.href='summary.html';
+
+    // IA modal
+    const aiModal=$('aiModal');
+    $('btnAI').onclick = ()=>{ aiModal.classList.add('open'); $('aiKey').value = localStorage.getItem('gkey')||''; };
+    $('closeAI').onclick = ()=> aiModal.classList.remove('open');
+    $('saveAI').onclick = ()=>{ const k=$('aiKey').value.trim(); if(!k) return alert('Pega tu API key'); localStorage.setItem('gkey',k); aiModal.classList.remove('open'); };
+    $('clearAI').onclick = ()=>{ localStorage.removeItem('gkey'); $('aiKey').value=''; };
+
+    // Revisión
+    const review={file:null};
+    const revOpen=()=>{
+      $('reviewModal').classList.add('open');
+      $('revDate').value = new Date().toISOString().slice(0,10);
+      $('revAmount').value = review.amount||'';
+      $('revProvider').value = review.provider||'';
+      $('revCategory').value = review.category||'varios';
+      $('revNotes').value = review.notes||'';
+      if(review.file){ $('revThumb').src = URL.createObjectURL(review.file); $('revInfo').textContent=(review.file.name||'captura')+' · '+Math.round(review.file.size/1024)+' KB'; }
+    };
+    const revClose=()=> $('reviewModal').classList.remove('open');
+    $('closeReview').onclick = revClose; $('cancelReview').onclick = revClose;
+    $('revFile').onchange = (e)=>{ const f=e.target.files?.[0]; if(f){ review.file=f; $('revThumb').src=URL.createObjectURL(f); $('revInfo').textContent=(f.name||'captura')+' · '+Math.round(f.size/1024)+' KB'; } };
+
+    $('saveReview').onclick = async ()=>{
+      try{
+        const user=auth.currentUser; if(!user) return alert('Haz login');
+        const dateISO=$('revDate').value||new Date().toISOString().slice(0,10);
+        const amount=Number($('revAmount').value||0);
+        const provider=$('revProvider').value.trim();
+        const category=$('revCategory').value;
+        const notes=$('revNotes').value.trim();
+        if(!provider) return alert('Proveedor/Cliente obligatorio');
+        if(!amount || amount<=0) return alert('Importe > 0');
+        const yyyyMM=dateISO.slice(0,7);
+        let photoURL='', photoPath='';
+        if(review.file){
+          const safeProv=(provider||'ticket').replace(/[^a-zA-Z0-9-_ ]/g,'').slice(0,40).replace(/\s+/g,'_');
+          const ext=(review.file.name.split('.').pop()||'jpg').toLowerCase();
+          const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
+          photoPath=`tickets/${user.uid}/${yyyyMM}/${filename}`;
+          await storage.ref(photoPath).put(review.file);
+          photoURL = await storage.ref(photoPath).getDownloadURL();
+        }
+        await db.collection(`users/${user.uid}/entries`).add({
+          date:new Date(dateISO), amount, provider, category, notes,
+          photoURL, photoPath, isExpense: category!=='ingreso',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        review.file=null; revClose(); alert('Guardado ✅'); await calcKPI();
+      }catch(e){ log(e); alert('Error guardando: '+(e.message||'')); }
+    };
+
+    // Manual
+    $('btnManual').onclick = ()=>{ review.amount=''; review.provider=''; review.category='ingreso'; review.notes=''; review.file=null; revOpen(); };
+
+    // Scan + OCR (misma lógica base que funciona)
+    $('btnScan').onclick = async ()=>{
+      try{
+        const user=auth.currentUser; if(!user){ alert('Haz login'); return; }
+        const input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.capture='environment';
+        const picked = await new Promise((resolve,reject)=>{ input.onchange=()=>{ input.files&&input.files[0]?resolve(input.files[0]):reject(new Error('Sin imagen'));}; input.click(); });
+        const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(picked); });
+        const scale=Math.min(1,2048/Math.max(img.width,img.height)); const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+        const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.9));
+        const file=new File([blob],(picked.name||'ticket')+'.jpg',{type:'image/jpeg'});
+        review.file=file;
+
+        const key=(localStorage.getItem('gkey')||'').trim(); if(!key){ document.getElementById('btnAI').click(); return; }
+        const base64=await new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(',')[1]||''); rd.onerror=()=>reject(new Error('No se pudo leer')); rd.readAsDataURL(file); });
+        const body={ contents:[{ role:'user', parts:[{text:'Devuelve solo un JSON válido {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}'},{ inlineData:{ mimeType:'image/jpeg', data:base64}}]}] };
+        const models=['gemini-2.5-flash','gemini-2.0-flash']; let parsed=null;
+        for(const m of models){
+          const url=`https://generativelanguage.googleapis.com/v1/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
+          const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+          const txt=await res.text(); let js=null; try{ js=JSON.parse(txt);}catch{}
+          if(res.status===429){ await new Promise(r=>setTimeout(r,800)); continue; }
+          if(!res.ok){ console.log({m,txt}); continue; }
+          const text=js?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+          try{ parsed=JSON.parse(text.replace(/```json|```/g,'')); }catch{}
+          if(parsed) break;
+        }
+        if(!parsed) throw new Error('No fue posible leer el ticket');
+        review.amount = Number(parsed.amount||0)||0;
+        const dOk=/^\d{4}-\d{2}-\d{2}$/.test(parsed.date||'');
+        review.provider = (parsed.provider||'Ticket').toString().slice(0,80);
+        review.category='varios'; review.notes='';
+        $('revDate').value = dOk ? parsed.date : new Date().toISOString().slice(0,10);
+        $('revAmount').value = review.amount||'';
+        $('revProvider').value = review.provider||'';
+        $('revCategory').value = 'varios';
+        $('revNotes').value = '';
+        $('revThumb').src = URL.createObjectURL(file);
+        $('revInfo').textContent = `${file.name} · ${Math.round(file.size/1024)} KB`;
+        $('reviewModal').classList.add('open');
+      }catch(e){ log(e); alert('OCR error: '+(e.message||'')); }
+    };
+
+    async function calcKPI(){
+      const user=auth.currentUser; if(!user) return;
+      const d=new Date(); const ym=d.toISOString().slice(0,7);
+      const start=new Date(ym+'-01T00:00:00'); const end=new Date(start.getFullYear(), start.getMonth()+1, 1);
+      const snap=await db.collection(`users/${user.uid}/entries`).where('date','>=',start).where('date','<',end).get();
+      let total=0; snap.forEach(doc=>{ const e=doc.data(); if(e.category!=='ingreso'){ total+=Number(e.amount||0); } else { total-=Number(e.amount||0); } });
+      $('kpiMonth').textContent = total.toLocaleString('es-ES',{minimumFractionDigits:2})+' €';
     }
-    throw new Error("IA sin respuesta");
-  }
 
-  // ==== Scan ticket ====
-  $("btnScan").onclick = async ()=>{
-    try{
-      const u=auth.currentUser; if(!u) return alert("Haz login con Google");
-      const fileRaw=await pickCamera();
-      const file=await downscale(fileRaw,2048,0.9);
-      const b64=await toBase64(file);
-      const res=await callGemini(b64, file.type);
-      const d=/^\\d{4}-\\d{2}-\\d{2}$/.test(res.date||"")? new Date(res.date+"T00:00:00"): new Date();
-      review.isManual=false; review.file=file; review.previewURL=URL.createObjectURL(file);
-      review.dateISO=d.toISOString().slice(0,10);
-      review.amount=Number(res.amount||0)||0;
-      review.provider=(res.provider||"Ticket").toString().slice(0,80);
-      review.category="varios"; review.notes="";
-      openRev();
-    }catch(e){ console.error(e); log(e); alert("OCR: "+(e.message||e)); }
-  };
-
-  // ==== Manual income ====
-  $("btnManual").onclick = ()=>{
-    review.isManual=true; review.file=null; review.previewURL=""; review.dateISO=new Date().toISOString().slice(0,10);
-    review.amount=0; review.provider=""; review.category="ingreso"; review.notes="";
-    openRev();
-  };
-
-  // ==== Save review ====
-  $("saveRev").onclick = async ()=>{
-    try{
-      const u=auth.currentUser; if(!u) return alert("Haz login");
-      const dateISO=$("revDate").value||new Date().toISOString().slice(0,10);
-      const amount=Number($("revAmount").value||0);
-      const provider=$("revProvider").value.trim()||"Ticket";
-      const category=$("revCat").value; const notes=$("revNotes").value.trim();
-      if(!provider) return alert("Proveedor requerido");
-      if(category!=="ingreso" && (!amount || amount<=0)) return alert("Importe > 0");
-      const yyyyMM=dateISO.slice(0,7);
-      // archivo (prioriza revPhoto si se cargó)
-      let file=review.file;
-      const photoInput=$("revPhoto");
-      if(photoInput.files && photoInput.files[0]) file=photoInput.files[0];
-      let photoURL="", photoPath="";
-      if(file){
-        const safeProv=provider.replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\\s+/g,"_");
-        const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
-        const name=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
-        photoPath = `tickets/${u.uid}/${yyyyMM}/${name}`;
-        await storage.ref(photoPath).put(file);
-        photoURL = await storage.ref(photoPath).getDownloadURL();
-      }
-      await db.collection(`users/${u.uid}/entries`).add({
-        date: new Date(dateISO),
-        amount, provider, category, notes,
-        isExpense: category!=="ingreso",
-        photoURL, photoPath,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      closeRev(); alert("Guardado ✅");
-    }catch(e){ console.error(e); log(e); alert("Guardar: "+(e.message||e)); }
-  };
-})();
-</script>
+  })();
+  </script>
 </body>
 </html>

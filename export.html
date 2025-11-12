@@ -1,228 +1,247 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Gastos 2N — Exportar</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Exportar · Gastos 2N</title>
+  <meta name="theme-color" content="#0b0b0f">
   <style>
-    :root{--bg:#0b0d12;--card:#121521;--ink:#e7ebf3;--muted:#8b92a7;--blue:#0a84ff;--line:#1e2230}
-    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:-apple-system,system-ui,Segoe UI,Roboto}
-    .top{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:rgba(11,13,18,.75);backdrop-filter:saturate(180%) blur(16px);z-index:10}
-    .top h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.2px}
-    .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:9px 12px;cursor:pointer}
-    .btn.primary{background:var(--blue);border:none}
-    .wrap{max-width:960px;margin:0 auto;padding:12px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:10px 0}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    label{color:var(--muted);font-size:12px}
-    input[type=month]{background:#0f1320;border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--ink)}
+    :root{--bg:#0b0b0f;--card:#12121a;--card2:#161622;--muted:#a1a1b2;--text:#f5f6fb;--blue:#0a84ff;--border:#232333;--radius:18px}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto;background:linear-gradient(180deg,#0b0b0f,#0e0e14);color:var(--text)}
+    .topbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:12px 14px;background:rgba(10,10,14,.6);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--border)}
+    .btn{border:none;border-radius:14px;padding:10px 14px;background:var(--card2);color:var(--text);display:inline-flex;gap:8px;align-items:center;border:1px solid var(--border)}
+    .btn.pri{background:linear-gradient(135deg,#0a84ff,#6a5cff);border:none}
+    .grid{max-width:980px;margin:0 auto;padding:14px;display:grid;gap:12px}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
     .muted{color:var(--muted)}
-    canvas{max-width:100%}
-    .list{display:grid;grid-template-columns:1fr;gap:8px}
-    .item{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:12px;background:#0f1320}
-    .thumb{width:54px;height:54px;border-radius:10px;object-fit:cover;background:#0b0d12;border:1px solid var(--line)}
-    pre{white-space:pre-wrap;background:#0f1320;border:1px dashed #2a3046;border-radius:12px;padding:10px;color:#a9b1c9;max-height:140px;overflow:auto}
-    a{color:var(--ink)}
+    .small{font-size:12px}
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (min-width:820px){ .cards{grid-template-columns:repeat(4,1fr)} }
+    canvas{max-height:220px!important}
+    .out{white-space:pre-wrap;color:#c7c7d1;font-size:12px;max-height:200px;overflow:auto;background:#0f0f16;border:1px dashed var(--border);padding:10px;border-radius:12px}
   </style>
-  <!-- libs -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- Firebase compat SDKs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <button class="btn" onclick="location.href='index.html'">⬅️ Volver</button>
+    <div style="flex:1"></div>
+    <span id="whoami" class="small muted">No autenticado</span>
+  </div>
+
+  <main class="grid">
+    <section class="panel" style="display:grid;gap:10px;grid-template-columns:1fr auto">
+      <div class="small muted">Exporta el mes a la plantilla oficial 2N (XLSX). El dashboard se ha compactado para escritorio.</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="expMonth" type="month" style="background:#0f0f16;border:1px solid var(--border);color:var(--text);border-radius:12px;padding:8px">
+        <button id="btnExcel" class="btn pri">⬇️ Plantilla 2N (Excel)</button>
+        <button id="btnFotos" class="btn">🖼️ Descargar fotos</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="cards">
+        <div><canvas id="chartCat"></canvas></div>
+        <div><canvas id="chartDaily"></canvas></div>
+        <div><canvas id="chartInc"></canvas></div>
+        <div><canvas id="chartNet"></canvas></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <strong>Listado</strong>
+      <div id="list" class="small"></div>
+    </section>
+
+    <section class="panel">
+      <strong>Logs</strong>
+      <div id="out" class="out"></div>
+    </section>
+  </main>
+
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
-</head>
-<body>
-  <header class="top">
-    <button class="btn" onclick="history.back()">← Volver</button>
-    <h1>Exportar</h1>
-    <span id="who" class="muted" style="margin-left:auto">…</span>
-  </header>
 
-  <main class="wrap">
-    <section class="card">
-      <div class="row">
-        <div>
-          <label>Mes</label><br>
-          <input id="ym" type="month">
-        </div>
-        <button id="btnXLSX" class="btn primary">📄 Plantilla 2N (XLSX)</button>
-        <button id="btnPhotos" class="btn">🖼️ Fotos (múltiples)</button>
-      </div>
-      <p class="muted">Descarga de fotos como múltiples archivos (sin ZIP). El Excel incluye hoja <b>GASTOS</b> y <b>KM</b> y celda con <b>Km totales coche</b>.</p>
-    </section>
+  <script>
+  (function(){
+    const $=id=>document.getElementById(id);
+    const log = (m)=>{ const o=$('out'); o.textContent += (typeof m==='string'?m:JSON.stringify(m,null,2))+'\\n'; o.scrollTop=o.scrollHeight; };
 
-    <section class="card">
-      <h3 style="margin:4px 0 8px">Dashboard</h3>
-      <canvas id="donut"></canvas>
-    </section>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+      authDomain: "gastos-2n.firebaseapp.com",
+      projectId: "gastos-2n",
+      storageBucket: "gastos-2n.firebasestorage.app",
+      messagingSenderId: "55010048795",
+      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth=firebase.auth();
+    const db=firebase.firestore();
+    const storage=firebase.storage();
 
-    <section class="card">
-      <h3 style="margin:4px 0 8px">Listado del mes</h3>
-      <div id="list" class="list"></div>
-    </section>
+    auth.onAuthStateChanged(async (user)=>{
+      $('whoami').textContent = user? (user.email||user.uid) : 'No autenticado';
+      if(user && !$('expMonth').value) $('expMonth').value = new Date().toISOString().slice(0,7);
+      if(user && $('expMonth').value) await refresh();
+    });
 
-    <section class="card">
-      <h3 style="margin:4px 0 8px">Logs</h3>
-      <pre id="log"></pre>
-      <ul class="muted" style="margin:0">
-        <li>Si ves “no permission” revisa que estés logueado y las reglas de Storage permitan <code>get</code> del propio UID.</li>
-      </ul>
-    </section>
-  </main>
+    $('expMonth').onchange = refresh;
+    $('btnExcel').onclick = exportExcel;
+    $('btnFotos').onclick = descargarFotosMes;
 
-<script>
-(function(){
-  const $=id=>document.getElementById(id);
-  const log=m=>{$('log').textContent += (typeof m==='string'?m:JSON.stringify(m,null,2))+'\\n';};
-
-  // Firebase
-  const firebaseConfig={
-    apiKey:"AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-    authDomain:"gastos-2n.firebaseapp.com",
-    projectId:"gastos-2n",
-    storageBucket:"gastos-2n.firebasestorage.app",
-    messagingSenderId:"55010048795",
-    appId:"1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth=firebase.auth();
-  const db=firebase.firestore();
-  const st=firebase.storage();
-
-  auth.onAuthStateChanged(u=>{
-    $('who').textContent = u? (u.email||u.uid) : 'No autenticado';
-  });
-
-  function monthRange(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
-  async function listEntries(ym, uid){
-    const [s,e]=monthRange(ym);
-    const q=await db.collection(`users/${uid}/entries`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
-    return q.docs.map(d=>({id:d.id, ...d.data()}));
-  }
-  async function listKm(ym, uid){
-    const [s,e]=monthRange(ym);
-    const q=await db.collection(`users/${uid}/km`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
-    return q.docs.map(d=>({id:d.id, ...d.data()}));
-  }
-
-  const CATS=['comida','gasolina','peajes','alojamiento','transporte','ocio','servicios','varios'];
-  const CAT_LABEL={comida:'Comida',gasolina:'Gasolina',peajes:'Peajes',alojamiento:'Hotel',transporte:'Transportes',ocio:'Invitaciones',servicios:'Servicios',varios:'Varios'};
-
-  function renderList(entries){
-    const host=$('list'); host.innerHTML='';
-    for(const e of entries){
-      const d=e.date?.toDate?e.date.toDate():new Date(e.date);
-      const el=document.createElement('div'); el.className='item';
-      el.innerHTML=`<img class="thumb" src="${e.photoURL||''}" alt="">
-        <div style="flex:1">
-          <div style="font-weight:600">${e.provider||'—'} · ${ (Number(e.amount||0)).toFixed(2)} €</div>
-          <div class="muted" style="font-size:12px">${d.toLocaleDateString('es-ES')} · ${CAT_LABEL[e.category]||'Varios'}</div>
-        </div>`;
-      host.appendChild(el);
+    function rangeMonth(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+    async function listEntries(ym, uid){
+      const [s,e]=rangeMonth(ym);
+      const q = await db.collection(`users/${uid}/entries`).where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+      return q.docs.map(d=>({id:d.id,...d.data()}));
     }
-  }
 
-  function renderDonut(entries){
-    const byCat={}; CATS.forEach(c=>byCat[c]=0);
-    for(const e of entries){ if(e.category==='ingreso') continue; byCat[e.category||'varios'] += Number(e.amount||0); }
-    const data=Object.values(byCat); const labels=CATS.map(c=>CAT_LABEL[c]);
-    const ctx=$('donut').getContext('2d');
-    if(window.__chart){window.__chart.destroy();}
-    window.__chart=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data}]},options:{plugins:{legend:{labels:{color:'#cdd3e4'}}}}});
-  }
+    const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
 
-  // Descargar fotos (múltiples)
-  $('btnPhotos').onclick=async()=>{
-    try{
-      const u=auth.currentUser; if(!u) return alert('Haz login');
-      const ym=$('ym').value; if(!ym) return alert('Selecciona mes');
-      const entries=await listEntries(ym,u.uid);
-      const photos=entries.filter(e=>e.photoPath||e.photoURL);
-      if(!photos.length) return alert('No hay fotos en este mes');
-      let ok=0, fail=0;
-      for(const e of photos){
-        try{
-          const ref = e.photoPath ? st.ref(e.photoPath) : st.refFromURL(e.photoURL);
-          const url= await ref.getDownloadURL();
-          const a=document.createElement('a'); a.href=url; a.download='';
-          document.body.appendChild(a); a.click(); a.remove();
-          ok++;
-        }catch(err){ fail++; log({fallo_foto:e.photoPath||e.photoURL, err:err.message}); }
-      }
-      log(`📸 Descargas: ${ok} ok, ${fail} fallos`);
-    }catch(e){ alert(e.message||e); }
-  };
+    function toCSVRecord(e){
+      const rec={}; COLUMNS.forEach(c=>rec[c]=(["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)?"":0));
+      const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+      rec["DATE"]=d.toLocaleDateString("es-ES");
+      rec["CLIENT / PROVIDER"]=e.provider||"";
+      rec["DESCRIPTION"]=e.notes||"";
+      const col = MAP[e.category]||"VARIOUS";
+      const amount=Number(e.amount||0);
+      if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount;
+      let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0);
+      rec["TOTAL"]=total;
+      return rec;
+    }
 
-  // XLSX plantilla
-  $('btnXLSX').onclick=async()=>{
-    try{
-      if(typeof XLSX==='undefined') throw new Error('XLSX no está cargado');
-      const u=auth.currentUser; if(!u) return alert('Haz login');
-      const ym=$('ym').value; if(!ym) return alert('Selecciona mes');
+    let entriesCache=[];
 
-      const [entries, kms]= await Promise.all([listEntries(ym,u.uid), listKm(ym,u.uid)]);
+    async function refresh(){
+      try{
+        const user=auth.currentUser; if(!user) return;
+        const ym=$('expMonth').value; if(!ym) return;
+        const entries=await listEntries(ym,user.uid);
+        entriesCache=entries;
+        renderList(entries);
+        renderCharts(entries);
+      }catch(e){ log(e); }
+    }
 
-      // Hoja GASTOS (formato 2N simplificado)
-      const rows=[["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"]];
-      const map={peajes:2,alojamiento:3,gasolina:4,transporte:5,ocio:6,comida:7,varios:8};
+    function renderList(entries){
+      const host=$('list'); host.innerHTML='';
       for(const e of entries){
-        if(e.category==='ingreso') continue;
         const d=e.date?.toDate?e.date.toDate():new Date(e.date);
-        const r=Array(rows[0].length).fill(0);
-        r[0]= d.toLocaleDateString('es-ES');
-        r[1]= e.provider||"";
-        r[10]= e.notes||"";
-        const idx= map[e.category||'varios'] ?? 8;
-        const n= Number(e.amount||0);
-        r[idx]= n;
-        r[9]= n;
-        rows.push(r);
+        const amount = Number(e.amount||0);
+        const sign = (e.category==='ingreso')?'+':'-';
+        const line = document.createElement('div');
+        line.style.display='grid'; line.style.gridTemplateColumns='1fr auto'; line.style.alignItems='center';
+        line.style.borderTop='1px solid #232333'; line.style.padding='6px 0';
+        line.innerHTML = `<div>
+            <div><strong>${e.provider||'-'}</strong> <span class="muted">· ${e.category}</span></div>
+            <div class="muted small">${d.toISOString().slice(0,10)}${e.notes? ' · '+e.notes : ''}</div>
+          </div>
+          <div style="text-align:right">${sign}${amount.toLocaleString('es-ES',{minimumFractionDigits:2})} €</div>`;
+        host.appendChild(line);
       }
-      const wsG = XLSX.utils.aoa_to_sheet(rows);
+    }
 
-      // Hoja KM
-      const kmHead=[["Fecha","Destino","Km empresa","Km personales","€/L","Km totales coche","Coste personal (Km pers × €/L)"]];
-      let carTotal=0;
-      const kmRows=[...kmHead];
-      for(const k of kms){
-        const d=k.date?.toDate?k.date.toDate():new Date(k.date);
-        carTotal = Math.max(carTotal, Number(k.carOdometer||0)); // odómetro mayor visto
-        const cost = Number(k.kmPersonal||0) * Number(k.pricePerL||0);
-        kmRows.push([ d.toLocaleDateString('es-ES'), k.dest||"", Number(k.kmBusiness||0), Number(k.kmPersonal||0), Number(k.pricePerL||0), Number(k.carOdometer||0), Number(cost.toFixed(2)) ]);
+    function renderCharts(entries){
+      const byCat={}; const byDay={}; let inc=0, exp=0;
+      for(const e of entries){
+        const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+        const day=d.toISOString().slice(0,10);
+        const v=Number(e.amount||0);
+        if(e.category==='ingreso'){ inc+=v; } else { exp+=v; byCat[e.category]=(byCat[e.category]||0)+v; }
+        byDay[day]=(byDay[day]||0)+(e.category==='ingreso'?-v:v);
       }
-      const wsK = XLSX.utils.aoa_to_sheet(kmRows);
-      XLSX.utils.sheet_add_aoa(wsK, [["","", "", "", "", "Km totales coche (máx):", carTotal]], {origin:-1});
+      const net = inc - exp;
 
-      const wb=XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, wsG, "GASTOS");
-      XLSX.utils.book_append_sheet(wb, wsK, "KM");
-      const fname = `Informe_Gastos_${ym}.xlsx`;
-      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-      saveAs(new Blob([wbout], {type:'application/octet-stream'}), fname);
-    }catch(e){ console.error(e); alert(e.message||e); }
-  };
+      const ctx1=document.getElementById('chartCat').getContext('2d');
+      const ctx2=document.getElementById('chartDaily').getContext('2d');
+      const ctx3=document.getElementById('chartInc').getContext('2d');
+      const ctx4=document.getElementById('chartNet').getContext('2d');
 
-  // cargar por defecto y pintar widgets
-  window.addEventListener('DOMContentLoaded', async ()=>{
-    $('ym').value = new Date().toISOString().slice(0,7);
-    auth.onAuthStateChanged(async (u)=>{
-      if(!u) return;
-      const ym=$('ym').value;
-      const entries=await listEntries(ym,u.uid);
-      renderList(entries);
-      renderDonut(entries);
-    });
-    $('ym').addEventListener('change', async ()=>{
-      const u=auth.currentUser; if(!u) return;
-      const entries=await listEntries($('ym').value,u.uid);
-      renderList(entries);
-      renderDonut(entries);
-    });
-  });
-})();
-</script>
+      const labelsCat=Object.keys(byCat); const dataCat=Object.values(byCat);
+      const labelsDay=Object.keys(byDay).sort(); const dataDay=labelsDay.map(k=>byDay[k]);
+
+      if(window._c1) window._c1.destroy(); if(window._c2) window._c2.destroy(); if(window._c3) window._c3.destroy(); if(window._c4) window._c4.destroy();
+      window._c1=new Chart(ctx1,{type:'doughnut',data:{labels:labelsCat,datasets:[{data:dataCat}]},options:{plugins:{legend:{display:false}}}});
+      window._c2=new Chart(ctx2,{type:'line',data:{labels:labelsDay,datasets:[{data:dataDay}]},options:{plugins:{legend:{display:false}}}});
+      window._c3=new Chart(ctx3,{type:'bar',data:{labels:['Ingresos','Gastos'],datasets:[{data:[inc,exp]}]},options:{plugins:{legend:{display:false}}}});
+      window._c4=new Chart(ctx4,{type:'bar',data:{labels:['Neto'],datasets:[{data:[net]}]},options:{plugins:{legend:{display:false}}}});
+    }
+
+    async function exportExcel(){
+      try{
+        const user=auth.currentUser; if(!user) return alert('Haz login');
+        const ym=$('expMonth').value; if(!ym) return alert('Selecciona un mes');
+        const entries = entriesCache.length? entriesCache : await listEntries(ym,user.uid);
+        if(!entries.length) return alert('Sin datos');
+        const monthlabel=new Date(ym+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+        const today=new Date().toLocaleDateString('es-ES');
+        const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","HOTEL","GASOLINE","TICKETS TRAVELING","OTHER TRANSPORTS (Taxi)","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION"];
+        const header=[["","","","","","EXPENSES REPORT","","","","",""],["NOM","","Gaston Ortigosa","","","","","DATE:","",today,""],["PRENOM:","David","COST CENTER:","7420","","","MONTH/YEAR:",monthlabel,"","",""],[""],COLUMNS];
+        const toRec=(e)=>{
+          const rec={}; COLUMNS.forEach(c=>rec[c]=(["DATE","CLIENT / PROVIDER","DESCRIPTION"].includes(c)?"":0));
+          const d=e.date?.toDate?e.date.toDate():new Date(e.date);
+          rec["DATE"]=d.toLocaleDateString("es-ES");
+          rec["CLIENT / PROVIDER"]=e.provider||"";
+          rec["DESCRIPTION"]=e.notes||"";
+          const MAP={"comida":"MEALS","transporte":"OTHER TRANSPORTS (Taxi)","servicios":"VARIOUS","ocio":"INVITATIONS","gasolina":"GASOLINE","peajes":"TOLLS & PARKINGS","alojamiento":"HOTEL","varios":"VARIOUS"};
+          const col = MAP[e.category]||"VARIOUS";
+          const amount=Number(e.amount||0);
+          if(COLUMNS.includes(col)) rec[col]=amount; else rec["VARIOUS"]=amount;
+          let total=0; for(let i=2;i<=9;i++) total+=Number(rec[COLUMNS[i]]||0);
+          rec["TOTAL"]=total; return COLUMNS.map(c=>rec[c]);
+        };
+        const rows = entries.map(toRec);
+        const ws = XLSX.utils.aoa_to_sheet(header.concat(rows));
+        ws['!cols']=[{wch:12},{wch:26},{wch:14},{wch:10},{wch:10},{wch:16},{wch:22},{wch:12},{wch:10},{wch:10},{wch:10},{wch:30}];
+
+        // KM sheet
+        const kmsSnap = await db.collection(`users/${user.uid}/kms`).where('ym','==',ym).orderBy('date','asc').get();
+        const kms = kmsSnap.docs.map(d=>d.data());
+        let personalCost=0;
+        const kmsRows = [["DATE","DESTINATION","KM_EMP","KM_PERS","PRICE/L","PERS. COST (€)"]];
+        for(const k of kms){
+          const d=k.date?.toDate?k.date.toDate():new Date(k.date);
+          const cost = Number(k.km_pers||0) * Number(k.price_per_liter||0);
+          personalCost += cost;
+          kmsRows.push([d.toISOString().slice(0,10), k.destination||"", Number(k.km_emp||0), Number(k.km_pers||0), Number(k.price_per_liter||0), cost]);
+        }
+        const ws2 = XLSX.utils.aoa_to_sheet([["KM PERSONAL – LIQUIDACIÓN"],["Mes",ym],["Total a descontar (€)", personalCost],[""], ...kmsRows]);
+        ws2['!cols'] = [{wch:12},{wch:24},{wch:10},{wch:10},{wch:10},{wch:14}];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Gastos');
+        XLSX.utils.book_append_sheet(wb, ws2, 'KM personales');
+        const out = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+        saveAs(new Blob([out], {type:'application/octet-stream'}), `Informe_Gastos_${ym}.xlsx`);
+      }catch(e){ log(e); alert('Excel error: '+(e.message||'')); }
+    }
+
+    async function descargarFotosMes(){
+      try{
+        const user=auth.currentUser; if(!user) return alert('Haz login');
+        const ym=$('expMonth').value; if(!ym) return alert('Selecciona un mes');
+        const entries = entriesCache.length? entriesCache : await listEntries(ym,user.uid);
+        const photos = entries.filter(e=>e.photoURL);
+        if(!photos.length) return alert('Sin fotos en este mes');
+        for(const e of photos){
+          const a=document.createElement('a'); a.href=e.photoURL; a.download='';
+          document.body.appendChild(a); a.click(); a.remove();
+          await new Promise(r=>setTimeout(r,150));
+        }
+      }catch(e){ log(e); alert('Descarga fotos: '+(e.message||'')); }
+    }
+
+  })();
+  </script>
 </body>
 </html>
