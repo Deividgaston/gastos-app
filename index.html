@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Gastos 2N · App</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="config.js"></script>
+
+<!-- AUTH STATE BOOTSTRAP -->
+<script>
+(function(){
+  try{
+    if(!window.__FBCONFIG__) console.warn("Config faltante: __FBCONFIG__");
+    if (!firebase.apps || !firebase.apps.length) { firebase.initializeApp(window.__FBCONFIG__ || window.firebaseConfig); }
+    var auth = firebase.auth();
+    // Persistencia local (para GH Pages)
+    if (firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    }
+    // Recoger resultado de redirect si lo hubo
+    if (auth.getRedirectResult) { auth.getRedirectResult().catch(()=>{}); }
+
+    function updateUI(user){
+      var who = document.getElementById('whoami');
+      var btnLogin = document.getElementById('btnLogin');
+      var btnLogout = document.getElementById('btnLogout');
+      if(user){
+        if(who) who.textContent = "Conectado como " + (user.email || user.uid);
+        if(btnLogin) btnLogin.style.display = "none";
+        if(btnLogout) btnLogout.style.display = "";
+      }else{
+        if(who) who.textContent = "No autenticado";
+        if(btnLogin) btnLogin.style.display = "";
+        if(btnLogout) btnLogout.style.display = "none";
+      }
+      // Notificar a listeners opcionales de cada página
+      try{ document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user:user}})); }catch(e){}
+    }
+
+    auth.onAuthStateChanged(function(user){ updateUI(user); });
+    // Exponer en contexto global por si otras partes lo necesitan
+    window.__APPCTX__ = window.__APPCTX__ || {};
+    window.__APPCTX__.auth = auth;
+    window.__APPCTX__.db = firebase.firestore ? firebase.firestore() : null;
+    window.__APPCTX__.storage = firebase.storage ? firebase.storage() : null;
+  }catch(e){ console.error("Auth bootstrap error", e); }
+})();
+</script>
+
+</head>
+<body>
+<header class="topbar">
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> Gastos 2N</h1>
+  <a class="badge" href="kms.html" title="Gastos de KM">🚗 KM</a>
+  <a class="badge" href="export.html" title="Exportar">📁 Export</a>
+  <a class="badge" href="summary.html" title="Sumario">📊 Sumary</a>
+  <button id="btnAI" class="btn ghost" title="Gemini API">⚙️ IA</button>
+  <button id="btnLogin" class="btn success">Iniciar sesión</button>
+  <button id="btnLogout" class="btn danger" style="display:none">Salir</button>
+</header>
+
+<main class="content">
+  <div class="grid">
+    <div class="card">
+      <h2>Acciones rápidas</h2>
+      <div class="row">
+        <button id="scanBtn" class="btn primary">📸 Escanear ticket</button>
+        <button id="manualBtn" class="btn">➕ Ingreso manual</button>
+        <span id="whoami" class="badge">No autenticado</span>
+      </div>
+      <div class="small">Consejo: si no hay permisos de escritura, los apuntes se guardan en este navegador y se sincronizan más tarde.</div>
+    </div>
+
+    <div class="card">
+      <h2>Notas</h2>
+      <div class="small">Últimos apuntes</div>
+      <div id="lista" class="list"></div>
+      <pre id="out" class="small"></pre>
+    </div>
+  </div>
+</main>
+
+<!-- Modal review -->
+<div id="reviewModal" class="modal" aria-hidden="true">
+  <div class="sheet">
+    <header><strong>Revisar y guardar</strong><button class="btn" id="closeReview">Cerrar</button></header>
+    <div class="body">
+      <div class="field"><label>Fecha</label><input id="revDate" type="date"/></div>
+      <div class="field"><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"/></div>
+      <div class="field" style="grid-column:1/2"><label>Proveedor</label><input id="revProvider" type="text"/></div>
+      <div class="field"><label>Categoría</label><select id="revCategory">
+        <option value="varios" selected>Varios</option>
+        <option value="comida">Comida</option>
+        <option value="gasolina">Gasolina</option>
+        <option value="peajes">Peajes</option>
+        <option value="alojamiento">Hotel</option>
+        <option value="transporte">Transportes</option>
+        <option value="ocio">Invitaciones</option>
+        <option value="servicios">Servicios</option>
+        <option value="ingreso">Ingreso</option>
+      </select></div>
+      <div class="field"><label>Pagado con</label><select id="revPaidWith">
+        <option value="empresa">Tarjeta empresa</option>
+        <option value="mio">Mi dinero</option>
+      </select></div>
+      <div class="field" style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
+      <div class="row"><button id="btnPick" class="btn">📎 Adjuntar foto</button><button id="btnCam" class="btn">📷 Tomar foto</button></div>
+      <div class="preview"><img id="revThumb" style="height:72px;border-radius:8px"><div id="revFileInfo" class="small"></div></div>
+    </div>
+    <footer><div class="left"><span class="small">Se guardará en tu espacio y en el mes correspondiente.</span></div><div class="right"><button class="btn primary" id="saveReview">Guardar</button></div></footer>
+  </div>
+</div>
+
+<!-- Modal IA -->
+<div id="aiModal" class="modal" aria-hidden="true">
+  <div class="sheet">
+    <header><strong>Configurar IA</strong><button class="btn" id="closeAI">Cerrar</button></header>
+    <div class="body" style="grid-template-columns:1fr">
+      <div class="field"><label>API Key de Google AI (Gemini)</label><input id="aiKey" type="text" placeholder="AIza..."/><div class="small">Se guarda en este navegador (localStorage).</div></div>
+    </div>
+    <footer><button class="btn" id="clearAI">Borrar</button><button class="btn primary" id="saveAI">Guardar</button></footer>
+  </div>
+</div>
+
+<script>
+(function(){
+  
+  const $ = (id)=>document.getElementById(id);
+  const log = (m)=>{ const out=$("out"); if(out) out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; });
+
+  // Firebase
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
+  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+  authDomain: "gastos-2n.firebaseapp.com",
+  projectId: "gastos-2n",
+  storageBucket: "gastos-2n.appspot.com",
+  messagingSenderId: "55010048795",
+  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+});
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  // Modal helpers
+  const openModal = (id)=>{ $(id).classList.add("open"); $(id).setAttribute("aria-hidden","false"); });
+  const closeModal = (id)=>{ $(id).classList.remove("open"); $(id).setAttribute("aria-hidden","true"); });
+
+  // IA modal
+  var _btnAI=document.getElementById('btnAI'); if(_btnAI){ _btnAI.addEventListener('click', openModal("aiModal");
+  var _closeAI=document.getElementById('closeAI'); if(_closeAI){ _closeAI.addEventListener('click', closeModal("aiModal");
+  var _saveAI=document.getElementById('saveAI'); if(_saveAI){ _saveAI.addEventListener('click',{ const v=$("aiKey").value.trim(); localStorage.setItem("gkey", v); alert("Guardada ✅"); closeModal("aiModal"); };
+  var _clearAI=document.getElementById('clearAI'); if(_clearAI){ _clearAI.addEventListener('click',{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("Borrada"); };
+
+  // Login
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.getRedirectResult().catch(()=>{});
+  $('btnLogin').onclick = async () => { 
+    try{ await auth.signInWithPopup(provider); }
+    catch(err){ if(err.code==='auth/popup-blocked' || err.code==='auth/popup-closed-by-user'){ await auth.signInWithRedirect(provider); } else { alert("Error login: "+(err.message||"")); } }
+  };
+  $('btnLogout').onclick = async () => { await auth.signOut(); };
+
+  auth.onAuthStateChanged((user)=>{
+    if(user){
+      $("whoami").textContent = `Conectado como ${user.email||user.uid}`;
+      $("btnLogin").style.display="none"; $("btnLogout").style.display="";
+      cargarUltimos();
+    }else{
+      $("whoami").textContent = "No autenticado";
+      $("btnLogin").style.display=""; $("btnLogout").style.display="none";
+      $("lista").innerHTML="";
+    }
+  });
+
+  // ======= Review flow =======
+  let review = { file:null, dateISO:"", amount:0, provider:"", category:"varios", notes:"", paidWith:"empresa" };
+
+  function ensureCameraInput(){ const x=document.createElement("input"); x.type="file"; x.accept="image/*"; x.capture="environment"; x.style.display="none"; document.body.appendChild(x); return x; }
+  function fileToBase64(file){ return new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(",")[1]||""); rd.onerror=()=>reject(new Error("No se pudo leer imagen")); rd.readAsDataURL(file); }); }
+  async function downscaleImage(file, max=2048, q=0.9){
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+    const scale=Math.min(1,max/Math.max(img.width,img.height));
+    const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h);
+    const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",q)); URL.revokeObjectURL(img.src);
+    return new File([blob], (file.name||"ticket")+".jpg", {type:"image/jpeg"});
+  }
+
+  $("manualBtn").onclick = ()=>{ review={ file:null, dateISO:new Date().toISOString().slice(0,10), amount:0, provider:"", category:"varios", notes:"", paidWith:"empresa" }; $("revThumb").src=""; $("revFileInfo").textContent=""; $("revDate").value = new Date().toISOString().slice(0,10); openModal("reviewModal"); };
+  // Escanear ticket -> abrir selector/cámara y precargar imagen. Si hay API key, intentará OCR (opcional)
+  
+  $("scanBtn").onclick = ()=>{
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*";
+    inp.capture = "environment";
+    inp.onchange = async ()=>{
+      if(!inp.files||!inp.files[0]) return;
+      try{
+        const downs = await downscaleImage(inp.files[0]);
+        review.file = downs;
+        $("revThumb").src = URL.createObjectURL(downs);
+        $("revFileInfo").textContent = downs.name + " · " + Math.round(downs.size/1024) + " KB";
+        $("revDate").value = new Date().toISOString().slice(0,10);
+        openModal("reviewModal");
+      }catch(e){ alert("No se pudo abrir la imagen"); }
+    };
+    inp.click();
+  };
+    inp.click();
+  };
+
+  $("btnPick").onclick=()=>{ const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.onchange=async()=>{ if(!inp.files||!inp.files[0]) return; const downs=await downscaleImage(inp.files[0]); review.file=downs; $("revThumb").src=URL.createObjectURL(downs); $("revFileInfo").textContent = downs.name+" · "+Math.round(downs.size/1024)+" KB"; }; inp.click(); };
+  $("btnCam").onclick = ()=>{ const inp=ensureCameraInput(); inp.onchange=async()=>{ if(!inp.files||!inp.files[0]) return; const downs=await downscaleImage(inp.files[0]); review.file=downs; $("revThumb").src=URL.createObjectURL(downs); $("revFileInfo").textContent = downs.name+" · "+Math.round(downs.size/1024)+" KB"; inp.remove(); }; inp.click(); };
+  $("closeReview").onclick = ()=> closeModal("reviewModal");
+  $("saveReview").onclick = async ()=>{
+    const user=auth.currentUser;
+    const dateISO = $("revDate").value;
+    const amount = Number($("revAmount").value||0);
+    const provider = $("revProvider").value.trim();
+    const category = $("revCategory").value;
+    const paidWith = $("revPaidWith").value;
+    const notes = $("revNotes").value;
+
+    try{
+      let photoURL=null, photoPath=null;
+      if(review.file && user){
+        const yyyyMM = dateISO.slice(0,7);
+        const safeProv = provider.replace(/[^a-z0-9-_]/gi,"_").toLowerCase()||"ticket";
+        const filename=`${dateISO}_${safeProv}_${Date.now()}.jpg`;
+        photoPath=`tickets/${user.uid}/${yyyyMM}/${filename}`;
+        await firebase.storage().ref(photoPath).put(review.file);
+        photoURL=await firebase.storage().ref(photoPath).getDownloadURL();
+      }
+      if(user){
+        await firebase.firestore().collection(`users/${user.uid}/entries`).add({
+          date:new Date(dateISO), category, provider, notes, amount, paidWith,
+          photoURL, photoPath,
+          isExpense: category!=="ingreso",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        throw new Error("local");
+      }
+      alert("Guardado ✅"); closeModal("reviewModal"); cargarUltimos();
+    }catch(e){
+      try{
+        const b64 = review.file ? await fileToBase64(review.file) : null;
+        const loc = JSON.parse(localStorage.getItem("entries_local")||"[]");
+        loc.push({date:dateISO, category, provider, notes, amount, paidWith, photoData:b64, isExpense: category!=="ingreso"});
+        localStorage.setItem("entries_local", JSON.stringify(loc));
+        alert("Guardado en local (sin permisos).");
+        closeModal("reviewModal"); cargarUltimos();
+      }catch(err){ alert("Error guardando: "+(e.message||"")); }
+    }
+  };
+
+  async function cargarUltimos(){
+    const user=auth.currentUser;
+    const lista=$("lista"); lista.innerHTML="";
+    let docs=[];
+    try{
+      if(user){
+        const snap=await db.collection(`users/${user.uid}/entries`).orderBy("date","desc").limit(20).get();
+        docs = snap.docs.map(d=>d.data());
+      }
+    }catch{}
+    const local=JSON.parse(localStorage.getItem("entries_local")||"[]");
+    docs = [...local.map(d=>({...d, local:true})), ...docs];
+
+    docs.forEach(d=>{
+      const dt=d.date?.toDate?d.date.toDate():new Date(d.date);
+      const el=document.createElement("div"); el.className="item";
+      el.innerHTML=`<div class="left">
+        <div class="t">${d.provider||"-"} · <span class="small">${d.category}</span> ${d.paidWith==="mio"?'<span class="badge">💳 Mi dinero</span>':''}</div>
+        <div class="s">${dt.toISOString().slice(0,10)} ${d.notes?('· '+d.notes):''}</div>
+      </div>
+      <div class="right"><strong style="color:${d.isExpense?'#ff6b6b':'#3ee890'}">${(d.isExpense?'-':'+')}${Number(d.amount||0).toFixed(2)}€</strong> ${d.photoURL?`<a href="${d.photoURL}" target="_blank" class="badge">ticket</a>`:''}</div>`;
+      lista.appendChild(el);
+    });
+  }
+
+})();</script>
+
+<!-- BOOTSTRAP -->
+<script>
+(function(){
+  // Small helper
+  function $(id){ return document.getElementById(id); }
+
+  // Ensure Firebase config exists
+  try {
+    if(!window.__FBCONFIG__) console.warn("Config: window.__FBCONFIG__ no definido (revisa config.js)");
+    window.firebaseConfig = window.__FBCONFIG__ || window.firebaseConfig;
+  } catch(e){ console.error("Config error", e); }
+
+  // Initialize Firebase once
+  try{
+    if (!firebase.apps || !firebase.apps.length) {
+      firebase.initializeApp(window.firebaseConfig);
+    }
+  }catch(e){
+    console.error("Firebase init error:", e);
+  }
+
+  // Bind safe listeners
+  function onClick(id, fn){
+    var el = $(id);
+    if(!el){ console.warn("No existe el botón", id); return; }
+    el.addEventListener('click', fn, false);
+  }
+
+  // Auth/providers used across pages
+  var auth = (firebase.auth ? firebase.auth() : null);
+  var db   = (firebase.firestore ? firebase.firestore() : null);
+  var storage = (firebase.storage ? firebase.storage() : null);
+  window.__APPCTX__ = {auth:auth, db:db, storage:storage};
+
+  // IA modal
+  onClick('btnAI', function(){ var m=$('aiModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); } });
+  onClick('closeAI', function(){ var m=$('aiModal'); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } });
+  onClick('saveAI', function(){ try{ var v=$('aiKey').value.trim(); localStorage.setItem('gkey', v); alert('Guardada ✅'); var m=$('aiModal'); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } }catch{} });
+  onClick('clearAI', function(){ try{ localStorage.removeItem('gkey'); if($('aiKey')) $('aiKey').value=''; alert('Borrada'); }catch{} });
+
+  // Login
+  if(auth){
+    var provider = new firebase.auth.GoogleAuthProvider();
+    onClick('btnLogin', async function(){
+      try{ await auth.signInWithPopup(provider); }
+      catch(err){
+        if(err && (err.code==='auth/popup-blocked' || err.code==='auth/popup-closed-by-user')){
+          await auth.signInWithRedirect(provider);
+        } else {
+          alert("Error login: "+(err && err.message || ""));
+          console.error(err);
+        }
+      }
+    });
+    onClick('btnLogout', function(){ auth.signOut(); });
+  }
+
+  // Review modal basic open (manual)
+  onClick('manualBtn', function(){
+    try{
+      if($('revDate')) $('revDate').value = new Date().toISOString().slice(0,10);
+      if($('revThumb')) $('revThumb').src = "";
+      if($('revFileInfo')) $('revFileInfo').textContent = "";
+      var m=$('reviewModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); }
+    }catch(e){ console.error(e); }
+  });
+
+  // Scanner (always opens file chooser)
+  onClick('scanBtn', function(){
+    try{
+      var inp = document.createElement('input');
+      inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+      inp.onchange = async function(){
+        var f = inp.files && inp.files[0]; if(!f) return;
+        try{
+          // quick preview without downscale to minimize issues
+          if($('revThumb')) $('revThumb').src = URL.createObjectURL(f);
+          if($('revFileInfo')) $('revFileInfo').textContent = (f.name||'ticket')+" · "+Math.round((f.size||0)/1024)+" KB";
+          if($('revDate')) $('revDate').value = new Date().toISOString().slice(0,10);
+          // store file globally for later save
+          window.__lastPickedFile = f;
+          var m=$('reviewModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); }
+        }catch(e){ alert('No se pudo abrir la imagen'); console.error(e); }
+      };
+      inp.click();
+    }catch(e){ console.error(e); }
+  });
+
+  console.log("Bootstrap listo ✅");
+})();
+</script>
+
+
+<!-- MODAL HANDLERS -->
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function openModal(id){ var m=$(id); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); } }
+  function closeModal(id){ var m=$(id); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } }
+
+  // Close modal
+  var _closeReview = $('closeReview');
+  if(_closeReview){ _closeReview.addEventListener('click', function(){ closeModal('reviewModal'); }, false); }
+
+  // Attach / Camera
+  function pickFile(fromCamera){
+    var inp = document.createElement('input');
+    inp.type='file'; inp.accept='image/*';
+    if(fromCamera) inp.capture='environment';
+    inp.onchange = function(){
+      try{
+        var f = inp.files && inp.files[0]; if(!f) return;
+        window.__lastPickedFile = f;
+        if($('revThumb')) $('revThumb').src = URL.createObjectURL(f);
+        if($('revFileInfo')) $('revFileInfo').textContent = (f.name||'ticket')+" · "+Math.round((f.size||0)/1024)+" KB";
+      }catch(e){ console.error(e); }
+    };
+    inp.click();
+  }
+  var _btnPick = $('btnPick'); if(_btnPick){ _btnPick.addEventListener('click', function(){ pickFile(false); }, false); }
+  var _btnCam  = $('btnCam');  if(_btnCam){  _btnCam.addEventListener('click',  function(){ pickFile(true); },  false); }
+
+  // Save
+  var _saveReview = $('saveReview');
+  if(_saveReview){
+    _saveReview.addEventListener('click', async function(){
+      try{
+        var ctx = window.__APPCTX__ || {};
+        var auth = ctx.auth, db = ctx.db, storage = ctx.storage;
+        var user = auth && auth.currentUser;
+
+        var dateISO = $('revDate') ? $('revDate').value : new Date().toISOString().slice(0,10);
+        var amount  = $('revAmount') ? Number($('revAmount').value||0) : 0;
+        var provider= $('revProvider') ? $('revProvider').value.trim() : '';
+        var category= $('revCategory') ? $('revCategory').value : 'varios';
+        var paidWith= $('revPaidWith') ? $('revPaidWith').value : 'empresa';
+        var notes   = $('revNotes') ? $('revNotes').value : '';
+        var file    = window.__lastPickedFile || null;
+
+        // Upload photo if logged in
+        var photoURL=null, photoPath=null;
+        if(file && user && storage){
+          var yyyyMM = dateISO.slice(0,7);
+          var safeProv = (provider||'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+          var filename = dateISO + '_' + safeProv + '_' + Date.now() + '.jpg';
+          photoPath = 'tickets/' + user.uid + '/' + yyyyMM + '/' + filename;
+          await storage.ref(photoPath).put(file);
+          photoURL = await storage.ref(photoPath).getDownloadURL();
+        }
+
+        // Save document
+        if(user && db){
+          await db.collection('users/'+user.uid+'/entries').add({
+            date: new Date(dateISO),
+            category, provider, notes, amount, paidWith,
+            photoURL, photoPath,
+            isExpense: category!=='ingreso',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert('Guardado ✅');
+          closeModal('reviewModal');
+          // small reload of latest could be added here
+        } else {
+          // Fallback local
+          var arr = JSON.parse(localStorage.getItem('entries_local')||'[]');
+          arr.push({date:dateISO, category, provider, notes, amount, paidWith, isExpense: category!=='ingreso'});
+          localStorage.setItem('entries_local', JSON.stringify(arr));
+          alert('Guardado en local (sin login)');
+          closeModal('reviewModal');
+        }
+
+      }catch(e){
+        alert('Error guardando: ' + (e && e.message || ''));
+        console.error(e);
+      }
+    }, false);
+  }
+
+  // Optional OCR when a file has been chosen and IA key exists.
+  async function maybeOCR(){
+    try{
+      var key = localStorage.getItem('gkey'); if(!key) return;
+      var f = window.__lastPickedFile; if(!f) return;
+      var ab = await f.arrayBuffer();
+      var b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+      var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{role:'user', parts:[
+            {text:'Extrae proveedor, fecha (YYYY-MM-DD), categoría probable (comida, peajes, gasolina, transporte, alojamiento, ocio, servicios, varios), e importe total en EUR. Responde en JSON con claves provider,date,category,amount.'},
+            {inline_data:{mime_type:'image/jpeg', data:b64}}
+          ]}]
+        })
+      });
+      var data = await resp.json();
+      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text || '';
+      var m = text && text.match(/\{[\s\S]*\}/);
+      if(!m) return;
+      var json = JSON.parse(m[0]);
+      if(json.provider && $('revProvider')) $('revProvider').value = json.provider;
+      if(json.date && $('revDate')) $('revDate').value = json.date;
+      if(json.amount && $('revAmount')) $('revAmount').value = Number(json.amount||0);
+      if(json.category && $('revCategory')){
+        var c = (json.category||'').toLowerCase();
+        if(!/comida|peajes|gasolina|transporte|alojamiento|ocio|servicios|varios|ingreso/.test(c)) c='varios';
+        $('revCategory').value = c;
+      }
+    }catch(e){ console.warn('OCR no aplicado', e); }
+  }
+
+  // Dispara OCR unos milisegundos después de abrir modal (si hay imagen)
+  var revModal = document.getElementById('reviewModal');
+  if(revModal){
+    revModal.addEventListener('transitionend', function(){
+      setTimeout(maybeOCR, 200);
+    }, false);
+  }
+})();
+</script>
+
+</body>
+</html>

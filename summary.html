@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Sumary · Gastos 2N</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="config.js"></script>
+
+<!-- AUTH STATE BOOTSTRAP -->
+<script>
+(function(){
+  try{
+    if(!window.__FBCONFIG__) console.warn("Config faltante: __FBCONFIG__");
+    if (!firebase.apps || !firebase.apps.length) { firebase.initializeApp(window.__FBCONFIG__ || window.firebaseConfig); }
+    var auth = firebase.auth();
+    // Persistencia local (para GH Pages)
+    if (firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    }
+    // Recoger resultado de redirect si lo hubo
+    if (auth.getRedirectResult) { auth.getRedirectResult().catch(()=>{}); }
+
+    function updateUI(user){
+      var who = document.getElementById('whoami');
+      var btnLogin = document.getElementById('btnLogin');
+      var btnLogout = document.getElementById('btnLogout');
+      if(user){
+        if(who) who.textContent = "Conectado como " + (user.email || user.uid);
+        if(btnLogin) btnLogin.style.display = "none";
+        if(btnLogout) btnLogout.style.display = "";
+      }else{
+        if(who) who.textContent = "No autenticado";
+        if(btnLogin) btnLogin.style.display = "";
+        if(btnLogout) btnLogout.style.display = "none";
+      }
+      // Notificar a listeners opcionales de cada página
+      try{ document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user:user}})); }catch(e){}
+    }
+
+    auth.onAuthStateChanged(function(user){ updateUI(user); });
+    // Exponer en contexto global por si otras partes lo necesitan
+    window.__APPCTX__ = window.__APPCTX__ || {};
+    window.__APPCTX__.auth = auth;
+    window.__APPCTX__.db = firebase.firestore ? firebase.firestore() : null;
+    window.__APPCTX__.storage = firebase.storage ? firebase.storage() : null;
+  }catch(e){ console.error("Auth bootstrap error", e); }
+})();
+</script>
+
+</head>
+<body>
+<header class="topbar">
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 📊 Sumario</h1>
+  <a class="badge" href="index.html">← Volver</a>
+</header>
+<div class="content"><div class="small" id="currentMonthLabel" style="text-align:right;opacity:.8;margin:.3rem 0;"></div></div>
+<main class="content">
+  <div class="grid">
+    <div class="card" id="sumPanel">
+      <div style="display:flex;justify-content:flex-end"><img src="assets/2n-logo-white.png" alt="2N" style="height:20px"></div>
+      <h2>Resumen del mes</h2>
+      <div class="row">
+        <div class="field"><label>Mes</label><input id="sumMonth" type="month"/></div>
+        <div class="field"><label>Gasto</label><div id="sGasto" class="tile">0.00 €</div></div>
+        <div class="field"><label>Ingresos</label><div id="sIng" class="tile">0.00 €</div></div>
+        <div class="field"><label>Mi dinero</label><div id="sMi" class="tile">0.00 €</div></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>KM personales (coste)</label><div id="sKm" class="tile">0.00 €</div></div>
+        <div class="field"><label>Liquidación (Gasto − Ingresos − KM)</label><div id="liq" class="tile">0.00 €</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <button id="btnPDF" class="btn primary">📄 Generar PDF</button>
+        <button id="btnPhotos" class="btn">🖼️ Descargar fotos</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  
+  const $=id=>document.getElementById(id);
+
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
+  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+  authDomain: "gastos-2n.firebaseapp.com",
+  projectId: "gastos-2n",
+  storageBucket: "gastos-2n.appspot.com",
+  messagingSenderId: "55010048795",
+  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+});
+  firebase.initializeApp(firebaseConfig);
+  const auth=firebase.auth();
+  const db=firebase.firestore();
+
+  $("sumMonth").value=new Date().toISOString().slice(0,7);
+  document.getElementById('currentMonthLabel').textContent = new Date().toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+  function updateMonthLabel(){ try{ document.getElementById('currentMonthLabel').textContent = new Date(document.querySelector('input[type=month]').value+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});}catch{} }
+  updateMonthLabel();
+  auth.onAuthStateChanged(u=>{ cargar(); });
+  $("sumMonth").onchange=function(){ updateMonthLabel(); cargar(); });
+
+  function rangoMes(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+
+  async function cargar(){
+    const u=auth.currentUser; const ym=$("sumMonth").value; const [s,e]=rangoMes(ym);
+    let ents=[], kms=[];
+    try{ if(u){ ents=(await db.collection(`users/${u.uid}/entries`).where("date",">=",s).where("date","<",e).get()).docs.map(d=>d.data()); kms=(await db.collection(`users/${u.uid}/kms`).where("date",">=",s).where("date","<",e).get()).docs.map(d=>d.data()); } }catch{}
+
+    let gasto=0, ingreso=0, mi=0; const fotos=[];
+    ents.forEach(e=>{ const isExp=e.category!=="ingreso"; const a=Number(e.amount||0); if(isExp) gasto+=a; else ingreso+=a; if(isExp && e.paidWith==="mio") mi+=a; if(e.photoURL) fotos.push(e.photoURL); });
+    let kmCost=0; kms.forEach(k=>{ kmCost += Number(k.kmPer||0)*Number(k.precio||0); });
+    $("sGasto").textContent=gasto.toFixed(2)+" €";
+    $("sIng").textContent=ingreso.toFixed(2)+" €";
+    $("sMi").textContent=mi.toFixed(2)+" €";
+    $("sKm").textContent=kmCost.toFixed(2)+" €";
+    const liq = gasto - ingreso - kmCost;
+    $("liq").textContent = liq.toFixed(2)+" €";
+
+    $("btnPDF").onclick=async()=>{
+      const el=document.getElementById("sumPanel");
+      const canvas=await html2canvas(el,{scale:2,backgroundColor:"#111217"});
+      const img=canvas.toDataURL("image/png");
+      const { jsPDF } = window.jspdf;
+      const pdf=new jsPDF({unit:"pt",format:"a4"});
+      const pageW=595.28;
+      const imgW=pageW-60, imgH=imgW*(canvas.height/canvas.width);
+      pdf.addImage(img,"PNG",30,30,imgW,imgH);
+      pdf.save(`Sumario_${ym}.pdf`);
+    });
+
+    $("btnPhotos").onclick=async()=>{ 
+      if(!fotos.length) return alert("No hay fotos este mes"); 
+      const zip=new JSZip(); let i=1;
+      for(const url of fotos){ const res=await fetch(url); const blob=await res.blob(); zip.file(`ticket_${String(i).padStart(2,'0')}.jpg`, blob); i++; }
+      const out=await zip.generateAsync({type:"blob"}); saveAs(out, `Tickets_${ym}.zip`);
+    });
+  }
+})();
+</script>
+
+<!-- BOOTSTRAP -->
+<script>
+(function(){
+  // Small helper
+  function $(id){ return document.getElementById(id); }
+
+  // Ensure Firebase config exists
+  try {
+    if(!window.__FBCONFIG__) console.warn("Config: window.__FBCONFIG__ no definido (revisa config.js)");
+    window.firebaseConfig = window.__FBCONFIG__ || window.firebaseConfig;
+  } catch(e){ console.error("Config error", e); }
+
+  // Initialize Firebase once
+  try{
+    if (!firebase.apps || !firebase.apps.length) {
+      firebase.initializeApp(window.firebaseConfig);
+    }
+  }catch(e){
+    console.error("Firebase init error:", e);
+  }
+
+  // Bind safe listeners
+  function onClick(id, fn){
+    var el = $(id);
+    if(!el){ console.warn("No existe el botón", id); return; }
+    el.addEventListener('click', fn, false);
+  }
+
+  // Auth/providers used across pages
+  var auth = (firebase.auth ? firebase.auth() : null);
+  var db   = (firebase.firestore ? firebase.firestore() : null);
+  var storage = (firebase.storage ? firebase.storage() : null);
+  window.__APPCTX__ = {auth:auth, db:db, storage:storage};
+
+  // IA modal
+  onClick('btnAI', function(){ var m=$('aiModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); } });
+  onClick('closeAI', function(){ var m=$('aiModal'); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } });
+  onClick('saveAI', function(){ try{ var v=$('aiKey').value.trim(); localStorage.setItem('gkey', v); alert('Guardada ✅'); var m=$('aiModal'); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } }catch{} });
+  onClick('clearAI', function(){ try{ localStorage.removeItem('gkey'); if($('aiKey')) $('aiKey').value=''; alert('Borrada'); }catch{} });
+
+  // Login
+  if(auth){
+    var provider = new firebase.auth.GoogleAuthProvider();
+    onClick('btnLogin', async function(){
+      try{ await auth.signInWithPopup(provider); }
+      catch(err){
+        if(err && (err.code==='auth/popup-blocked' || err.code==='auth/popup-closed-by-user')){
+          await auth.signInWithRedirect(provider);
+        } else {
+          alert("Error login: "+(err && err.message || ""));
+          console.error(err);
+        }
+      }
+    });
+    onClick('btnLogout', function(){ auth.signOut(); });
+  }
+
+  // Review modal basic open (manual)
+  onClick('manualBtn', function(){
+    try{
+      if($('revDate')) $('revDate').value = new Date().toISOString().slice(0,10);
+      if($('revThumb')) $('revThumb').src = "";
+      if($('revFileInfo')) $('revFileInfo').textContent = "";
+      var m=$('reviewModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); }
+    }catch(e){ console.error(e); }
+  });
+
+  // Scanner (always opens file chooser)
+  onClick('scanBtn', function(){
+    try{
+      var inp = document.createElement('input');
+      inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+      inp.onchange = async function(){
+        var f = inp.files && inp.files[0]; if(!f) return;
+        try{
+          // quick preview without downscale to minimize issues
+          if($('revThumb')) $('revThumb').src = URL.createObjectURL(f);
+          if($('revFileInfo')) $('revFileInfo').textContent = (f.name||'ticket')+" · "+Math.round((f.size||0)/1024)+" KB";
+          if($('revDate')) $('revDate').value = new Date().toISOString().slice(0,10);
+          // store file globally for later save
+          window.__lastPickedFile = f;
+          var m=$('reviewModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); }
+        }catch(e){ alert('No se pudo abrir la imagen'); console.error(e); }
+      };
+      inp.click();
+    }catch(e){ console.error(e); }
+  });
+
+  console.log("Bootstrap listo ✅");
+})();
+</script>
+
+</body>
+</html>
