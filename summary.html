@@ -12,12 +12,14 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 <header class="topbar">
   <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 📊 Sumario</h1>
   <a class="badge" href="index.html">← Volver</a>
 </header>
+<div class="content"><div class="small" id="currentMonthLabel" style="text-align:right;opacity:.8;margin:.3rem 0;"></div></div>
 <main class="content">
   <div class="grid">
     <div class="card" id="sumPanel">
@@ -45,13 +47,15 @@
 
 <script>
 (function(){
+  document.addEventListener('DOMContentLoaded', function(){
   const $=id=>document.getElementById(id);
 
-  const firebaseConfig = {
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
   apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
   authDomain: "gastos-2n.firebaseapp.com",
   projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
+  storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
 };
@@ -60,8 +64,11 @@
   const db=firebase.firestore();
 
   $("sumMonth").value=new Date().toISOString().slice(0,7);
+  document.getElementById('currentMonthLabel').textContent = new Date().toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+  function updateMonthLabel(){ try{ document.getElementById('currentMonthLabel').textContent = new Date(document.querySelector('input[type=month]').value+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});}catch{} }
+  updateMonthLabel();
   auth.onAuthStateChanged(u=>{ cargar(); });
-  $("sumMonth").onchange=cargar;
+  $("sumMonth").onchange=function(){ updateMonthLabel(); cargar(); };
 
   function rangoMes(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
 
@@ -99,6 +106,7 @@
       const out=await zip.generateAsync({type:"blob"}); saveAs(out, `Tickets_${ym}.zip`);
     };
   }
+  });
 })();
 </script>
 </body>

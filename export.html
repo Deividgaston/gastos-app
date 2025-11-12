@@ -10,12 +10,14 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 <header class="topbar">
   <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 📁 Exportar</h1>
   <a class="badge" href="index.html">← Volver</a>
 </header>
+<div class="content"><div class="small" id="currentMonthLabel" style="text-align:right;opacity:.8;margin:.3rem 0;"></div></div>
 <main class="content">
   <div class="grid">
     <div class="card">
@@ -100,13 +102,15 @@
 
 <script>
 (function(){
+  document.addEventListener('DOMContentLoaded', function(){
   const $=id=>document.getElementById(id);
 
-  const firebaseConfig = {
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
   apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
   authDomain: "gastos-2n.firebaseapp.com",
   projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
+  storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
 };
@@ -116,6 +120,9 @@
   const storage=firebase.storage();
 
   $("expMonth").value = new Date().toISOString().slice(0,7);
+  document.getElementById('currentMonthLabel').textContent = new Date().toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+  function updateMonthLabel(){ try{ document.getElementById('currentMonthLabel').textContent = new Date(document.querySelector('input[type=month]').value+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});}catch{} }
+  updateMonthLabel();
   auth.onAuthStateChanged(u=>{ cargar(); });
 
   function rangoMes(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
@@ -128,7 +135,7 @@
     try{ if(u){ const snap=await db.collection(`users/${u.uid}/entries`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get(); entries = snap.docs.map(d=>({id:d.id, ...d.data()})); } }catch{}
     pintar(entries, ym, u?.uid);
   }
-  $("expMonth").onchange=cargar;
+  $("expMonth").onchange=function(){ updateMonthLabel(); cargar(); };
 
   function pintar(entries, ym, uid){
     let gastos=0, ingresos=0, pagadoMio=0;
@@ -241,6 +248,7 @@
     document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
     document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
   }
+  });
 })();
 </script>
 </body>

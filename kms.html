@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 <header class="topbar">
@@ -48,13 +49,15 @@
 
 <script>
 (function(){
+  document.addEventListener('DOMContentLoaded', function(){
   const $=id=>document.getElementById(id);
 
-  const firebaseConfig = {
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
   apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
   authDomain: "gastos-2n.firebaseapp.com",
   projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
+  storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
 };
@@ -128,6 +131,7 @@
     $("kpiPerCost").textContent = perCost.toFixed(2);
     localStorage.setItem("km_per_cost_mes", String(perCost.toFixed(2)));
   }
+  });
 })();
 </script>
 </body>

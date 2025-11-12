@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 <header class="topbar">
@@ -88,15 +89,17 @@
 
 <script>
 (function(){
+  document.addEventListener('DOMContentLoaded', function(){
   const $ = (id)=>document.getElementById(id);
   const log = (m)=>{ const out=$("out"); if(out) out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
 
   // Firebase
-  const firebaseConfig = {
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
   apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
   authDomain: "gastos-2n.firebaseapp.com",
   projectId: "gastos-2n",
-  storageBucket: "gastos-2n.firebasestorage.app",
+  storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
 };
@@ -151,6 +154,28 @@
   }
 
   $("manualBtn").onclick = ()=>{ review={ file:null, dateISO:new Date().toISOString().slice(0,10), amount:0, provider:"", category:"varios", notes:"", paidWith:"empresa" }; $("revThumb").src=""; $("revFileInfo").textContent=""; $("revDate").value = new Date().toISOString().slice(0,10); openModal("reviewModal"); };
+  // Escanear ticket -> abrir selector/cámara y precargar imagen. Si hay API key, intentará OCR (opcional)
+  
+  $("scanBtn").onclick = ()=>{
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*";
+    inp.capture = "environment";
+    inp.onchange = async ()=>{
+      if(!inp.files||!inp.files[0]) return;
+      try{
+        const downs = await downscaleImage(inp.files[0]);
+        review.file = downs;
+        $("revThumb").src = URL.createObjectURL(downs);
+        $("revFileInfo").textContent = downs.name + " · " + Math.round(downs.size/1024) + " KB";
+        $("revDate").value = new Date().toISOString().slice(0,10);
+        openModal("reviewModal");
+      }catch(e){ alert("No se pudo abrir la imagen"); }
+    };
+    inp.click();
+  };
+    inp.click();
+  };
 
   $("btnPick").onclick=()=>{ const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*"; inp.onchange=async()=>{ if(!inp.files||!inp.files[0]) return; const downs=await downscaleImage(inp.files[0]); review.file=downs; $("revThumb").src=URL.createObjectURL(downs); $("revFileInfo").textContent = downs.name+" · "+Math.round(downs.size/1024)+" KB"; }; inp.click(); };
   $("btnCam").onclick = ()=>{ const inp=ensureCameraInput(); inp.onchange=async()=>{ if(!inp.files||!inp.files[0]) return; const downs=await downscaleImage(inp.files[0]); review.file=downs; $("revThumb").src=URL.createObjectURL(downs); $("revFileInfo").textContent = downs.name+" · "+Math.round(downs.size/1024)+" KB"; inp.remove(); }; inp.click(); };
