@@ -102,7 +102,7 @@
 
 <script>
 (function(){
-  document.addEventListener('DOMContentLoaded', function(){
+  
   const $=id=>document.getElementById(id);
 
   /* firebaseConfig moved to config.js */
@@ -113,7 +113,7 @@ const firebaseConfig = window.__FBCONFIG__ || {
   storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-};
+});
   firebase.initializeApp(firebaseConfig);
   const auth=firebase.auth();
   const db=firebase.firestore();
@@ -135,7 +135,7 @@ const firebaseConfig = window.__FBCONFIG__ || {
     try{ if(u){ const snap=await db.collection(`users/${u.uid}/entries`).where("date",">=",s).where("date","<",e).orderBy("date","asc").get(); entries = snap.docs.map(d=>({id:d.id, ...d.data()})); } }catch{}
     pintar(entries, ym, u?.uid);
   }
-  $("expMonth").onchange=function(){ updateMonthLabel(); cargar(); };
+  $("expMonth").onchange=function(){ updateMonthLabel(); cargar(); });
 
   function pintar(entries, ym, uid){
     let gastos=0, ingresos=0, pagadoMio=0;
@@ -159,7 +159,7 @@ const firebaseConfig = window.__FBCONFIG__ || {
     $("btnFotos").onclick=()=>{
       if(!photos.length) return alert("Sin fotos este mes");
       photos.forEach((url,i)=> setTimeout(()=>{ window.open(url, "_blank"); }, i*200));
-    };
+    });
 
     // Excel
     $("btnExcel").onclick=()=> descargarExcel(entries, ym, kmCost);
@@ -188,7 +188,7 @@ const firebaseConfig = window.__FBCONFIG__ || {
     for(const e of entries){
       if(e.category==="ingreso") continue;
       const date=(e.date?.toDate?e.date.toDate():new Date(e.date)).toISOString().slice(0,10);
-      const rec={ "DATE":date, "CLIENT / PROVIDER": e.provider||"", "TOLLS & PARKINGS":"", "OTHER TRANSPORTS (Taxi, Uber, etc.)":"", "TRAIN & BUS":"", "FLIGHTS":"", "HOTEL":"", "INVITATIONS":"", "MEALS":"", "VARIOUS":"", "TOTAL":"", "DESCRIPTION": e.notes||"", "PAID WITH": e.paidWith==="mio"?"MY MONEY":"COMPANY" };
+      const rec={ "DATE":date, "CLIENT / PROVIDER": e.provider||"", "TOLLS & PARKINGS":"", "OTHER TRANSPORTS (Taxi, Uber, etc.)":"", "TRAIN & BUS":"", "FLIGHTS":"", "HOTEL":"", "INVITATIONS":"", "MEALS":"", "VARIOUS":"", "TOTAL":"", "DESCRIPTION": e.notes||"", "PAID WITH": e.paidWith==="mio"?"MY MONEY":"COMPANY" });
       const amount=Number(e.amount||0);
       const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
       const col = map[e.category] || "VARIOUS";
@@ -248,7 +248,6 @@ const firebaseConfig = window.__FBCONFIG__ || {
     document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
     document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
   }
-  });
 })();
 </script>
 </body>

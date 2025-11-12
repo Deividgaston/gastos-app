@@ -89,9 +89,9 @@
 
 <script>
 (function(){
-  document.addEventListener('DOMContentLoaded', function(){
+  
   const $ = (id)=>document.getElementById(id);
-  const log = (m)=>{ const out=$("out"); if(out) out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
+  const log = (m)=>{ const out=$("out"); if(out) out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; });
 
   // Firebase
   /* firebaseConfig moved to config.js */
@@ -102,21 +102,21 @@ const firebaseConfig = window.__FBCONFIG__ || {
   storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-};
+});
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
   const storage = firebase.storage();
 
   // Modal helpers
-  const openModal = (id)=>{ $(id).classList.add("open"); $(id).setAttribute("aria-hidden","false"); };
-  const closeModal = (id)=>{ $(id).classList.remove("open"); $(id).setAttribute("aria-hidden","true"); };
+  const openModal = (id)=>{ $(id).classList.add("open"); $(id).setAttribute("aria-hidden","false"); });
+  const closeModal = (id)=>{ $(id).classList.remove("open"); $(id).setAttribute("aria-hidden","true"); });
 
   // IA modal
-  $("btnAI").onclick = ()=> openModal("aiModal");
-  $("closeAI").onclick= ()=> closeModal("aiModal");
-  $("saveAI").onclick= ()=>{ const v=$("aiKey").value.trim(); localStorage.setItem("gkey", v); alert("Guardada ✅"); closeModal("aiModal"); };
-  $("clearAI").onclick= ()=>{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("Borrada"); };
+  var _btnAI=document.getElementById('btnAI'); if(_btnAI){ _btnAI.addEventListener('click', openModal("aiModal");
+  var _closeAI=document.getElementById('closeAI'); if(_closeAI){ _closeAI.addEventListener('click', closeModal("aiModal");
+  var _saveAI=document.getElementById('saveAI'); if(_saveAI){ _saveAI.addEventListener('click',{ const v=$("aiKey").value.trim(); localStorage.setItem("gkey", v); alert("Guardada ✅"); closeModal("aiModal"); };
+  var _clearAI=document.getElementById('clearAI'); if(_clearAI){ _clearAI.addEventListener('click',{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("Borrada"); };
 
   // Login
   const provider = new firebase.auth.GoogleAuthProvider();

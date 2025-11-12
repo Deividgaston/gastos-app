@@ -47,7 +47,7 @@
 
 <script>
 (function(){
-  document.addEventListener('DOMContentLoaded', function(){
+  
   const $=id=>document.getElementById(id);
 
   /* firebaseConfig moved to config.js */
@@ -58,7 +58,7 @@ const firebaseConfig = window.__FBCONFIG__ || {
   storageBucket: "gastos-2n.appspot.com",
   messagingSenderId: "55010048795",
   appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
-};
+});
   firebase.initializeApp(firebaseConfig);
   const auth=firebase.auth();
   const db=firebase.firestore();
@@ -68,7 +68,7 @@ const firebaseConfig = window.__FBCONFIG__ || {
   function updateMonthLabel(){ try{ document.getElementById('currentMonthLabel').textContent = new Date(document.querySelector('input[type=month]').value+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});}catch{} }
   updateMonthLabel();
   auth.onAuthStateChanged(u=>{ cargar(); });
-  $("sumMonth").onchange=function(){ updateMonthLabel(); cargar(); };
+  $("sumMonth").onchange=function(){ updateMonthLabel(); cargar(); });
 
   function rangoMes(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
 
@@ -97,16 +97,15 @@ const firebaseConfig = window.__FBCONFIG__ || {
       const imgW=pageW-60, imgH=imgW*(canvas.height/canvas.width);
       pdf.addImage(img,"PNG",30,30,imgW,imgH);
       pdf.save(`Sumario_${ym}.pdf`);
-    };
+    });
 
     $("btnPhotos").onclick=async()=>{ 
       if(!fotos.length) return alert("No hay fotos este mes"); 
       const zip=new JSZip(); let i=1;
       for(const url of fotos){ const res=await fetch(url); const blob=await res.blob(); zip.file(`ticket_${String(i).padStart(2,'0')}.jpg`, blob); i++; }
       const out=await zip.generateAsync({type:"blob"}); saveAs(out, `Tickets_${ym}.zip`);
-    };
+    });
   }
-  });
 })();
 </script>
 </body>
