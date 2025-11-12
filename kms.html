@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>KM · Gastos 2N</title>
+
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="config.js"></script>
+
+</head>
+<body>
+<header class="topbar">
+  <h1><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> KM</h1>
+  <a class="badge" href="index.html">⬅ Volver</a>
+  <button id="btnAI" class="btn">⚙️ IA</button>
+  <div class="header-actions">
+    <button id="btnLogin" class="btn">Iniciar sesión</button>
+    <button id="btnLogout" class="btn danger" style="display:none">Salir</button>
+  </div>
+</header>
+
+<main class="content">
+  <div class="grid">
+    <div class="card"><div class="small">Próximamente: registro de kilómetros con coste por km.</div></div>
+  </div>
+</main>
+
+
+<script>
+(function(){
+  try{
+    if (!firebase.apps || !firebase.apps.length) { firebase.initializeApp(window.__FBCONFIG__); }
+    var auth = firebase.auth();
+    if (firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    }
+    if (auth.getRedirectResult) { auth.getRedirectResult().catch(()=>{}); }
+
+    function updateUI(user){
+      var who = document.getElementById('whoami');
+      var btnLogin = document.getElementById('btnLogin');
+      var btnLogout = document.getElementById('btnLogout');
+      if(user){
+        if(who) who.textContent = "Conectado como " + (user.email || user.uid);
+        if(btnLogin) btnLogin.style.display = "none";
+        if(btnLogout) btnLogout.style.display = "";
+      }else{
+        if(who) who.textContent = "No autenticado";
+        if(btnLogin) btnLogin.style.display = "";
+        if(btnLogout) btnLogout.style.display = "none";
+      }
+      try{ document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user:user}})); }catch(e){}
+    }
+    auth.onAuthStateChanged(updateUI);
+
+    window.__APPCTX__ = {
+      auth: auth,
+      db: firebase.firestore ? firebase.firestore() : null,
+      storage: firebase.storage ? firebase.storage() : null
+    };
+
+    var provider = new firebase.auth.GoogleAuthProvider();
+    var bL = document.getElementById('btnLogin');
+    if(bL){ bL.addEventListener('click', async ()=>{
+      try{ await auth.signInWithPopup(provider); }catch(err){
+        if(err && (err.code==='auth/popup-blocked' || err.code==='auth/popup-closed-by-user')){
+          await auth.signInWithRedirect(provider);
+        } else { alert("Error login: "+(err.message||"")); }
+      }
+    });}
+    var bO = document.getElementById('btnLogout');
+    if(bO){ bO.addEventListener('click', ()=>auth.signOut()); }
+
+    var bIA = document.getElementById('btnAI');
+    if(bIA){ bIA.addEventListener('click', ()=>{ var m=document.getElementById('aiModal'); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); } }); }
+    var bClose = document.getElementById('closeAI');
+    if(bClose){ bClose.addEventListener('click', ()=>{ var m=document.getElementById('aiModal'); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } }); }
+    var bSave = document.getElementById('saveAI');
+    if(bSave){ bSave.addEventListener('click', ()=>{ try{ localStorage.setItem('gkey', document.getElementById('aiKey').value.trim()); alert('Guardada ✅'); document.getElementById('closeAI').click(); }catch{} }); }
+    var bClr = document.getElementById('clearAI');
+    if(bClr){ bClr.addEventListener('click', ()=>{ try{ localStorage.removeItem('gkey'); document.getElementById('aiKey').value=''; alert('Borrada'); }catch{} }); }
+  }catch(e){ console.error('Auth bootstrap error', e); }
+})();
+</script>
+
+</body>
+</html>
