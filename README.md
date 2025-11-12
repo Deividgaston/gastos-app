@@ -1,0 +1,29 @@
+# App de Gastos — HTML Móvil
+
+Este repositorio parte del código original que has adjuntado. He dejado intactos los archivos existentes y añadido mínimos ficheros para que puedas subirlo a GitHub fácilmente.
+
+## Estructura
+- `index.html` / `app.html` (según proyecto)
+- `assets/`, `css/`, `js/` si existen en tu código
+- `README.md` este archivo
+- `.gitignore` para ignorar ficheros temporales
+
+## Próximos pasos (plan de trabajo)
+- [ ] Añadir campo **“Pagado con”** (Tarjeta personal / Tarjeta empresa / Efectivo) y filtrar sumatorios por *tarjeta personal*.
+- [ ] Botón **“Adjuntar foto”** en **Ingresos manuales** (guardar en carpeta mensual).
+- [ ] **Km personales**: configurar precio €/km y **restar** en PDF de liquidación.
+- [ ] **Exportación**: PDF con mismo diseño que pantalla *Export* y ZIP de fotos del mes.
+- [ ] **Summary**: extracción de datos fiable y generación de PDF y enlace de descarga de fotos.
+- [ ] Arreglar permiso al **guardar KM** (manejo de `localStorage`/`File System Access API`).
+
+> Sube este paquete a GitHub y dime el siguiente cambio concreto que quieres aplicar y lo preparo en archivos listos para subir.
+
+
+## Cómo ejecutar (Google Auth)
+- **No abras** los HTML con doble click (file://). Usa un **servidor local**:
+  - Python: `python3 -m http.server 5173`
+  - Node: `npx serve` o `npx http-server`
+- En **Firebase Console → Authentication → Settings → Authorized domains** añade:
+  - `localhost`
+  - Tu dominio de GitHub Pages (si lo usas)
+- Revisa la **config de Firebase** en cada HTML si cambias de proyecto.
