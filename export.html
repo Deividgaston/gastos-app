@@ -5,8 +5,86 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Export · Gastos 2N</title>
   <link rel="stylesheet" href="assets/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
+</script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js">
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
+</script>
 </head>
 <body>
 <header class="topbar">
@@ -45,12 +123,227 @@
       <div id="out" class="logs mono"></div>
     </div>
   </div>
+
+    <div class="card">
+      <h2>Plantilla 2N (vista previa)</h2>
+      <div class="row" style="align-items:center">
+        <button id="btnExcel" class="btn primary">⬇️ Descargar Excel 2N</button>
+        <button id="btnPrint" class="btn">🖨️ Imprimir / PDF</button>
+      </div>
+      <div id="sheet2n" class="sheet2n">
+        <div class="sheet2n-head">
+          <div class="title">EXPENSES REPORT</div>
+          <div class="meta">
+            <div><strong>NOM:</strong> <span id="metaNom">David Gaston</span></div>
+            <div><strong>PRENOM:</strong> <span id="metaPrenom"></span></div>
+            <div><strong>COST CENTER:</strong> <span id="metaCC">Iberia</span></div>
+            <div><strong>MONTH/YEAR:</strong> <span id="metaMonth"></span></div>
+            <div><strong>DATE:</strong> <span id="metaDate"></span></div>
+          </div>
+          <div class="brand"><img src="assets/2n-logo-white.png" alt="2N"></div>
+        </div>
+        <div class="sheet2n-body">
+          <table class="sheet2n-table">
+            <thead>
+              <tr>
+                <th>DATE</th>
+                <th>CLIENT / PROVIDER</th>
+                <th>TOLLS &amp; PARKINGS</th>
+                <th>OTHER TRANSPORTS (Taxi, Uber, etc.)</th>
+                <th>TRAIN &amp; BUS</th>
+                <th>FLIGHTS</th>
+                <th>HOTEL</th>
+                <th>INVITATIONS</th>
+                <th>MEALS</th>
+                <th>VARIOUS</th>
+                <th>TOTAL</th>
+                <th>DESCRIPTION</th>
+                <th>PAID WITH</th>
+              </tr>
+            </thead>
+            <tbody id="sheetRows"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="10" class="r">TOTAL PERSONAL</td>
+                <td id="tfPersonal" class="r">0.00</td>
+                <td>—</td>
+                <td>MY MONEY</td>
+              </tr>
+              <tr>
+                <td colspan="10" class="r">KM personales (coste)</td>
+                <td id="tfKm" class="r">0.00</td>
+                <td>Auto-cálculo desde KM</td>
+                <td>MY MONEY</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="small">* En esta vista previa y en el Excel solo se **totalizan** gastos con <em>Pagado con = Mi dinero</em>. Los ingresos no cuentan como gasto.</div>
+    </div>
+
 </main>
 
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js">
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js">
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js">
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js">
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
+</script>
 
 <script>
 (function(){
@@ -120,6 +413,7 @@
     };
 
     $("btnExcel").onclick=()=> descargarExcel(entries, ym, kmCost);
+    renderSheet(entries, ym, kmCost);
   }
 
   function xlsx_book(){ return XLSX.utils.book_new(); }
@@ -176,6 +470,45 @@
   }
 
 })();
+
+  // === Render tabla estilo 2N ===
+  function renderSheet(entries, ym, kmCost){
+    const COLUMNS=["DATE","CLIENT / PROVIDER","TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL","DESCRIPTION","PAID WITH"];
+    const map={ comida:"MEALS", transporte:"OTHER TRANSPORTS (Taxi, Uber, etc.)", peajes:"TOLLS & PARKINGS", alojamiento:"HOTEL", varios:"VARIOUS", gasolina:"OTHER TRANSPORTS (Taxi, Uber, etc.)", servicios:"VARIOUS", ocio:"INVITATIONS" };
+    const tbody=document.getElementById("sheetRows"); tbody.innerHTML="";
+    let totalPersonal=0;
+    for(const e of entries){
+      if(e.category==="ingreso") continue;
+      const date = (e.date?.toDate ? e.date.toDate() : new Date(e.date));
+      const rec = Object.fromEntries(COLUMNS.map(k=>[k,""]));
+      rec["DATE"] = date.toISOString().slice(0,10);
+      rec["CLIENT / PROVIDER"] = e.provider || "";
+      const col = map[e.category] || "VARIOUS";
+      const amount = Number(e.amount||0);
+      rec[col] = amount.toFixed(2);
+      rec["TOTAL"] = amount.toFixed(2);
+      rec["DESCRIPTION"] = e.notes || "";
+      rec["PAID WITH"] = e.paidWith==="mio" ? "MY MONEY" : "COMPANY";
+      if(e.paidWith==="mio") totalPersonal += amount;
+      const tr=document.createElement("tr");
+      for(const k of COLUMNS){
+        const td=document.createElement("td");
+        td.textContent = rec[k];
+        if(["TOLLS & PARKINGS","OTHER TRANSPORTS (Taxi, Uber, etc.)","TRAIN & BUS","FLIGHTS","HOTEL","INVITATIONS","MEALS","VARIOUS","TOTAL"].includes(k)){
+          td.classList.add("r");
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    document.getElementById("tfPersonal").textContent = totalPersonal.toFixed(2);
+    document.getElementById("tfKm").textContent = Number(kmCost||0).toFixed(2);
+    // Metadatos
+    document.getElementById("metaDate").textContent = new Date().toLocaleDateString("es-ES");
+    document.getElementById("metaMonth").textContent = new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+  }
+  document.getElementById("btnPrint").onclick = ()=> window.print();
+
 </script>
 </body>
 </html>

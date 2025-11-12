@@ -120,8 +120,10 @@
 
   // ======= Login =======
   const provider = new firebase.auth.GoogleAuthProvider();
+  auth.getRedirectResult().catch(e=>{ console.warn('Redirect login error', e); });
   $('btnLogin').onclick = async () => {
-    try{ await auth.signInWithPopup(provider); }
+    try{ try{ await auth.signInWithPopup(provider); }
+    catch(err){ if(err.code==='auth/popup-blocked' || err.code==='auth/popup-closed-by-user'){ await auth.signInWithRedirect(provider); } else { throw err; } } }
     catch(e){ console.error(e); log("❌ Login: "+(e.code||e.message)); alert("Error login: "+(e.message||"")); }
   };
   $('btnLogout').onclick = async () => { await auth.signOut(); };
