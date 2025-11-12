@@ -2,66 +2,297 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Gastos 2N</title>
-  <meta name="theme-color" content="#0b0b0f">
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
     :root{
-      --bg:#0b0b0f; --card:#11131a; --muted:#9aa0aa; --text:#e8ecf1; --primary:#0a84ff; --border:#1b1e27;
+      --bg:#0b0c0f;--panel:#12141a;--muted:#9aa3b2;--text:#e6e8ec;--brand:#0a84ff;--border:#1e2230;
+      --ok:#34c759;--warn:#ffd60a;--danger:#ff453a;
     }
-    html,body{background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased}
-    .ios-card{background:var(--card); border:1px solid var(--border); border-radius:22px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
-    .ios-btn{border-radius:14px; border:1px solid var(--border); padding:.65rem .9rem; background:linear-gradient(180deg,#171a22,#0f1118);}
-    .ios-btn-primary{background:linear-gradient(180deg,#1391ff,#0062de); border-color:#0051ba}
-    .pill{border:1px solid var(--border); border-radius:9999px; padding:.25rem .6rem; color:var(--muted)}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,system-ui,Segoe UI,Roboto,"SF Pro Text","SF Pro Display";}
+    .safe{padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));}
+    .topbar{position:sticky;top:0;background:rgba(10,12,16,.75);backdrop-filter: blur(14px);display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);z-index:10}
+    .topbar h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.3px}
+    .spacer{flex:1}
+    .btn{border:1px solid var(--border);background:linear-gradient(180deg,#1b1e26,#151924);color:var(--text);border-radius:14px;padding:10px 12px;font-weight:600;cursor:pointer}
+    .btn.brand{background:linear-gradient(180deg,#0a84ff,#066ad0);border:none;color:#fff}
+    .btn.ghost{background:transparent}
+    .btn.icon{display:flex;align-items:center;gap:8px}
+    .icon{display:inline-flex;width:22px;height:22px;filter:invert(90%)}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:12px 12px}
+    .grid{display:grid;gap:12px}
+    .grid.actions{grid-template-columns:repeat(2,1fr)}
+    @media(min-width:520px){ .grid.actions{grid-template-columns:repeat(3,1fr)} }
+    .tile{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#171a22,#12141a)}
     .muted{color:var(--muted)}
-    .tap{transition:transform .07s ease; } .tap:active{transform:scale(.98)}
-    .grid-kpi{display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem}
-    .kpi{padding:.7rem; border-radius:16px; background:linear-gradient(180deg,#141824,#0f121a); border:1px solid var(--border)}
-    .toolbar{position:sticky; top:0; z-index:40; backdrop-filter: blur(8px); background:rgba(11,11,15,.75); border-bottom:1px solid var(--border)}
-    .icon{font-style:normal}
-    .chip{display:inline-flex; align-items:center; gap:.35rem; border:1px solid var(--border); padding:.35rem .6rem; border-radius:999px; background:#121521}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:.6rem}
-    .list{display:flex; flex-direction:column; gap:.6rem}
-    .shadow-soft{box-shadow:0 12px 30px rgba(0,0,0,.35)}
-    img.ticket{border-radius:12px; border:1px solid var(--border)}
-    .btn-bar{display:flex; gap:.5rem; flex-wrap:wrap}
-    .xs{font-size:.75rem}
-    .chart-wrap{height:180px}
-    a { color: #8ab4ff; }
+    .hidden{display:none!important}
+    input,select,textarea{width:100%;border:1px solid var(--border);background:#0f1218;color:var(--text);border-radius:12px;padding:10px}
+    label{font-size:12px;color:var(--muted)}
+    .modal{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.4);z-index:30}
+    .modal.open{display:flex}
+    .sheet{width:100%;max-width:520px;background:var(--panel);border-top-left-radius:18px;border-top-right-radius:18px;border:1px solid var(--border);padding:12px 14px 16px 14px}
+    .sheet header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .preview{display:flex;gap:10px;align-items:center;border:1px dashed var(--border);padding:8px;border-radius:12px}
+    .link{color:#9bbcff;text-decoration:none}
+    .footer{position:sticky;bottom:0;background:rgba(10,12,16,.75);backdrop-filter:blur(14px);padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:10px}
+    .chip{font-size:12px;color:#c8ccd6;background:#0f1218;border:1px solid var(--border);border-radius:999px;padding:6px 10px}
+    canvas{width:100%;max-width:100%;height:320px}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:12px;background:#0f1218}
   </style>
-
+  <!-- Libs -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.1/dist/xlsx.full.min.js"></script>
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+</head>
 
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<body class="safe">
+  <div class="topbar">
+    <a class="btn ghost icon" href="index.html"><img class="icon" src="assets/back.svg" alt="">Volver</a>
+    <h1>Exportar</h1>
+    <div class="spacer"></div>
+    <button id="btnLogin" class="btn brand">Entrar</button>
+    <button id="btnLogout" class="btn hidden">Salir</button>
+  </div>
+
+  <main class="grid safe" style="gap:14px">
+    <section class="panel">
+      <div class="row">
+        <div><label>Mes</label><input id="expMonth" type="month"></div>
+        <div style="align-self:end;display:flex;gap:8px">
+          <button class="btn brand" id="btnExcel">⬇️ Excel 2N</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:grid;grid-template-columns:1fr;gap:10px">
+        <div><canvas id="chart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <strong>Movimientos del mes</strong>
+      <div class="list" id="movs" style="margin-top:10px"></div>
+    </section>
+  </main>
+
+  
+<script>
+  // ⚙️ Config Firebase (tu proyecto)
+  const FB = {
+    apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+    authDomain: "gastos-2n.firebaseapp.com",
+    projectId: "gastos-2n",
+    storageBucket: "gastos-2n.firebasestorage.app",
+    messagingSenderId: "55010048795",
+    appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+  };
+  firebase.initializeApp(FB);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+  const provider = new firebase.auth.GoogleAuthProvider();
+</script>
 
   <script>
-    window.__FB_CFG__ = {
-      apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
-      authDomain: "gastos-2n.firebaseapp.com",
-      projectId: "gastos-2n",
-      storageBucket: "gastos-2n.firebasestorage.app",
-      messagingSenderId: "55010048795",
-      appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+  (function(){
+    const $=id=>document.getElementById(id);
+    const ym=()=>$('expMonth').value||new Date().toISOString().slice(0,7);
+    const range=(ym)=>{ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+
+    $('expMonth').value = new Date().toISOString().slice(0,7);
+    $('btnLogin').onclick=async()=>{ try{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ alert(e.message);} };
+    $('btnLogout').onclick=async()=>{ await auth.signOut(); };
+    auth.onAuthStateChanged(u=>{ if(u){ $('btnLogin').classList.add('hidden'); $('btnLogout').classList.remove('hidden'); refresh(); }else{ $('btnLogin').classList.remove('hidden'); $('btnLogout').classList.add('hidden'); }});
+    $('expMonth').addEventListener('change', refresh);
+
+    async function getEntriesMonth(m, uid){
+      const [s,e]=range(m);
+      const snap=await db.collection('users/'+uid+'/entries').where('date','>=',s).where('date','<',e).orderBy('date','asc').get();
+      return snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    }
+    async function getKmPersonalCost(m, uid){
+      const doc=await db.collection('users/'+uid+'/meta').doc('km_'+m).get();
+      return (doc.exists && Number((doc.data()||{}).km_personal_cost||0)) || 0;
+    }
+
+    function drawChart(entries){
+      const byCat={};
+      for(const e of entries){
+        const amt = Number(e.amount||0);
+        const c = e.category==='ingreso'?'INGRESOS':(e.category||'varios').toUpperCase();
+        byCat[c] = (byCat[c]||0) + amt*(e.category==='ingreso'?1:-1);
+      }
+      const labels=Object.keys(byCat);
+      const data=labels.map(k=>byCat[k]);
+      const ctx=document.getElementById('chart');
+      if(window.__ch) window.__ch.destroy();
+      window.__ch = new Chart(ctx,{type:'bar', data:{labels, datasets:[{label:'€', data}]} , options:{plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#cfd3da'}}, y:{ticks:{color:'#cfd3da'}}}}});
+    }
+
+    async function refresh(){
+      const u=auth.currentUser; if(!u) return;
+      const m=ym();
+      const entries=await getEntriesMonth(m,u.uid);
+      drawChart(entries);
+      const list=$('movs'); list.innerHTML='';
+      entries.forEach(e=>{
+        const d=(e.date?.toDate?e.date.toDate():new Date(e.date)).toISOString().slice(0,10);
+        const el=document.createElement('div'); el.className='item';
+        el.innerHTML = '<div><div style="font-weight:600">'+(e.provider||'-')+'</div><div class="muted" style="font-size:12px">'+d+' · '+(e.category)+'</div></div><div style="font-weight:700;'+(e.category==='ingreso'?'color:var(--ok)':'color:var(--danger)')+'">'+(e.category==='ingreso'?'+':'-')+(Number(e.amount||0)).toFixed(2)+'€</div>';
+        list.appendChild(el);
+      });
+    }
+
+    // Excel 2N: usa plantilla incluida (2n_template.xlsx)
+    $('btnExcel').onclick = async ()=>{
+      try{
+        const u=auth.currentUser; if(!u) return alert('Login');
+        const m=ym(); const [s,e]=range(m);
+        const monthLabel=new Date(m+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+        const entries=await (await db.collection('users/'+u.uid+'/entries').where('date','>=',s).where('date','<',e).orderBy('date','asc').get()).docs.map(d=>({id:d.id,...d.data()}));
+        const kmPersonalCost = await getKmPersonalCost(m, u.uid);
+
+        // Descargar plantilla
+        const resp = await fetch('2n_template.xlsx');
+        const ab = await resp.arrayBuffer();
+        const wb = XLSX.read(ab, {type:'array'});
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+
+        // Rellenar cabeceras (busca las celdas por texto aproximado)
+        function findCellContaining(sheet, needle){
+          const R = XLSX.utils.decode_range(sheet['!ref']);
+          for(let r=R.s.r;r<=R.e.r;r++){
+            for(let c=R.s.c;c<=R.e.c;c++){
+              const addr=XLSX.utils.encode_cell({r,c}); const cell=sheet[addr];
+              if(cell && typeof cell.v==='string' && cell.v.toUpperCase().includes(needle.toUpperCase())) return addr;
+            }
+          }
+          return null;
+        }
+        function rightOf(addr, offset){ const rc=XLSX.utils.decode_cell(addr); return XLSX.utils.encode_cell({r:rc.r, c:rc.c+offset}); }
+
+        const cNom = findCellContaining(ws,'NOM');
+        const cPrenom = findCellContaining(ws,'PRENOM');
+        const cCC = findCellContaining(ws,'COST CENTER');
+        const cMY = findCellContaining(ws,'MONTH');
+        if(cNom) ws[rightOf(cNom,1)] = { t:'s', v:'Gaston' };
+        if(cPrenom) ws[rightOf(cPrenom,1)] = { t:'s', v:'David' };
+        if(cCC) ws[rightOf(cCC,1)] = { t:'s', v:'Iberia' };
+        if(cMY) ws[rightOf(cMY,2)] = { t:'s', v:monthLabel };
+
+        // Identificar cabeceras de tabla y primera fila de datos
+        // Buscamos una fila que contenga "DATE" y "CLIENT / PROVIDER"
+        const R = XLSX.utils.decode_range(ws['!ref']);
+        let headerRow = -1, colIndex = {};
+        for(let r=R.s.r; r<=R.e.r; r++){
+          let dateCol=-1, provCol=-1;
+          for(let c=R.s.c; c<=R.e.c; c++){
+            const cell=ws[XLSX.utils.encode_cell({r,c})];
+            const txt=(cell&&cell.v&&cell.v.toString().toUpperCase())||'';
+            if(txt.includes('DATE')) dateCol=c;
+            if(txt.includes('CLIENT')||txt.includes('PROVIDER')) provCol=c;
+          }
+          if(dateCol!==-1 && provCol!==-1){ headerRow = r; break; }
+        }
+        if(headerRow===-1) throw new Error('No encuentro la cabecera en la plantilla');
+        // Mapear columnas por nombre
+        for(let c=R.s.c; c<=R.e.c; c++){
+          const cell=ws[XLSX.utils.encode_cell({r:headerRow,c})];
+          const name=(cell&&cell.v&&cell.v.toString().trim().toUpperCase())||'';
+          if(name) colIndex[name]=c;
+        }
+        const getCol=(name, fallback)=> (name in colIndex)? colIndex[name] : (fallback||null);
+
+        // Construir filas desde la siguiente a headerRow
+        const startRow = headerRow + 2; // suele haber una fila secundaria, ajustamos +1 o +2
+        let rptr = startRow;
+
+        function put(r,c,v){ ws[XLSX.utils.encode_cell({r,c})] = (typeof v==='number')? {t:'n', v} : {t:'s', v:String(v)}; }
+
+        const mapCat = {
+          'COMIDA':'MEALS',
+          'GASOLINA':'GASOLINE',
+          'PEAJES':'TOLLS',
+          'ALOJAMIENTO':'HOTEL',
+          'TRANSPORTE':'OTHER TRANSPORTS',
+          'OCIO':'INVITATIONS',
+          'SERVICIOS':'VARIOUS',
+          'VARIOS':'VARIOUS'
+        };
+
+        let totalMes = 0;
+        for(const e of entries){
+          if(e.category==='ingreso') continue;
+          const d=(e.date?.toDate?e.date.toDate():new Date(e.date));
+          const dateStr = d.toLocaleDateString('es-ES');
+          const prov = e.provider||'';
+          const notes = e.notes||'';
+          const amount = Number(e.amount||0);
+
+          // Columns
+          const cDATE = getCol('DATE');
+          const cPROV = getCol('CLIENT / PROVIDER');
+          const cDESC = getCol('DESCRIPTION');
+          // detect target column by category mapping (very approximate: try to find matching header contains key)
+          let targetCol = null;
+          const wanted = (mapCat[(e.category||'').toUpperCase()]||'VARIOUS');
+          for(const name in colIndex){
+            if(name.includes(wanted)) { targetCol=colIndex[name]; break; }
+          }
+          if(!targetCol) targetCol = getCol('VARIOUS'); // fallback
+
+          put(rptr, cDATE, dateStr);
+          put(rptr, cPROV, prov);
+          if(cDESC!=null) put(rptr, cDESC, notes);
+          put(rptr, targetCol, amount);
+          // TOTAL column (if exists)
+          const cTOTAL = Object.keys(colIndex).find(k=>k.includes('TOTAL'));
+          if(cTOTAL){ const cidx = colIndex[cTOTAL]; put(rptr, cidx, amount); }
+          totalMes += amount;
+          rptr++;
+        }
+
+        // Escribir "KM personales" (coste) si existe columna
+        const kmCost = kmPersonalCost;
+        // buscar una celda que contenga "KM PERSONAL" (en cabecera de tabla o en bloque de totales)
+        let kmCell = null;
+        for(let r=R.s.r;r<=R.e.r;r++){
+          for(let c=R.s.c;c<=R.e.c;c++){
+            const addr=XLSX.utils.encode_cell({r,c}); const cell=ws[addr];
+            if(cell && typeof cell.v==='string' && cell.v.toUpperCase().includes('KM PERSONAL')){ kmCell = addr; break; }
+          }
+        }
+        if(kmCell){ 
+          const rc=XLSX.utils.decode_cell(kmCell);
+          // colocamos el valor a la derecha
+          ws[XLSX.utils.encode_cell({r:rc.r, c:rc.c+1})] = { t:'n', v: kmCost };
+          // restar del total mes (si procede): añadimos fila final "AJUSTE KM PERSONAL"
+          ws[XLSX.utils.encode_cell({r:rptr+1, c:getCol('CLIENT / PROVIDER')||R.s.c})] = { t:'s', v:'AJUSTE KM PERSONAL' };
+          ws[XLSX.utils.encode_cell({r:rptr+1, c:getCol('VARIOUS')||R.s.c+2})] = { t:'n', v: -kmCost };
+          totalMes -= kmCost;
+        }
+
+        // Fila de total mes (informativa)
+        ws[XLSX.utils.encode_cell({r:rptr+3, c:getCol('CLIENT / PROVIDER')||R.s.c})] = { t:'s', v:'TOTAL MES (informativo)' };
+        ws[XLSX.utils.encode_cell({r:rptr+3, c:getCol('TOTAL')||R.s.c+2})] = { t:'n', v: totalMes };
+
+        const out = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+        const blob = new Blob([out], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        saveAs(blob, 'Informe_Gastos_2N_'+m+'.xlsx');
+      }catch(e){ console.error(e); alert('Error Excel: '+(e.message||'')); }
     };
-    window.App = {
-      initFirebase(){
-        if (!firebase.apps.length) firebase.initializeApp(window.__FB_CFG__);
-        return { auth: firebase.auth(), db: firebase.firestore(), storage: firebase.storage() };
-      },
-      ui:{ log(msg){ const el=document.getElementById('out'); if(!el) return; el.textContent+=(typeof msg==='string'?msg:JSON.stringify(msg,null,2))+'\n'; el.scrollTop=el.scrollHeight; } },
-      ymNow(){ return new Date().toISOString().slice(0,7); },
-      monthRange(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
-    };
+  })();
   </script>
-</head>
-<body>Export OK. Template size: 31848 bytes (base64)</body></html>
+</body>
+</html>
