@@ -13,6 +13,48 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <script src="config.js"></script>
+
+<!-- AUTH STATE BOOTSTRAP -->
+<script>
+(function(){
+  try{
+    if(!window.__FBCONFIG__) console.warn("Config faltante: __FBCONFIG__");
+    if (!firebase.apps || !firebase.apps.length) { firebase.initializeApp(window.__FBCONFIG__ || window.firebaseConfig); }
+    var auth = firebase.auth();
+    // Persistencia local (para GH Pages)
+    if (firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    }
+    // Recoger resultado de redirect si lo hubo
+    if (auth.getRedirectResult) { auth.getRedirectResult().catch(()=>{}); }
+
+    function updateUI(user){
+      var who = document.getElementById('whoami');
+      var btnLogin = document.getElementById('btnLogin');
+      var btnLogout = document.getElementById('btnLogout');
+      if(user){
+        if(who) who.textContent = "Conectado como " + (user.email || user.uid);
+        if(btnLogin) btnLogin.style.display = "none";
+        if(btnLogout) btnLogout.style.display = "";
+      }else{
+        if(who) who.textContent = "No autenticado";
+        if(btnLogin) btnLogin.style.display = "";
+        if(btnLogout) btnLogout.style.display = "none";
+      }
+      // Notificar a listeners opcionales de cada página
+      try{ document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user:user}})); }catch(e){}
+    }
+
+    auth.onAuthStateChanged(function(user){ updateUI(user); });
+    // Exponer en contexto global por si otras partes lo necesitan
+    window.__APPCTX__ = window.__APPCTX__ || {};
+    window.__APPCTX__.auth = auth;
+    window.__APPCTX__.db = firebase.firestore ? firebase.firestore() : null;
+    window.__APPCTX__.storage = firebase.storage ? firebase.storage() : null;
+  }catch(e){ console.error("Auth bootstrap error", e); }
+})();
+</script>
+
 </head>
 <body>
 <header class="topbar">

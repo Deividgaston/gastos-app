@@ -12,6 +12,48 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <script src="config.js"></script>
+
+<!-- AUTH STATE BOOTSTRAP -->
+<script>
+(function(){
+  try{
+    if(!window.__FBCONFIG__) console.warn("Config faltante: __FBCONFIG__");
+    if (!firebase.apps || !firebase.apps.length) { firebase.initializeApp(window.__FBCONFIG__ || window.firebaseConfig); }
+    var auth = firebase.auth();
+    // Persistencia local (para GH Pages)
+    if (firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    }
+    // Recoger resultado de redirect si lo hubo
+    if (auth.getRedirectResult) { auth.getRedirectResult().catch(()=>{}); }
+
+    function updateUI(user){
+      var who = document.getElementById('whoami');
+      var btnLogin = document.getElementById('btnLogin');
+      var btnLogout = document.getElementById('btnLogout');
+      if(user){
+        if(who) who.textContent = "Conectado como " + (user.email || user.uid);
+        if(btnLogin) btnLogin.style.display = "none";
+        if(btnLogout) btnLogout.style.display = "";
+      }else{
+        if(who) who.textContent = "No autenticado";
+        if(btnLogin) btnLogin.style.display = "";
+        if(btnLogout) btnLogout.style.display = "none";
+      }
+      // Notificar a listeners opcionales de cada página
+      try{ document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user:user}})); }catch(e){}
+    }
+
+    auth.onAuthStateChanged(function(user){ updateUI(user); });
+    // Exponer en contexto global por si otras partes lo necesitan
+    window.__APPCTX__ = window.__APPCTX__ || {};
+    window.__APPCTX__.auth = auth;
+    window.__APPCTX__.db = firebase.firestore ? firebase.firestore() : null;
+    window.__APPCTX__.storage = firebase.storage ? firebase.storage() : null;
+  }catch(e){ console.error("Auth bootstrap error", e); }
+})();
+</script>
+
 </head>
 <body>
 <header class="topbar">
@@ -338,6 +380,134 @@ const firebaseConfig = window.__FBCONFIG__ || {
   });
 
   console.log("Bootstrap listo ✅");
+})();
+</script>
+
+
+<!-- MODAL HANDLERS -->
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function openModal(id){ var m=$(id); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); } }
+  function closeModal(id){ var m=$(id); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } }
+
+  // Close modal
+  var _closeReview = $('closeReview');
+  if(_closeReview){ _closeReview.addEventListener('click', function(){ closeModal('reviewModal'); }, false); }
+
+  // Attach / Camera
+  function pickFile(fromCamera){
+    var inp = document.createElement('input');
+    inp.type='file'; inp.accept='image/*';
+    if(fromCamera) inp.capture='environment';
+    inp.onchange = function(){
+      try{
+        var f = inp.files && inp.files[0]; if(!f) return;
+        window.__lastPickedFile = f;
+        if($('revThumb')) $('revThumb').src = URL.createObjectURL(f);
+        if($('revFileInfo')) $('revFileInfo').textContent = (f.name||'ticket')+" · "+Math.round((f.size||0)/1024)+" KB";
+      }catch(e){ console.error(e); }
+    };
+    inp.click();
+  }
+  var _btnPick = $('btnPick'); if(_btnPick){ _btnPick.addEventListener('click', function(){ pickFile(false); }, false); }
+  var _btnCam  = $('btnCam');  if(_btnCam){  _btnCam.addEventListener('click',  function(){ pickFile(true); },  false); }
+
+  // Save
+  var _saveReview = $('saveReview');
+  if(_saveReview){
+    _saveReview.addEventListener('click', async function(){
+      try{
+        var ctx = window.__APPCTX__ || {};
+        var auth = ctx.auth, db = ctx.db, storage = ctx.storage;
+        var user = auth && auth.currentUser;
+
+        var dateISO = $('revDate') ? $('revDate').value : new Date().toISOString().slice(0,10);
+        var amount  = $('revAmount') ? Number($('revAmount').value||0) : 0;
+        var provider= $('revProvider') ? $('revProvider').value.trim() : '';
+        var category= $('revCategory') ? $('revCategory').value : 'varios';
+        var paidWith= $('revPaidWith') ? $('revPaidWith').value : 'empresa';
+        var notes   = $('revNotes') ? $('revNotes').value : '';
+        var file    = window.__lastPickedFile || null;
+
+        // Upload photo if logged in
+        var photoURL=null, photoPath=null;
+        if(file && user && storage){
+          var yyyyMM = dateISO.slice(0,7);
+          var safeProv = (provider||'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+          var filename = dateISO + '_' + safeProv + '_' + Date.now() + '.jpg';
+          photoPath = 'tickets/' + user.uid + '/' + yyyyMM + '/' + filename;
+          await storage.ref(photoPath).put(file);
+          photoURL = await storage.ref(photoPath).getDownloadURL();
+        }
+
+        // Save document
+        if(user && db){
+          await db.collection('users/'+user.uid+'/entries').add({
+            date: new Date(dateISO),
+            category, provider, notes, amount, paidWith,
+            photoURL, photoPath,
+            isExpense: category!=='ingreso',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert('Guardado ✅');
+          closeModal('reviewModal');
+          // small reload of latest could be added here
+        } else {
+          // Fallback local
+          var arr = JSON.parse(localStorage.getItem('entries_local')||'[]');
+          arr.push({date:dateISO, category, provider, notes, amount, paidWith, isExpense: category!=='ingreso'});
+          localStorage.setItem('entries_local', JSON.stringify(arr));
+          alert('Guardado en local (sin login)');
+          closeModal('reviewModal');
+        }
+
+      }catch(e){
+        alert('Error guardando: ' + (e && e.message || ''));
+        console.error(e);
+      }
+    }, false);
+  }
+
+  // Optional OCR when a file has been chosen and IA key exists.
+  async function maybeOCR(){
+    try{
+      var key = localStorage.getItem('gkey'); if(!key) return;
+      var f = window.__lastPickedFile; if(!f) return;
+      var ab = await f.arrayBuffer();
+      var b64 = btoa(String.fromCharCode(...new Uint8Array(ab)));
+      var resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents:[{role:'user', parts:[
+            {text:'Extrae proveedor, fecha (YYYY-MM-DD), categoría probable (comida, peajes, gasolina, transporte, alojamiento, ocio, servicios, varios), e importe total en EUR. Responde en JSON con claves provider,date,category,amount.'},
+            {inline_data:{mime_type:'image/jpeg', data:b64}}
+          ]}]
+        })
+      });
+      var data = await resp.json();
+      var text = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text || '';
+      var m = text && text.match(/\{[\s\S]*\}/);
+      if(!m) return;
+      var json = JSON.parse(m[0]);
+      if(json.provider && $('revProvider')) $('revProvider').value = json.provider;
+      if(json.date && $('revDate')) $('revDate').value = json.date;
+      if(json.amount && $('revAmount')) $('revAmount').value = Number(json.amount||0);
+      if(json.category && $('revCategory')){
+        var c = (json.category||'').toLowerCase();
+        if(!/comida|peajes|gasolina|transporte|alojamiento|ocio|servicios|varios|ingreso/.test(c)) c='varios';
+        $('revCategory').value = c;
+      }
+    }catch(e){ console.warn('OCR no aplicado', e); }
+  }
+
+  // Dispara OCR unos milisegundos después de abrir modal (si hay imagen)
+  var revModal = document.getElementById('reviewModal');
+  if(revModal){
+    revModal.addEventListener('transitionend', function(){
+      setTimeout(maybeOCR, 200);
+    }, false);
+  }
 })();
 </script>
 
