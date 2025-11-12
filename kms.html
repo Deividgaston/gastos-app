@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>KM · Gastos 2N</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <h1 style="display:flex;gap:.5rem;align-items:center;"><img src="assets/2n-logo-black.png" alt="2N" style="height:20px"> 🚗 Kilómetros</h1>
+  <a href="index.html" class="badge">← Volver</a>
+</header>
+<main class="content">
+  <div class="grid">
+    <div class="card">
+      <h2>Nuevo movimiento</h2>
+      <div class="row">
+        <div class="field"><label>Fecha</label><input id="fDate" type="date"></div>
+        <div class="field"><label>Destino</label><input id="fDestino" type="text"></div>
+        <div class="field"><label>KM empresa</label><input id="fKmEmp" type="number" step="0.1"></div>
+        <div class="field"><label>KM personales</label><input id="fKmPer" type="number" step="0.1"></div>
+        <div class="field"><label>Precio €/L</label><input id="fPrecio" type="number" step="0.001"></div>
+        <div class="field"><label>KM totales coche</label><input id="fKmTotal" type="number" step="0.1"></div>
+      </div>
+      <div><button id="btnGuardar" class="btn primary">Guardar</button> <span id="kmsMsg" class="small"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Totales</h2>
+      <div class="kpi">
+        <div class="tile"><div class="small">KM totales coche</div><div id="kpiTotal" class="v">0</div></div>
+        <div class="tile"><div class="small">KM empresa (mes)</div><div id="kpiEmpMes" class="v">0</div></div>
+        <div class="tile"><div class="small">KM personales (mes)</div><div id="kpiPerMes" class="v">0</div></div>
+        <div class="tile"><div class="small">Coste KM personales (€)</div><div id="kpiPerCost" class="v">0.00</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Movimientos</h2>
+      <div id="lista" class="list"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+  const $=id=>document.getElementById(id);
+
+  /* firebaseConfig moved to config.js */
+const firebaseConfig = window.__FBCONFIG__ || {
+  apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
+  authDomain: "gastos-2n.firebaseapp.com",
+  projectId: "gastos-2n",
+  storageBucket: "gastos-2n.appspot.com",
+  messagingSenderId: "55010048795",
+  appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
+};
+  firebase.initializeApp(firebaseConfig);
+  const auth=firebase.auth();
+  const db=firebase.firestore();
+  const LS_KEY='kms_local';
+
+  $("fDate").value = new Date().toISOString().slice(0,10);
+  auth.onAuthStateChanged(u=>{ cargar(); });
+
+  $("btnGuardar").onclick=async ()=>{
+    try{
+      const u=auth.currentUser; // puede ser null
+      const date=$("fDate").value;
+      const destino=$("fDestino").value.trim();
+      const kmEmp=Number($("fKmEmp").value||0);
+      const kmPer=Number($("fKmPer").value||0);
+      const precio=Number($("fPrecio").value||0);
+      const kmTotal=Number($("fKmTotal").value||0);
+      if(!date) throw new Error("Fecha requerida");
+
+      if(u){
+        await db.collection(`users/${u.uid}/kms`).add({date:new Date(date), destino, kmEmp, kmPer, precio, kmTotal, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      } else { throw new Error("local"); }
+      alert("Guardado ✅"); $("kmsMsg").textContent=''; cargar();
+    }catch(e){
+      // fallback local
+      const rec={date:$("fDate").value, destino:$("fDestino").value.trim(), kmEmp:Number($("fKmEmp").value||0), kmPer:Number($("fKmPer").value||0), precio:Number($("fPrecio").value||0), kmTotal:Number($("fKmTotal").value||0)};
+      const arr = JSON.parse(localStorage.getItem(LS_KEY)||"[]"); arr.push(rec);
+      localStorage.setItem(LS_KEY, JSON.stringify(arr));
+      $("kmsMsg").textContent='Guardado en local (sin permisos).';
+      cargar();
+    }
+  };
+
+  function rangoMes(ym){ const s=new Date(ym+"-01T00:00:00"); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
+
+  async function cargar(){
+    const u=auth.currentUser;
+    const ym=new Date().toISOString().slice(0,7);
+    const [s,e]=rangoMes(ym);
+    let all=[], mes=[];
+
+    // nube
+    try{ if(u){ const snapAll=await db.collection(`users/${u.uid}/kms`).orderBy("date","desc").get(); all = snapAll.docs.map(d=>d.data()); const snapMes=await db.collection(`users/${u.uid}/kms`).where("date",">=",s).where("date","<",e).orderBy("date","desc").get(); mes = snapMes.docs.map(d=>d.data()); } }catch{}
+    // local
+    const localArr = JSON.parse(localStorage.getItem(LS_KEY)||"[]");
+    all = [...localArr, ...all];
+    const localMes = localArr.filter(k=>{ const d=new Date(k.date); return d>=s && d<e; });
+    mes = [...localMes, ...mes];
+
+    let total=0, empMes=0, perMes=0, perCost=0;
+    const lista=$("lista"); lista.innerHTML="";
+    all.forEach(d=> total += Number(d.kmEmp||0) + Number(d.kmPer||0));
+    mes.forEach(d=>{
+      empMes += Number(d.kmEmp||0);
+      perMes += Number(d.kmPer||0);
+      perCost += Number(d.kmPer||0)*Number(d.precio||0);
+      const dt=d.date?.toDate?d.date.toDate():new Date(d.date);
+      const el=document.createElement("div"); el.className="item";
+      el.innerHTML=`<div class="left">
+        <div class="t">${dt.toISOString().slice(0,10)} · ${d.destino||"-"}</div>
+        <div class="s">Emp: ${Number(d.kmEmp||0).toFixed(1)} km · Pers: ${Number(d.kmPer||0).toFixed(1)} km · €/L: ${Number(d.precio||0).toFixed(3)}</div>
+      </div><div class="right"><span class="badge">+${(Number(d.kmEmp||0)+Number(d.kmPer||0)).toFixed(1)} km</span></div>`;
+      lista.appendChild(el);
+    });
+    $("kpiTotal").textContent = Number(total).toFixed(1);
+    $("kpiEmpMes").textContent = Number(empMes).toFixed(1);
+    $("kpiPerMes").textContent = Number(perMes).toFixed(1);
+    $("kpiPerCost").textContent = perCost.toFixed(2);
+    localStorage.setItem("km_per_cost_mes", String(perCost.toFixed(2)));
+  }
+  });
+})();
+</script>
+</body>
+</html>
