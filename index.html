@@ -3,144 +3,101 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Gastos 2N</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <style>
-    :root{
-      --bg:#0b0c0f;--panel:#12141a;--muted:#9aa3b2;--text:#e6e8ec;--brand:#0a84ff;--border:#1e2230;
-      --ok:#34c759;--warn:#ffd60a;--danger:#ff453a;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font:16px -apple-system,system-ui,Segoe UI,Roboto,"SF Pro Text","SF Pro Display";}
-    .safe{padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));}
-    .topbar{position:sticky;top:0;background:rgba(10,12,16,.75);backdrop-filter: blur(14px);display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);z-index:10}
-    .topbar h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.3px}
-    .spacer{flex:1}
-    .btn{border:1px solid var(--border);background:linear-gradient(180deg,#1b1e26,#151924);color:var(--text);border-radius:14px;padding:10px 12px;font-weight:600;cursor:pointer}
-    .btn.brand{background:linear-gradient(180deg,#0a84ff,#066ad0);border:none;color:#fff}
-    .btn.ghost{background:transparent}
-    .btn.icon{display:flex;align-items:center;gap:8px}
-    .icon{display:inline-flex;width:22px;height:22px;filter:invert(90%)}
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:12px 12px}
-    .grid{display:grid;gap:12px}
-    .grid.actions{grid-template-columns:repeat(2,1fr)}
-    @media(min-width:520px){ .grid.actions{grid-template-columns:repeat(3,1fr)} }
-    .tile{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#171a22,#12141a)}
-    .muted{color:var(--muted)}
-    .hidden{display:none!important}
-    input,select,textarea{width:100%;border:1px solid var(--border);background:#0f1218;color:var(--text);border-radius:12px;padding:10px}
-    label{font-size:12px;color:var(--muted)}
-    .modal{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.4);z-index:30}
-    .modal.open{display:flex}
-    .sheet{width:100%;max-width:520px;background:var(--panel);border-top-left-radius:18px;border-top-right-radius:18px;border:1px solid var(--border);padding:12px 14px 16px 14px}
-    .sheet header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .preview{display:flex;gap:10px;align-items:center;border:1px dashed var(--border);padding:8px;border-radius:12px}
-    .link{color:#9bbcff;text-decoration:none}
-    .footer{position:sticky;bottom:0;background:rgba(10,12,16,.75);backdrop-filter:blur(14px);padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:10px}
-    .chip{font-size:12px;color:#c8ccd6;background:#0f1218;border:1px solid var(--border);border-radius:999px;padding:6px 10px}
-    canvas{width:100%;max-width:100%;height:320px}
-    .list{display:flex;flex-direction:column;gap:8px}
-    .item{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:12px;background:#0f1218}
-  </style>
-  <!-- Libs -->
+  <title>Gastos 2N · iOS dark</title>
+  <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.1/dist/xlsx.full.min.js"></script>
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 </head>
+<body>
+<header class="topbar">
+  <h1>Gastos 2N</h1>
+  <a class="badge" href="kms.html" title="Gastos de KM">🚗 KM</a>
+  <a class="badge" href="export.html" title="Exportar">📁 Export</a>
+  <a class="badge" href="summary.html" title="Sumario">📊 Sumary</a>
+  <button id="btnAI" class="btn ghost" title="Gemini API">⚙️ IA</button>
+  <button id="btnLogin" class="btn success">Iniciar sesión</button>
+  <button id="btnLogout" class="btn danger" style="display:none">Salir</button>
+</header>
 
-<body class="safe">
-  <div class="topbar">
-    <h1>Gastos 2N</h1>
-    <span class="chip" id="whoami">No autenticado</span>
-    <div class="spacer"></div>
-    <button id="btnAI" class="btn ghost icon"><img class="icon" src="assets/google.svg" alt="">IA</button>
-    <button id="btnLogin" class="btn brand">Entrar</button>
-    <button id="btnLogout" class="btn hidden">Salir</button>
+<main class="content">
+  <div class="grid">
+    <div class="card">
+      <h2>Acciones rápidas</h2>
+      <div class="row">
+        <button id="scanBtn" class="btn primary">📸 Escanear ticket</button>
+        <button id="manualBtn" class="btn">➕ Ingreso manual</button>
+        <span id="whoami" class="badge">No autenticado</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Notas</h2>
+      <div class="small">Tema oscuro estilo iOS, OCR con Gemini, y guardado en Firebase (Firestore + Storage).</div>
+    </div>
+    <div class="card">
+      <h2>Últimos movimientos</h2>
+      <div id="lista" class="list"></div>
+    </div>
+    <div class="card">
+      <h2>Logs</h2>
+      <div id="out" class="logs mono"></div>
+    </div>
   </div>
+</main>
 
-  <main class="grid safe" style="gap:14px">
-    <section class="panel">
-      <div class="grid actions">
-        <a class="tile link" href="#" id="scanLink"><img class="icon" src="assets/scan.svg" alt=""><div><div><b>Escanear ticket</b></div><div class="muted">Cámara + IA</div></div></a>
-        <a class="tile link" href="#" id="manualIncome"><img class="icon" src="assets/income.svg" alt=""><div><div><b>Ingreso manual</b></div><div class="muted">Añadir a mano</div></div></a>
-        <a class="tile link" href="kms.html"><img class="icon" src="assets/kms.svg" alt=""><div><div><b>Gastos KM</b></div><div class="muted">Empresa / Personal</div></div></a>
-        <a class="tile link" href="export.html"><img class="icon" src="assets/export.svg" alt=""><div><div><b>Exportar</b></div><div class="muted">Excel 2N</div></div></a>
-        <a class="tile link" href="summary.html"><img class="icon" src="assets/summary.svg" alt=""><div><div><b>Sumario</b></div><div class="muted">Gráficos y totales</div></div></a>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
-        <div>
-          <div class="muted">Mes actual</div>
-          <div id="badgeMonth" style="font-weight:700">—</div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <span class="chip" id="badgeGastos">Gastos: —</span>
-          <span class="chip" id="badgeIngresos">Ingresos: —</span>
-        </div>
-      </div>
-      <div class="list" id="lastList" style="margin-top:10px"></div>
-    </section>
-
-    <section class="panel">
-      <strong>Logs</strong>
-      <pre id="out" style="white-space:pre-wrap"></pre>
-    </section>
-  </main>
-
-  <!-- Modal IA Key -->
-  <div id="aiModal" class="modal"><div class="sheet">
-    <header><b>Configurar IA (Gemini)</b><button class="btn" id="closeAI">Cerrar</button></header>
-    <div class="row" style="grid-template-columns:1fr">
-      <div>
-        <label>API Key</label>
-        <input id="aiKey" type="password" placeholder="AIza..." />
-        <div class="muted" style="margin-top:6px">Se guarda en este dispositivo (localStorage).</div>
-      </div>
+<!-- Modal revisión / guardar -->
+<div id="reviewModal" class="modal" aria-hidden="true">
+  <div class="sheet">
+    <header><strong>Revisar y guardar</strong><button class="btn" id="closeReview">Cerrar</button></header>
+    <div class="body">
+      <div class="field"><label>Fecha</label><input id="revDate" type="date"/></div>
+      <div class="field"><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"/></div>
+      <div class="field" style="grid-column:1/2"><label>Proveedor</label><input id="revProvider" type="text"/></div>
+      <div class="field"><label>Categoría</label><select id="revCategory">
+        <option value="varios" selected>Varios</option>
+        <option value="comida">Comida</option>
+        <option value="gasolina">Gasolina</option>
+        <option value="peajes">Peajes</option>
+        <option value="alojamiento">Hotel</option>
+        <option value="transporte">Transportes</option>
+        <option value="ocio">Invitaciones</option>
+        <option value="servicios">Servicios</option>
+        <option value="ingreso">Ingreso</option>
+      </select></div>
+      <div class="field"><label>Pagado con</label><select id="revPaidWith">
+        <option value="empresa">Tarjeta empresa</option>
+        <option value="mio">Mi dinero</option>
+      </select></div>
+      <div class="field" style="grid-column:1/3"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
+      <div class="preview"><img id="revThumb" style="height:72px;width:auto;border-radius:8px"><div id="revFileInfo" class="small"></div></div>
     </div>
-    <div class="footer"><button class="btn" id="clearAI">Borrar</button><div class="spacer"></div><button class="btn brand" id="saveAI">Guardar</button></div>
-  </div></div>
+    <footer><div class="left"><span class="small">Se guardará en tu Firestore</span></div><div class="right"><button class="btn" id="cancelReview">Cancelar</button><button class="btn primary" id="saveReview">Guardar</button></div></footer>
+  </div>
+</div>
 
-  <!-- Modal Review -->
-  <div id="reviewModal" class="modal"><div class="sheet">
-    <header><b>Revisar y guardar</b><button class="btn" id="closeReview">Cerrar</button></header>
-    <div class="row">
-      <div><label>Fecha</label><input id="revDate" type="date"></div>
-      <div><label>Importe (€)</label><input id="revAmount" type="number" min="0.01" step="0.01"></div>
-      <div style="grid-column:1/-1"><label>Proveedor</label><input id="revProvider" type="text"></div>
-      <div><label>Categoría</label>
-        <select id="revCategory">
-          <option value="varios" selected>Varios</option>
-          <option value="comida">Comida</option>
-          <option value="gasolina">Gasolina</option>
-          <option value="peajes">Peajes</option>
-          <option value="alojamiento">Hotel</option>
-          <option value="transporte">Transportes</option>
-          <option value="ocio">Invitaciones</option>
-          <option value="servicios">Servicios</option>
-          <option value="ingreso">Ingreso</option>
-        </select>
-      </div>
-      <div style="grid-column:1/-1"><label>Notas</label><textarea id="revNotes" rows="2"></textarea></div>
-      <div class="preview" style="grid-column:1/-1"><img id="revThumb" style="height:72px;width:auto;border-radius:8px"><div id="revFileInfo" class="muted" style="font-size:12px"></div></div>
+<!-- Modal IA -->
+<div id="aiModal" class="modal" aria-hidden="true">
+  <div class="sheet">
+    <header><strong>Configurar IA</strong><button class="btn" id="closeAI">Cerrar</button></header>
+    <div class="body" style="grid-template-columns:1fr">
+      <div class="field"><label>API Key de Google AI (Gemini)</label><input id="aiKey" type="password" placeholder="AIza..." /><div class="small">Se guarda en este navegador (localStorage).</div></div>
     </div>
-    <div class="footer"><button class="btn" id="cancelReview">Cancelar</button><div class="spacer"></div><button class="btn brand" id="saveReview">Guardar</button></div>
-  </div></div>
+    <footer><button class="btn" id="clearAI">Borrar</button><button class="btn primary" id="saveAI">Guardar</button></footer>
+  </div>
+</div>
 
-  
+<!-- Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+
 <script>
-  // ⚙️ Config Firebase (tu proyecto)
-  const FB = {
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const log = (m)=>{ const out=$("out"); out.textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
+
+  // ======= CONFIG FIREBASE (tu proyecto) =======
+  const firebaseConfig = {
     apiKey: "AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",
     authDomain: "gastos-2n.firebaseapp.com",
     projectId: "gastos-2n",
@@ -148,199 +105,180 @@
     messagingSenderId: "55010048795",
     appId: "1:55010048795:web:4fb48d1e0f9006ebf7b1be"
   };
-  firebase.initializeApp(FB);
+  firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
   const storage = firebase.storage();
+
+  // ======= IA config modal =======
+  const aiModal = $("aiModal");
+  const openAIModal=()=>{ aiModal.classList.add("open"); $("aiKey").value = localStorage.getItem("gkey")||""; };
+  const closeAIModal=()=> aiModal.classList.remove("open");
+  $("btnAI").onclick=openAIModal; $("closeAI").onclick=closeAIModal;
+  $("saveAI").onclick=()=>{ const v=$("aiKey").value.trim(); if(!v){alert("Pega tu API Key");return;} localStorage.setItem("gkey",v); alert("Guardada ✅"); closeAIModal(); };
+  $("clearAI").onclick=()=>{ localStorage.removeItem("gkey"); $("aiKey").value=""; alert("Borrada"); };
+
+  // ======= Login =======
   const provider = new firebase.auth.GoogleAuthProvider();
-</script>
+  $('btnLogin').onclick = async () => {
+    try{ await auth.signInWithPopup(provider); }
+    catch(e){ console.error(e); log("❌ Login: "+(e.code||e.message)); alert("Error login: "+(e.message||"")); }
+  };
+  $('btnLogout').onclick = async () => { await auth.signOut(); };
 
-  <script>
-  (function(){
-    const $ = (id)=>document.getElementById(id);
-    const log = (m)=>{ $("out").textContent += (typeof m==="string"?m:JSON.stringify(m,null,2))+"\n"; };
-
-    // Auth
-    $('btnLogin').onclick = async ()=>{ try{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ alert(e.message); } };
-    $('btnLogout').onclick = async ()=>{ await auth.signOut(); };
-    auth.onAuthStateChanged(async (user)=>{
-      if(user){
-        $('whoami').textContent = user.email||user.uid;
-        $('btnLogin').classList.add('hidden'); $('btnLogout').classList.remove('hidden');
-        await loadMonthBadges();
-        await loadLastEntries();
-      }else{
-        $('whoami').textContent = 'No autenticado';
-        $('btnLogin').classList.remove('hidden'); $('btnLogout').classList.add('hidden');
-      }
-    });
-
-    // Month badge + last entries
-    function ymNow(){ return new Date().toISOString().slice(0,7); }
-    function rangeMonth(ym){ const s=new Date(ym+'-01T00:00:00'); const e=new Date(s.getFullYear(), s.getMonth()+1, 1); return [s,e]; }
-    async function loadMonthBadges(){
-      const user = auth.currentUser; if(!user) return;
-      const ym = ymNow(); const [s,e]=rangeMonth(ym);
-      const snap = await db.collection('users/'+user.uid+'/entries').where('date','>=',s).where('date','<',e).get();
-      let g=0,i=0;
-      snap.forEach(d=>{ const x=d.data(); const a=Number(x.amount||0); if(x.category==='ingreso') i+=a; else g+=a; });
-      $('badgeMonth').textContent = new Date(ym+'-01').toLocaleDateString('es-ES',{month:'long',year:'numeric'});
-      $('badgeGastos').textContent = 'Gastos: -'+g.toFixed(2)+' €';
-      $('badgeIngresos').textContent = 'Ingresos: +'+i.toFixed(2)+' €';
+  auth.onAuthStateChanged((user)=>{
+    if(user){
+      $("whoami").textContent = `Conectado como ${user.email||user.uid}`;
+      $("btnLogin").style.display="none"; $("btnLogout").style.display="";
+      cargarUltimos();
+    }else{
+      $("whoami").textContent = "No autenticado";
+      $("btnLogin").style.display=""; $("btnLogout").style.display="none";
+      $("lista").innerHTML="";
     }
-    async function loadLastEntries(){
-      const user=auth.currentUser; if(!user) return;
-      const snap=await db.collection('users/'+user.uid+'/entries').orderBy('createdAt','desc').limit(10).get();
-      const list=$('lastList'); list.innerHTML='';
-      snap.forEach(doc=>{
-        const d=doc.data(); const date=(d.date?.toDate?d.date.toDate():new Date(d.date)).toISOString().slice(0,10);
-        const el=document.createElement('div'); el.className='item';
-        el.innerHTML='<div><div style="font-weight:600">'+(d.provider||'-')+'</div><div class="muted" style="font-size:12px">'+date+' · '+(d.category)+'</div></div><div style="font-weight:700;'+(d.category==='ingreso'?'color:var(--ok)':'color:var(--danger)')+'">'+(d.category==='ingreso'?'+':'-')+(Number(d.amount||0)).toFixed(2)+'€</div>';
-        list.appendChild(el);
+  });
+
+  // ======= OCR helpers =======
+  let review = { file:null, dateISO:"", amount:0, provider:"", category:"varios", notes:"", paidWith:"empresa" };
+  function fileToBase64(file){
+    return new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(",")[1]||""); rd.onerror=()=>reject(new Error("No se pudo leer imagen")); rd.readAsDataURL(file); });
+  }
+  async function downscaleImage(file, max=2048, q=0.9){
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+    const scale=Math.min(1,max/Math.max(img.width,img.height));
+    const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+    const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h);
+    const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",q)); URL.revokeObjectURL(img.src);
+    return new File([blob], (file.name||"ticket")+".jpg", {type:"image/jpeg"});
+  }
+  function safeParseJSON(text){
+    let s=(text||"").trim(); if(s.startsWith("```")) s=s.replace(/^```(?:json)?/i,"").replace(/```$/i,"").trim();
+    const a=s.indexOf("{"), b=s.lastIndexOf("}"); if(a!==-1 && b!==-1) s=s.slice(a,b+1);
+    return JSON.parse(s);
+  }
+  function fallbackParse(text){
+    const t=(text||"").replace(/\s+/g," ").trim();
+    let amount=0; const m=t.match(/(\d+[.,]\d{2})\s*(€|eur)?/i); if(m) amount=Number(m[1].replace(",", "."));
+    let dateISO=new Date().toISOString().slice(0,10);
+    const d1=t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/); const d2=t.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
+    if(d2) dateISO=`${d2[1]}-${d2[2]}-${d2[3]}`; else if(d1) dateISO=`${d1[3]}-${d1[2]}-${d1[1]}`;
+    let provider="Ticket"; const prov=t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); if(prov) provider=prov[0].trim();
+    return { date:dateISO, provider, amount };
+  }
+  async function callGemini(base64, mime){
+    const key=(localStorage.getItem("gkey")||"").trim();
+    if(!key){ (function(){document.getElementById('aiModal').classList.add('open')})(); throw new Error("Falta API Key"); }
+    const prompt=`Devuelve solo un JSON válido exacto:
+{"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}`;
+    const body={ contents:[{ role:"user", parts:[{text:prompt},{inlineData:{mimeType:mime||"image/jpeg",data:base64}}]}] };
+    const models=["gemini-2.5-flash","gemini-2.0-flash"];
+    for(const m of models){
+      const url=`https://generativelanguage.googleapis.com/v1/models/${m}:generateContent?key=${encodeURIComponent(key)}`;
+      const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{}
+      if(res.status===429){ await new Promise(r=>setTimeout(r,700)); continue; }
+      if(!res.ok){ log({fallo_modelo:m,status:res.status,body:js||txt}); continue; }
+      const text=js?.candidates?.[0]?.content?.parts?.[0]?.text||"";
+      try{ return safeParseJSON(text); }catch{ return fallbackParse(text); }
+    }
+    throw new Error("No fue posible extraer datos");
+  }
+
+  function openReview(){
+    $("reviewModal").classList.add("open");
+    $("revDate").value=review.dateISO||new Date().toISOString().slice(0,10);
+    $("revAmount").value=review.amount||"";
+    $("revProvider").value=review.provider||"";
+    $("revCategory").value=review.category;
+    $("revPaidWith").value=review.paidWith||"empresa";
+    $("revNotes").value=review.notes||"";
+    $("revThumb").src= review.file? URL.createObjectURL(review.file):"";
+    $("revFileInfo").textContent= review.file? `${review.file.name||"captura"} · ${Math.round(review.file.size/1024)} KB`:"";
+  }
+  function closeReview(){ $("reviewModal").classList.remove("open"); }
+  $("closeReview").onclick=closeReview; $("cancelReview").onclick=closeReview;
+
+  $("saveReview").onclick=async ()=>{
+    try{
+      const user=auth.currentUser; if(!user) return alert("Haz login primero");
+      const dateISO=$("revDate").value||new Date().toISOString().slice(0,10);
+      const amount=Number($("revAmount").value||0);
+      const provider=$("revProvider").value.trim();
+      const category=$("revCategory").value;
+      const paidWith=$("revPaidWith").value;
+      const notes=$("revNotes").value.trim();
+      if(!provider) return alert("Proveedor obligatorio");
+      if(!amount||amount<=0) return alert("Importe > 0");
+      const yyyyMM=dateISO.slice(0,7);
+      let photoURL="", path="";
+      if(review.file){
+        const safeProv=(provider||"ticket").replace(/[^a-zA-Z0-9-_ ]/g,"").slice(0,40).replace(/\s+/g,"_");
+        const ext=(review.file.name.split(".").pop()||"jpg").toLowerCase();
+        const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
+        path=`tickets/${user.uid}/${yyyyMM}/${filename}`;
+        await firebase.storage().ref(path).put(review.file);
+        photoURL=await firebase.storage().ref(path).getDownloadURL();
+      }
+      await firebase.firestore().collection(`users/${user.uid}/entries`).add({
+        date:new Date(dateISO),
+        category, provider, notes, amount, paidWith,
+        photoURL, photoPath:path,
+        isExpense: category!=="ingreso",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-    }
+      alert("Guardado ✅"); closeReview(); cargarUltimos();
+    }catch(e){ console.error(e); log(e); alert("Error guardando: "+(e.message||"")); }
+  };
 
-    // IA config modal
-    const aiModal=$('aiModal');
-    $('btnAI').onclick = ()=>{ aiModal.classList.add('open'); $('aiKey').value=localStorage.getItem('gkey')||''; };
-    $('closeAI').onclick = ()=> aiModal.classList.remove('open');
-    $('saveAI').onclick = ()=>{ const v=$('aiKey').value.trim(); if(!v){alert('Pega tu API Key');return;} localStorage.setItem('gkey', v); aiModal.classList.remove('open'); alert('Guardada ✅'); };
-    $('clearAI').onclick = ()=>{ localStorage.removeItem('gkey'); $('aiKey').value=''; alert('Borrada'); };
+  // Ingreso manual
+  $("manualBtn").onclick=()=>{
+    review={ file:null, dateISO:new Date().toISOString().slice(0,10), amount:0, provider:"", category:"varios", notes:"", paidWith:"empresa" };
+    $("revThumb").src=""; $("revFileInfo").textContent="";
+    openReview();
+  };
 
-    // Review modal state
-    const review = { file:null, dateISO:'', amount:0, provider:'', category:'varios', notes:'' };
-    function openReview(){
-      $('reviewModal').classList.add('open');
-      $('revDate').value = review.dateISO || new Date().toISOString().slice(0,10);
-      $('revAmount').value = review.amount || '';
-      $('revProvider').value = review.provider || '';
-      $('revCategory').value = review.category;
-      $('revNotes').value = review.notes || '';
-      $('revThumb').src = review.file ? URL.createObjectURL(review.file) : '';
-      $('revFileInfo').textContent = review.file ? (review.file.name||'captura')+' · '+Math.round(review.file.size/1024)+' KB' : '';
-    }
-    $('closeReview').onclick = ()=> $('reviewModal').classList.remove('open');
-    $('cancelReview').onclick = ()=> $('reviewModal').classList.remove('open');
-
-    // Camera capture
-    let hiddenInput;
-    function ensureCameraInput(){
-      if(hiddenInput) return hiddenInput;
-      hiddenInput = document.createElement('input');
-      hiddenInput.type='file'; hiddenInput.accept='image/*'; hiddenInput.capture='environment';
-      hiddenInput.style.display='none'; document.body.appendChild(hiddenInput);
-      return hiddenInput;
-    }
-    function fileToBase64(file){
-      return new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(String(rd.result).split(',')[1]||''); rd.onerror=()=>reject(new Error('No se pudo leer')); rd.readAsDataURL(file); });
-    }
-    async function downscaleImage(file, max=2048, q=0.9){
-      const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
-      const scale=Math.min(1,max/Math.max(img.width,img.height));
-      const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
-      const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
-      const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',q)); URL.revokeObjectURL(img.src);
-      return new File([blob], (file.name||'ticket')+'.jpg', {type:'image/jpeg'});
-    }
-    function safeParseJSON(text){
-      let s=(text||'').trim(); if(s.startsWith('```')) s=s.replace(/^```(?:json)?/i,'').replace(/```$/i,'').trim();
-      const a=s.indexOf('{'), b=s.lastIndexOf('}'); if(a!==-1 && b!==-1) s=s.slice(a,b+1);
-      return JSON.parse(s);
-    }
-    function fallbackParse(text){
-      const t=(text||'').replace(/\s+/g,' ').trim();
-      let amount=0; const m=t.match(/(\d+[.,]\d{2})\s*(€|eur)?/i); if(m) amount=Number(m[1].replace(',','.'));
-      let dateISO=new Date().toISOString().slice(0,10);
-      const d1=t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/); const d2=t.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
-      if(d2) dateISO=`${d2[1]}-${d2[2]}-${d2[3]}`; else if(d1) dateISO=`${d1[3]}-${d1[2]}-${d1[1]}`;
-      let provider='Ticket'; const prov=t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/); if(prov) provider=prov[0].trim();
-      return { date:dateISO, provider, amount };
-    }
-    async function callGemini(base64, mime){
-      const key=(localStorage.getItem('gkey')||'').trim();
-      if(!key){ document.getElementById('aiModal').classList.add('open'); throw new Error('Falta API Key'); }
-      const prompt = 'Devuelve solo JSON: {"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}';
-      const body = { contents:[{ role:'user', parts:[{text:prompt},{ inlineData:{ mimeType:mime||'image/jpeg', data:base64 }}]}] };
-      const models=['gemini-2.5-flash','gemini-2.0-flash'];
-      for(const model of models){
-        const url=`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-        const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        const txt=await res.text(); let js=null; try{js=JSON.parse(txt)}catch{}
-        if(res.status===429){ await new Promise(r=>setTimeout(r,800)); continue; }
-        if(!res.ok){ log({fallo_modelo:model,status:res.status,body:js||txt}); continue; }
-        const text=js?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        try{ return safeParseJSON(text); }catch{ return fallbackParse(text); }
-      }
-      throw new Error('No fue posible extraer datos');
-    }
-
-    // Scan flow
-    document.getElementById('scanLink').onclick = async (e)=>{
-      e.preventDefault();
-      try{
-        const user=auth.currentUser; if(!user) return alert('Haz login primero');
-        const input=ensureCameraInput();
-        const file=await new Promise((resolve,reject)=>{
-          const fn=()=>{ input.removeEventListener('change',fn); if(input.files&&input.files[0]) resolve(input.files[0]); else reject(new Error('Sin imagen')); };
-          input.addEventListener('change',fn,{once:true}); input.click();
-        });
-        const compact=await downscaleImage(file,2048,0.9);
-        const b64=await fileToBase64(compact);
-        const res=await callGemini(b64, compact.type);
-        const d=/^\d{4}-\d{2}-\d{2}$/.test(res.date||'')? new Date(res.date+'T00:00:00'): new Date();
-        // preload in review
-        window.__review = { file:compact, dateISO:d.toISOString().slice(0,10), amount:Number(res.amount||0)||0, provider:(res.provider||'Ticket').toString().slice(0,80), category:'varios', notes:'' };
-        Object.assign(review, window.__review);
-        openReview();
-      }catch(err){ console.error(err); log(err); alert('OCR error: '+(err.message||'')); }
-    };
-
-    // Ingreso manual
-    document.getElementById('manualIncome').onclick = (e)=>{
-      e.preventDefault();
-      review.file=null; review.dateISO=new Date().toISOString().slice(0,10);
-      review.amount=0; review.provider=''; review.category='ingreso'; review.notes='';
+  // Escanear (cámara)
+  function ensureCameraInput(){
+    const x=document.createElement("input");
+    x.type="file"; x.accept="image/*"; x.capture="environment";
+    x.style.display="none"; document.body.appendChild(x); return x;
+  }
+  $("scanBtn").onclick=async ()=>{
+    try{
+      const user=auth.currentUser; if(!user) return alert("Haz login primero");
+      const input=ensureCameraInput();
+      const file=await new Promise((resolve,reject)=>{
+        const fn=()=>{ input.removeEventListener("change",fn); if(input.files&&input.files[0]) resolve(input.files[0]); else reject(new Error("Sin imagen")); };
+        input.addEventListener("change",fn,{once:true}); input.click();
+      });
+      log(`📷 ${file.name||"captura"} (${Math.round(file.size/1024)} KB)`);
+      const compact=await (async function(f){const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(f)});const scale=Math.min(1,2048/Math.max(img.width,img.height));const w=Math.round(img.width*scale),h=Math.round(img.height*scale);const cv=document.createElement("canvas");cv.width=w;cv.height=h;cv.getContext("2d").drawImage(img,0,0,w,h);const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",.9));URL.revokeObjectURL(img.src);return new File([blob],(f.name||"ticket")+".jpg",{type:"image/jpeg"})})(file);
+      const b64=await (new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=()=>resolve(String(rd.result).split(",")[1]||"");rd.onerror=()=>reject(new Error("No se pudo leer imagen"));rd.readAsDataURL(compact)}));
+      const res=await callGemini(b64, compact.type);
+      const d=/^\d{4}-\d{2}-\d{2}$/.test(res.date||"") ? new Date(res.date+"T00:00:00") : new Date();
+      review={ file:compact, dateISO:d.toISOString().slice(0,10), amount:Number(res.amount||0)||0, provider:(res.provider||"Ticket").toString().slice(0,80), category:"varios", notes:"", paidWith:"empresa" };
       openReview();
-    };
+    }catch(e){ console.error(e); log(e); alert("OCR error: "+(e.message||"")); }
+  };
 
-    // Guardar
-    document.getElementById('saveReview').onclick = async ()=>{
-      try{
-        const user=auth.currentUser; if(!user) return alert('Haz login');
-        const dateISO=document.getElementById('revDate').value||new Date().toISOString().slice(0,10);
-        const amount=Number(document.getElementById('revAmount').value||0);
-        const provider=document.getElementById('revProvider').value.trim();
-        const category=document.getElementById('revCategory').value;
-        const notes=document.getElementById('revNotes').value.trim();
-        if(!provider) return alert('Proveedor obligatorio');
-        if(!amount || amount<=0) return alert('Importe > 0');
+  // Listado últimos
+  async function cargarUltimos(){
+    const user=auth.currentUser; if(!user) return;
+    const snap=await firebase.firestore().collection(`users/${user.uid}/entries`).orderBy("createdAt","desc").limit(10).get();
+    const lista=document.getElementById("lista"); lista.innerHTML="";
+    snap.forEach(doc=>{
+      const d=doc.data(); const dt=d.date?.toDate?d.date.toDate():new Date(d.date);
+      const li=document.createElement("div"); li.className="item";
+      li.innerHTML=`<div class="left">
+        <div class="t">${d.provider||"-"} · <span class="small">${d.category}</span> ${d.paidWith==="mio"?'<span class="badge">💳 Mi dinero</span>':''}</div>
+        <div class="s">${dt.toISOString().slice(0,10)} ${d.notes?('· '+d.notes):''}</div>
+      </div>
+      <div class="right"><strong style="color:${d.isExpense?'#ff6b6b':'#34c759'}">${d.isExpense?'-':'+'}${Number(d.amount||0).toFixed(2)} €</strong> ${d.photoURL?`<a href="${d.photoURL}" target="_blank" class="badge">ticket</a>`:''}</div>`;
+      lista.appendChild(li);
+    });
+  }
 
-        const yyyyMM=dateISO.slice(0,7);
-        let photoURL='', photoPath='';
-        if(review.file){
-          const safeProv=(provider||'ticket').replace(/[^a-zA-Z0-9-_ ]/g,'').slice(0,40).replace(/\s+/g,'_');
-          const ext=(review.file.name.split('.').pop()||'jpg').toLowerCase();
-          const filename=`${dateISO}_${safeProv}_${Date.now()}.${ext}`;
-          photoPath=`tickets/${user.uid}/${yyyyMM}/${filename}`;
-          await storage.ref(photoPath).put(review.file);
-          photoURL = await storage.ref(photoPath).getDownloadURL();
-        }
-
-        await db.collection('users/'+user.uid+'/entries').add({
-          date: new Date(dateISO),
-          category, provider, notes, amount,
-          photoURL, photoPath,
-          isExpense: category!=='ingreso',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert('Guardado ✅');
-        document.getElementById('reviewModal').classList.remove('open');
-        await loadMonthBadges(); await loadLastEntries();
-      }catch(e){ console.error(e); log(e); alert('Error guardando: '+(e.message||'')); }
-    };
-
-  })();
-  </script>
+})();
+</script>
 </body>
 </html>
