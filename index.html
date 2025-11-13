@@ -152,9 +152,410 @@
   </div>
 </div>
 
+<!-- BOOTSTRAP FIREBASE + AUTH GOOGLE -->
 <script>
-// (JS recortado aquí para mantenerlo pequeño en este entorno; en tu app real debes pegar el JS completo)
+(function(){
+  try{
+    if (!firebase.apps.length) {
+      firebase.initializeApp(window.__FBCONFIG__);
+    }
+
+    var auth = firebase.auth();
+    if (firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+    }
+    if (auth.getRedirectResult) {
+      auth.getRedirectResult().catch(function(){});
+    }
+
+    function updateUser(u){
+      var who = document.getElementById('whoami');
+      var bL  = document.getElementById('btnLogin');
+      var bO  = document.getElementById('btnLogout');
+
+      if (u){
+        if (who) who.textContent = 'Conectado: ' + (u.email || u.uid);
+        if (bL)  bL.style.display = 'none';
+        if (bO)  bO.style.display = '';
+      } else {
+        if (who) who.textContent = 'No autenticado';
+        if (bL)  bL.style.display = '';
+        if (bO)  bO.style.display = 'none';
+      }
+
+      try{
+        document.dispatchEvent(new CustomEvent('auth-changed',{ detail:{ user:u } }));
+      }catch(e){}
+    }
+
+    auth.onAuthStateChanged(updateUser);
+
+    window.__APPCTX__ = {
+      auth   : auth,
+      db     : firebase.firestore(),
+      storage: firebase.storage()
+    };
+
+    var prov   = new firebase.auth.GoogleAuthProvider();
+    var btnIn  = document.getElementById('btnLogin');
+    var btnOut = document.getElementById('btnLogout');
+
+    if (btnIn){
+      btnIn.addEventListener('click', function(){
+        auth.signInWithPopup(prov).catch(function(err){
+          if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')){
+            auth.signInWithRedirect(prov);
+          } else {
+            alert('Error login: ' + (err && err.message || ''));
+          }
+        });
+      });
+    }
+
+    if (btnOut){
+      btnOut.addEventListener('click', function(){
+        auth.signOut();
+      });
+    }
+  }catch(e){
+    console.error(e);
+  }
+})();
 </script>
+
+<!-- LÓGICA PAGINA (OCR + GUARDADO + CONFIG OCR) -->
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+
+  function openModal(){
+    var m = $('reviewModal');
+    if (!m) return;
+    m.classList.add('open');
+    m.setAttribute('aria-hidden','false');
+  }
+
+  function closeModal(){
+    var m = $('reviewModal');
+    if (!m) return;
+    m.classList.remove('open');
+    m.setAttribute('aria-hidden','true');
+  }
+
+  function openOCRModal(){
+    var m = $('ocrModal');
+    if (!m) return;
+    var key = localStorage.getItem('gkey') || '';
+    $('ocrKeyInput').value = key;
+    $('ocrStatus').textContent = key ? 'Clave cargada en este dispositivo.' : 'No hay clave guardada todavía.';
+    m.classList.add('open');
+    m.setAttribute('aria-hidden','false');
+  }
+
+  function closeOCRModal(){
+    var m = $('ocrModal');
+    if (!m) return;
+    m.classList.remove('open');
+    m.setAttribute('aria-hidden','true');
+  }
+
+  var cfgBtn = $('btnConfigOCR');
+  if (cfgBtn){
+    cfgBtn.addEventListener('click', openOCRModal);
+  }
+  var closeOCR = $('closeOCR');
+  if (closeOCR){
+    closeOCR.addEventListener('click', closeOCRModal);
+  }
+
+  var saveKeyBtn = $('btnSaveKey');
+  if (saveKeyBtn){
+    saveKeyBtn.addEventListener('click', function(){
+      var v = $('ocrKeyInput').value.trim();
+      if (!v){
+        alert('Introduce una clave válida.');
+        return;
+      }
+      localStorage.setItem('gkey', v);
+      $('ocrStatus').textContent = 'Clave guardada correctamente.';
+    });
+  }
+
+  var clearKeyBtn = $('btnClearKey');
+  if (clearKeyBtn){
+    clearKeyBtn.addEventListener('click', function(){
+      localStorage.removeItem('gkey');
+      $('ocrKeyInput').value = '';
+      $('ocrStatus').textContent = 'Clave borrada. El OCR no funcionará hasta que configures una nueva.';
+    });
+  }
+
+  var testKeyBtn = $('btnTestKey');
+  if (testKeyBtn){
+    testKeyBtn.addEventListener('click', async function(){
+      var key = $('ocrKeyInput').value.trim();
+      if (!key){
+        alert('Introduce una clave para probar.');
+        return;
+      }
+      $('ocrStatus').textContent = 'Probando clave…';
+      try{
+        var body = {
+          contents: [{
+            role: 'user',
+            parts:[{ text: 'Hola' }]
+          }]
+        };
+        var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(body)
+        });
+        if (!res.ok){
+          $('ocrStatus').textContent = 'Error al probar la clave: HTTP '+res.status;
+          return;
+        }
+        $('ocrStatus').textContent = 'Clave válida ✅';
+      }catch(e){
+        $('ocrStatus').textContent = 'Error al probar la clave: '+(e.message||e);
+      }
+    });
+  }
+
+  var manualBtn = $('manualBtn');
+  if (manualBtn){
+    manualBtn.addEventListener('click', function(){
+      $('revDate').value      = new Date().toISOString().slice(0,10);
+      $('revAmount').value    = '';
+      $('revProvider').value  = '';
+      $('revCategory').value  = 'varios';
+      $('revPaidWith').value  = 'empresa';
+      $('revNotes').value     = '';
+      $('revThumb').src       = '';
+      $('revFileInfo').textContent = '';
+      window.__lastFile = null;
+      openModal();
+    });
+  }
+
+  function pickFile(fromCamera){
+    var inp = document.createElement('input');
+    inp.type   = 'file';
+    inp.accept = 'image/*';
+    if (fromCamera) inp.capture = 'environment';
+
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      window.__lastFile = f;
+      $('revThumb').src = URL.createObjectURL(f);
+      $('revFileInfo').textContent = (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
+      $('revDate').value = new Date().toISOString().slice(0,10);
+      openModal();
+      setTimeout(runOCR, 150);
+    };
+
+    inp.click();
+  }
+
+  var scanBtn = $('scanBtn');
+  if (scanBtn){
+    scanBtn.addEventListener('click', function(){ pickFile(true); });
+  }
+  var btnPick = $('btnPick');
+  if (btnPick){
+    btnPick.addEventListener('click', function(){ pickFile(false); });
+  }
+  var btnCam = $('btnCam');
+  if (btnCam){
+    btnCam.addEventListener('click', function(){ pickFile(true); });
+  }
+
+  var closeBtn = $('closeReview');
+  if (closeBtn){
+    closeBtn.addEventListener('click', closeModal);
+  }
+
+  async function ensureKey(){
+    var key = localStorage.getItem('gkey');
+    if (!key){
+      openOCRModal();
+      throw new Error('No hay API Key configurada');
+    }
+    return key;
+  }
+
+  async function runOCR(){
+    try{
+      var key  = await ensureKey();
+      var file = window.__lastFile;
+      if (!key || !file) return;
+
+      var ab  = await file.arrayBuffer();
+      var b64 = btoa(String.fromCharCode.apply(null,new Uint8Array(ab)));
+
+      var body = {
+        contents: [{
+          role : 'user',
+          parts: [
+            { text: 'Extrae proveedor, fecha (YYYY-MM-DD), categoría (comida, peajes, gasolina, transporte, alojamiento, ocio, servicios, varios o ingreso) e importe total EUR. Devuelve JSON con provider,date,category,amount.' },
+            { inline_data: { mime_type:'image/jpeg', data:b64 } }
+          ]
+        }]
+      };
+
+      var res  = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),{
+        method :'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body   : JSON.stringify(body)
+      });
+
+      var data = await res.json();
+      var text = data && data.candidates && data.candidates[0] &&
+                 data.candidates[0].content && data.candidates[0].content.parts &&
+                 data.candidates[0].content.parts[0].text || '';
+
+      var match = text.match(/\{[\s\S]*\}/);
+      if (!match) return;
+      var j = JSON.parse(match[0]);
+
+      if (j.provider) $('revProvider').value = j.provider;
+      if (j.date)     $('revDate').value     = j.date;
+      if (j.amount != null) $('revAmount').value = Number(j.amount || 0);
+
+      if (j.category){
+        var c = String(j.category).toLowerCase();
+        if (!/comida|peajes|gasolina|transporte|alojamiento|ocio|servicios|varios|ingreso/.test(c)){
+          c = 'varios';
+        }
+        $('revCategory').value = c;
+      }
+    }catch(e){
+      console.warn('OCR error', e);
+    }
+  }
+
+  async function saveEntry(){
+    var ctx = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var st   = ctx.storage;
+
+    var user = auth && auth.currentUser;
+
+    var dateISO  = $('revDate').value || new Date().toISOString().slice(0,10);
+    var amount   = Number($('revAmount').value || 0);
+    var provider = $('revProvider').value.trim();
+    var category = $('revCategory').value;
+    var paidWith = $('revPaidWith').value;
+    var notes    = $('revNotes').value;
+    var file     = window.__lastFile || null;
+
+    try{
+      var photoURL = null;
+      var photoPath = null;
+
+      if (file && user && st){
+        var yyyyMM   = dateISO.slice(0,7);
+        var safeProv = (provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+        var name     = dateISO + '_' + safeProv + '_' + Date.now() + '.jpg';
+        photoPath    = 'tickets/' + user.uid + '/' + yyyyMM + '/' + name;
+
+        var ref = st.ref(photoPath);
+        await ref.put(file);
+        photoURL = await ref.getDownloadURL();
+      }
+
+      if (user && db){
+        await db.collection('users/' + user.uid + '/entries').add({
+          date     : new Date(dateISO),
+          amount   : amount,
+          provider : provider,
+          category : category,
+          paidWith : paidWith,
+          notes    : notes,
+          photoURL : photoURL,
+          photoPath: photoPath,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('Guardado ✅');
+      } else {
+        var arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
+        arr.push({
+          date    : dateISO,
+          amount  : amount,
+          provider: provider,
+          category: category,
+          paidWith: paidWith,
+          notes   : notes
+        });
+        localStorage.setItem('entries_local', JSON.stringify(arr));
+        alert('Guardado en local ✅ (sin login)');
+      }
+
+      closeModal();
+      document.dispatchEvent(new CustomEvent('entries-updated'));
+      renderList();
+    }catch(e){
+      alert('Error guardando: ' + (e && e.message || ''));
+      console.error(e);
+    }
+  }
+
+  var saveBtn = $('saveReview');
+  if (saveBtn){
+    saveBtn.addEventListener('click', saveEntry);
+  }
+
+  function renderList(){
+    var cont = $('lista');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
+
+    if (user && db){
+      db.collection('users/' + user.uid + '/entries')
+        .orderBy('date','desc')
+        .limit(5)
+        .get()
+        .then(function(snap){
+          if (snap.empty){
+            cont.innerHTML = '<div class="small">Sin apuntes aún.</div>';
+            return;
+          }
+          snap.forEach(function(doc){
+            var e = doc.data();
+            var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
+            var div = document.createElement('div');
+            div.className = 'small';
+            div.textContent = d.toISOString().slice(0,10) + ' · ' + (e.provider || '-') + ' · ' + (e.amount || 0) + '€';
+            cont.appendChild(div);
+          });
+        });
+    } else {
+      var arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
+      if (!arr.length){
+        cont.innerHTML = '<div class="small">Sin apuntes aún.</div>';
+        return;
+      }
+      arr.slice(-5).reverse().forEach(function(e){
+        var div = document.createElement('div');
+        div.className = 'small';
+        div.textContent = e.date + ' · ' + (e.provider || '-') + ' · ' + (e.amount || 0) + '€';
+        cont.appendChild(div);
+      });
+    }
+  }
+
+  document.addEventListener('auth-changed', renderList, false);
+  document.addEventListener('entries-updated', renderList, false);
+  renderList();
+})();</script>
 
 </body>
 </html>
