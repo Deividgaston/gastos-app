@@ -1,0 +1,1 @@
+window.__FBCONFIG__={apiKey:"AIzaSyBTK8altmAR-fWqR9BjE74gEGavuiqk1Bs",authDomain:"gastos-2n.firebaseapp.com",projectId:"gastos-2n"};
