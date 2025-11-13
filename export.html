@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Exportar · Gastos 2N</title>
+<link rel="stylesheet" href="assets/style.css">
+
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+<script src="config.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>
+    <img src="assets/2n-logo-black.png" style="height:20px;border-radius:4px;">
+    Exportar
+  </h1>
+  <a class="badge" href="index.html">🏠 Inicio</a>
+  <a class="badge" href="summary.html">📄 Summary</a>
+</header>
+
+<main class="content">
+  <div class="grid">
+
+    <div class="card">
+      <h2>Resumen del mes</h2>
+      <div class="kpi-row">
+        <div class="kpi"><b>Total gastado</b><div id="kpiTotal">0€</div></div>
+        <div class="kpi"><b>Mi dinero</b><div id="kpiPersonal">0€</div></div>
+        <div class="kpi"><b>Empresa</b><div id="kpiEmpresa">0€</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Acciones</h2>
+      <button id="btnDownload" class="btn primary">📥 Descargar CSV</button>
+      <button id="btnZip" class="btn">🗂️ Descargar ZIP del mes</button>
+      <div class="small">El ZIP incluirá fotos y CSV.</div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+(function(){
+  if (!firebase.apps.length) firebase.initializeApp(window.__FBCONFIG__);
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  function toEUR(n){ return (n||0).toFixed(2)+'€'; }
+
+  async function loadMonth(){
+    const u = auth.currentUser;
+    if (!u) return;
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth(); 
+    const start = new Date(y,m,1);
+    const end = new Date(y,m+1,1);
+
+    const snap = await db.collection('users/'+u.uid+'/entries')
+      .where('date','>=',start)
+      .where('date','<',end)
+      .orderBy('date','desc')
+      .get();
+
+    let total=0, personal=0, empresa=0;
+    window.__exportData__ = [];
+
+    snap.forEach(doc=>{
+      const e = doc.data();
+      const amt = Number(e.amount||0);
+      total += amt;
+      if(e.paidWith==='personal') personal+=amt;
+      else empresa+=amt;
+
+      window.__exportData__.push({
+        date: e.date.toDate().toISOString().slice(0,10),
+        provider: e.provider||"",
+        category: e.category||"",
+        amount: amt,
+        paidWith: e.paidWith||"",
+        notes: e.notes||"",
+        photoURL: e.photoURL||""
+      });
+    });
+
+    document.getElementById('kpiTotal').textContent = toEUR(total);
+    document.getElementById('kpiPersonal').textContent = toEUR(personal);
+    document.getElementById('kpiEmpresa').textContent = toEUR(empresa);
+  }
+
+  auth.onAuthStateChanged(u=>{ if(u) loadMonth(); });
+
+  function downloadCSV(){
+    const rows = window.__exportData__||[];
+    let csv = "fecha,proveedor,categoría,importe,pagado_con,notas,foto\n";
+    rows.forEach(r=>{
+      csv += [
+        r.date,
+        r.provider,
+        r.category,
+        r.amount,
+        r.paidWith,
+        (r.notes||"").replace(/,/g," "),
+        r.photoURL
+      ].join(",") + "\n";
+    });
+
+    const blob = new Blob([csv],{type:"text/csv"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "gastos_mes.csv";
+    a.click();
+  }
+
+  async function downloadZIP(){
+    const rows = window.__exportData__||[];
+    if (!rows.length) return alert("No hay datos del mes.");
+
+    const zip = new JSZip();
+    let csv = "fecha,proveedor,categoría,importe,pagado_con,notas,foto\n";
+
+    for (const r of rows){
+      csv += [
+        r.date,
+        r.provider,
+        r.category,
+        r.amount,
+        r.paidWith,
+        (r.notes||"").replace(/,/g," "),
+        r.photoURL
+      ].join(",") + "\n";
+
+      if(r.photoURL){
+        const res = await fetch(r.photoURL);
+        const blob = await res.blob();
+        zip.file("fotos/"+r.date+"_"+r.provider+".jpg", blob);
+      }
+    }
+
+    zip.file("gastos_mes.csv", csv);
+
+    const content = await zip.generateAsync({type:"blob"});
+    saveAs(content,"gastos_mes.zip");
+  }
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    document.getElementById('btnDownload').onclick = downloadCSV;
+    document.getElementById('btnZip').onclick = downloadZIP;
+  });
+
+})();
+</script>
+
+</body>
+</html>
