@@ -1,2 +1,188 @@
 <!doctype html>
-<html><body><h1>Versión definitiva - Export</h1></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Exportar · Gastos 2N</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <h1>
+    <img src="assets/2n-logo-black.png" style="height:20px;border-radius:4px;">
+    Exportar
+  </h1>
+  <a class="badge" href="index.html">🏠 Inicio</a>
+  <a class="badge" href="summary.html">📄 Summary</a>
+</header>
+<main class="content">
+  <div class="grid">
+    <div class="card">
+      <h2>Mes a exportar</h2>
+      <div class="row">
+        <div>
+          <label>Mes</label><br>
+          <input id="monthInput" type="month">
+        </div>
+        <div>
+          <label>&nbsp;</label><br>
+          <span id="monthLabel" class="badge">Mes actual</span>
+        </div>
+      </div>
+      <div class="small">
+        Solo se suman como <b>Gastos (mi dinero)</b> los movimientos pagados con <b>Mi dinero</b>.
+      </div>
+    </div>
+    <div class="card">
+      <h2>Resumen económico</h2>
+      <div class="kpi-row">
+        <div class="kpi"><b>Gastos (mi dinero)</b><div id="kpiPersonal">0,00 €</div></div>
+        <div class="kpi"><b>Otros pagos</b><div id="kpiOtros">0,00 €</div></div>
+        <div class="kpi"><b>Ingresos</b><div id="kpiIngresos">0,00 €</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Exportación mensual</h2>
+      <div class="row">
+        <button id="btnExcel" class="btn primary">📊 Descargar Excel 2N</button>
+        <button id="btnFotos" class="btn">📸 Descargar todas las fotos del mes</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Movimientos del mes</h2>
+      <div id="tableWrapper" class="small">Cargando…</div>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  if (!firebase.apps.length) firebase.initializeApp(window.__FBCONFIG__);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+  let currentRows = [];
+
+  const monthInput   = document.getElementById('monthInput');
+  const monthLabel   = document.getElementById('monthLabel');
+  const kpiPersonal  = document.getElementById('kpiPersonal');
+  const kpiOtros     = document.getElementById('kpiOtros');
+  const kpiIngresos  = document.getElementById('kpiIngresos');
+  const tableWrapper = document.getElementById('tableWrapper');
+
+  function formatEUR(n){
+    n = Number(n||0);
+    return n.toFixed(2).replace('.',',') + ' €';
+  }
+  function setMonthLabel(value){
+    if (!value){ monthLabel.textContent = 'Mes actual'; return; }
+    const p = value.split('-'); if (p.length!==2){monthLabel.textContent='Mes actual';return;}
+    const y = parseInt(p[0],10), m = parseInt(p[1],10)-1;
+    const d = new Date(y,m,1);
+    monthLabel.textContent = d.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+  }
+  (function initMonth(){
+    const now=new Date();const y=now.getFullYear();const m=String(now.getMonth()+1).padStart(2,'0');
+    monthInput.value = y+'-'+m;
+    setMonthLabel(monthInput.value);
+  })();
+
+  monthInput.addEventListener('change', function(){
+    setMonthLabel(this.value);
+    loadCurrentMonth();
+  });
+
+  async function loadCurrentMonth(){
+    const user = auth.currentUser;
+    if (!user){ tableWrapper.innerHTML='Inicia sesión.'; return; }
+    let ym = monthInput.value;
+    if (!ym){
+      const now=new Date();const y=now.getFullYear();const m=String(now.getMonth()+1).padStart(2,'0');
+      ym=y+'-'+m; monthInput.value=ym; setMonthLabel(ym);
+    }
+    const p=ym.split('-'); const y=parseInt(p[0],10); const m=parseInt(p[1],10)-1;
+    const start=new Date(y,m,1); const end=new Date(y,m+1,1);
+    try{
+      tableWrapper.innerHTML='Cargando…';
+      const snap = await db.collection('users/'+user.uid+'/entries')
+        .where('date','>=',start).where('date','<',end).orderBy('date','asc').get();
+      currentRows = [];
+      let totalPersonal=0,totalOtros=0,totalIngresos=0;
+      snap.forEach(doc=>{
+        const e=doc.data(); const d=e.date.toDate();
+        const row={
+          date:d.toISOString().slice(0,10),
+          provider:e.provider||'',
+          category:e.category||'',
+          amount:Number(e.amount||0),
+          paidWith:e.paidWith||'',
+          notes:e.notes||'',
+          photoURL:e.photoURL||''
+        };
+        currentRows.push(row);
+        if (row.category==='ingreso') totalIngresos+=row.amount;
+        else if (row.paidWith==='personal') totalPersonal+=row.amount;
+        else totalOtros+=row.amount;
+      });
+      kpiPersonal.textContent=formatEUR(totalPersonal);
+      kpiOtros.textContent   =formatEUR(totalOtros);
+      kpiIngresos.textContent=formatEUR(totalIngresos);
+      if (!currentRows.length){
+        tableWrapper.innerHTML='No hay movimientos.'; return;
+      }
+      let html='<table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Categoría</th><th>Importe</th><th>Pagado con</th><th>Notas</th><th>Foto</th></tr></thead><tbody>';
+      currentRows.forEach(r=>{
+        html+='<tr><td>'+r.date+'</td><td>'+r.provider+'</td><td>'+r.category+'</td><td style="text-align:right">'+r.amount.toFixed(2)+'</td><td>'+r.paidWith+'</td><td>'+(r.notes||'')+'</td><td>'+(r.photoURL?'<a href="'+r.photoURL+'" target="_blank">📷</a>':'')+'</td></tr>';
+      });
+      html+='</tbody></table>';
+      tableWrapper.innerHTML=html;
+    }catch(e){
+      console.error(e); tableWrapper.innerHTML='Error cargando datos.';
+    }
+  }
+
+  function exportExcel(){
+    if (!currentRows.length){ alert('No hay datos.'); return; }
+    const ym=monthInput.value||''; const p=ym.split('-'); let suf='mes';
+    if (p.length===2) suf=p[0]+'-'+p[1];
+    const data=[['Fecha','Proveedor','Categoría','Importe','Pagado con','Notas','URL Foto']];
+    currentRows.forEach(r=>{
+      data.push([r.date,r.provider,r.category,r.amount,r.paidWith,r.notes||'',r.photoURL||'']);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Gastos');
+    XLSX.writeFile(wb,'gastos_2n_'+suf+'.xlsx');
+  }
+
+  async function downloadAllPhotos(){
+    if (!currentRows.length){ alert('No hay datos.'); return; }
+    const rows=currentRows.filter(r=>r.photoURL);
+    if (!rows.length){ alert('No hay fotos.'); return; }
+    if (!confirm('Se van a descargar '+rows.length+' fotos. ¿Continuar?')) return;
+    for (let i=0;i<rows.length;i++){
+      const r=rows[i];
+      try{
+        const resp=await fetch(r.photoURL);
+        const blob=await resp.blob();
+        const url=URL.createObjectURL(blob);
+        const safe=(r.provider||'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+        const a=document.createElement('a');
+        a.href=url;
+        a.download=r.date+'_'+safe+'_'+i+'.jpg';
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        await new Promise(res=>setTimeout(res,200));
+      }catch(e){ console.warn('No se pudo descargar',r.photoURL,e); }
+    }
+  }
+
+  document.getElementById('btnExcel').addEventListener('click',exportExcel);
+  document.getElementById('btnFotos').addEventListener('click',downloadAllPhotos);
+
+  auth.onAuthStateChanged(u=>{ if(u) loadCurrentMonth(); else tableWrapper.innerHTML='Inicia sesión.'; });
+})();</script>
+</body>
+</html>

@@ -1,2 +1,106 @@
 <!doctype html>
-<html><body><h1>Versión definitiva - KMS</h1></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Kilómetros · Gastos 2N</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <h1>
+    <img src="assets/2n-logo-black.png" style="height:20px;border-radius:4px;">
+    Kilómetros
+  </h1>
+  <a class="badge" href="index.html">🏠 Inicio</a>
+  <a class="badge" href="summary.html">📄 Summary</a>
+</header>
+<main class="content">
+  <div class="grid">
+    <div class="card">
+      <h2>Registrar KM</h2>
+      <div class="row">
+        <div>
+          <label>Fecha</label><br>
+          <input id="kmDate" type="date">
+        </div>
+        <div>
+          <label>KM inicial</label><br>
+          <input id="kmStart" type="number">
+        </div>
+        <div>
+          <label>KM final</label><br>
+          <input id="kmEnd" type="number">
+        </div>
+      </div>
+      <div class="row">
+        <label>Motivo</label>
+        <input id="kmReason" type="text" style="min-width:200px">
+      </div>
+      <button id="btnSaveKM" class="btn primary">Guardar KM</button>
+    </div>
+    <div class="card">
+      <h2>Total acumulado</h2>
+      <div id="kmTotal" class="kpi" style="font-size:22px;text-align:center">0 km</div>
+    </div>
+    <div class="card">
+      <h2>Últimos movimientos</h2>
+      <table id="tablaKM">
+        <thead>
+          <tr><th>Fecha</th><th>Inicio</th><th>Fin</th><th>Recorrido</th><th>Motivo</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  if (!firebase.apps.length) firebase.initializeApp(window.__FBCONFIG__);
+  const auth=firebase.auth();const db=firebase.firestore();
+  document.getElementById('kmDate').value=new Date().toISOString().slice(0,10);
+
+  async function saveKM(){
+    const u=auth.currentUser;if(!u){alert('Debes iniciar sesión.');return;}
+    const date=document.getElementById('kmDate').value;
+    const start=Number(document.getElementById('kmStart').value||0);
+    const end=Number(document.getElementById('kmEnd').value||0);
+    const reason=document.getElementById('kmReason').value;
+    if(end<start){alert('El KM final no puede ser menor que el inicial.');return;}
+    try{
+      await db.collection('users/'+u.uid+'/kms').add({
+        date:new Date(date),
+        startKM:start,
+        endKM:end,
+        distance:end-start,
+        reason:reason,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      alert('KM guardados ✔️');
+      loadData();
+    }catch(e){alert('Error guardando KM: '+e.message);}
+  }
+  document.getElementById('btnSaveKM').onclick=saveKM;
+
+  async function loadData(){
+    const u=auth.currentUser;if(!u)return;
+    const tbody=document.querySelector('#tablaKM tbody');tbody.innerHTML='';
+    const snap=await db.collection('users/'+u.uid+'/kms').orderBy('date','desc').limit(20).get();
+    let totalKM=0;
+    snap.forEach(doc=>{
+      const e=doc.data();const d=e.date.toDate().toISOString().slice(0,10);
+      totalKM+=Number(e.distance||0);
+      const tr=document.createElement('tr');
+      tr.innerHTML='<td>'+d+'</td><td>'+e.startKM+'</td><td>'+e.endKM+'</td><td>'+e.distance+'</td><td>'+(e.reason||'')+'</td>';
+      tbody.appendChild(tr);
+    });
+    document.getElementById('kmTotal').textContent=totalKM+' km';
+  }
+  auth.onAuthStateChanged(u=>{ if(u) loadData(); });
+})();</script>
+</body>
+</html>
