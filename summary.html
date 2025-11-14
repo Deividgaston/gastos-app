@@ -13,7 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- jsPDF + autoTable para PDF bonito -->
+  <!-- jsPDF + autoTable para PDF -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -86,12 +86,15 @@
 
     <div class="card">
       <h2>Vista previa gastos</h2>
-      <div id="previewExpenses" class="list small"></div>
-    </div>
-
-    <div class="card">
-      <h2>Vista previa imágenes</h2>
-      <div id="previewImages" class="list small" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      <div class="row" style="align-items:flex-start;gap:12px">
+        <div id="previewExpenses" class="list small" style="flex:2;max-height:260px;overflow:auto;"></div>
+        <div style="flex:1;min-width:130px;">
+          <div class="small">Vista previa ticket</div>
+          <div style="margin-top:6px;border:1px solid #ddd;border-radius:8px;padding:4px;min-height:80px;display:flex;align-items:center;justify-content:center;">
+            <img id="previewPhoto" src="" alt="Vista previa ticket" style="max-width:100%;max-height:220px;border-radius:6px;display:none;">
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -184,6 +187,9 @@
 (function(){
 
   function $(id){ return document.getElementById(id); }
+
+  // Estado actual (para saber qué gasto está seleccionado)
+  let __currentEntries = [];
 
   // Inicializar mes y año actuales
   (function initMonthYear(){
@@ -286,68 +292,65 @@
   }
 
   /* ============ VISTAS PREVIAS ============ */
+  function showPhotoForEntry(entry){
+    const img = $('previewPhoto');
+    if (!img) return;
+
+    if (entry && entry.photoURL){
+      img.src = entry.photoURL;
+      img.style.display = 'block';
+    } else {
+      img.src = '';
+      img.style.display = 'none';
+    }
+  }
+
   function renderExpensesPreview(entries){
     const cont = $('previewExpenses');
     if (!cont) return;
     cont.innerHTML = '';
 
+    __currentEntries = entries || [];
+
     if (!entries.length){
       cont.innerHTML = "<div class='small'>Sin gastos para este mes.</div>";
+      showPhotoForEntry(null);
       return;
     }
 
-    entries.slice(0,15).forEach(e=>{
+    entries.forEach((e, idx)=>{
       const d = e._date || new Date(e.date);
       const div = document.createElement('div');
       div.className = 'small';
+      div.style.padding = '4px 6px';
+      div.style.cursor = 'pointer';
+      div.style.borderRadius = '4px';
+
       div.textContent =
         formatISO(d) + ' · ' +
         (e.provider || '-') + ' · ' +
         (e.amount || 0) + '€ · ' +
         (e.category || '') + ' · ' +
         (e.paidWith === 'personal' ? '💳 Personal' : '🏢 Empresa');
+
+      div.addEventListener('click', function(){
+        // quitar selección previa
+        Array.from(cont.children).forEach(ch=>{
+          ch.style.background = 'transparent';
+        });
+        div.style.background = 'rgba(0,0,0,0.05)';
+        showPhotoForEntry(e);
+      });
+
       cont.appendChild(div);
     });
-  }
 
-  function renderImagesPreview(entries){
-    const cont = $('previewImages');
-    if (!cont) return;
-    cont.innerHTML = '';
-
-    const withPhotos = entries.filter(e => e.photoURL);
-    if (!withPhotos.length){
-      cont.innerHTML = "<div class='small'>Sin imágenes para este mes.</div>";
-      return;
+    // Por defecto mostramos la primera con foto si existe
+    const firstWithPhoto = entries.find(e => e.photoURL) || entries[0];
+    showPhotoForEntry(firstWithPhoto);
+    if (cont.firstChild){
+      cont.firstChild.style.background = 'rgba(0,0,0,0.05)';
     }
-
-    withPhotos.slice(0,12).forEach(e=>{
-      const d = e._date || new Date(e.date);
-      const wrapper = document.createElement('div');
-      wrapper.className = 'small';
-      wrapper.style.display = 'flex';
-      wrapper.style.flexDirection = 'column';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.gap = '4px';
-
-      const img = document.createElement('img');
-      img.src = e.photoURL;
-      img.alt = e.provider || 'ticket';
-      img.style.width = '70px';
-      img.style.height = 'auto';
-      img.style.borderRadius = '6px';
-      img.style.objectFit = 'cover';
-      img.loading = 'lazy';
-
-      const caption = document.createElement('div');
-      caption.textContent = formatISO(d);
-      caption.style.fontSize = '10px';
-      caption.style.textAlign = 'center';
-
-      wrapper.appendChild(img);
-      wrapper.appendChild(caption);
-      cont.appendChild(wrapper);
-    });
   }
 
   function renderKmPreview(kms){
@@ -360,7 +363,7 @@
       return;
     }
 
-    kms.slice(0,15).forEach(k=>{
+    kms.slice(0,30).forEach(k=>{
       const d = k._date || new Date(k.date);
       const div = document.createElement('div');
       div.className = 'small';
@@ -469,7 +472,6 @@
       ]);
 
       renderExpensesPreview(entries);
-      renderImagesPreview(entries);
       renderKmPreview(kms);
 
       const totals = computeTotals(entries, kms);
@@ -491,7 +493,7 @@
 
   async function loadLogoDataURL(){
     if (__logoDataURL) return __logoDataURL;
-    return new Promise((resolve, reject)=>{
+    return new Promise((resolve)=>{
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = function(){
@@ -539,16 +541,12 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('p','mm','a4');
 
-      // Fondo suave en todo el documento (opcional)
-      // doc.setFillColor(248,248,248);
-      // doc.rect(0,0,210,297,'F');
-
-      // Logo 2N en esquina superior derecha
+      // Logo 2N esquina superior derecha
       if (logoDataURL){
         doc.addImage(logoDataURL,'PNG',150,10,40,12);
       }
 
-      // Título / cabecera
+      // Cabecera
       doc.setFont('helvetica','bold');
       doc.setFontSize(18);
       doc.text('Informe de gastos - 2N', 14, 20);
@@ -559,7 +557,7 @@
       doc.text('Cost center: Iberia Team', 14, 34);
       doc.text(`Periodo: ${mm}/${y}`, 14, 40);
 
-      // Bloques de resumen profesional
+      // Bloques resumen
       const t = totals;
 
       // Bloque 1: Gastos
@@ -589,7 +587,7 @@
       doc.text(`Empresa: ${t.totalKmEmpresa.toFixed(2)} km`, 114, 70);
       doc.text(`Personales: ${t.totalKmPersonal.toFixed(2)} km`, 114, 76);
 
-      // Tabla resumen por categoría
+      // Tabla por categoría (sin cabecera negra)
       const catRows = Object.keys(t.porCategoria).sort().map(cat=>[
         cat,
         t.porCategoria[cat].toFixed(2) + ' €'
@@ -605,8 +603,8 @@
           head: [['Categoría','Importe']],
           body: catRows,
           theme: 'striped',
-          styles: { fontSize: 9 },
-          headStyles: { fillColor: [0,0,0], textColor: [255,255,255] }
+          styles: { fontSize: 9 }
+          // Sin headStyles negros
         });
         currentY = doc.lastAutoTable.finalY + 6;
       }
@@ -640,7 +638,6 @@
           body: gastosBody,
           theme: 'striped',
           styles: { fontSize: 8, cellWidth: 'wrap' },
-          headStyles: { fillColor: [0,0,0], textColor: [255,255,255] },
           columnStyles: {
             0: { cellWidth: 22 },
             1: { cellWidth: 35 },
@@ -649,6 +646,7 @@
             4: { cellWidth: 22 },
             5: { cellWidth: 60 }
           }
+          // Sin headStyles negros
         });
       }
 
@@ -683,7 +681,6 @@
           body: kmsBody,
           theme: 'striped',
           styles: { fontSize: 8, cellWidth: 'wrap' },
-          headStyles: { fillColor: [0,0,0], textColor: [255,255,255] },
           columnStyles: {
             0: { cellWidth: 22 },
             1: { cellWidth: 15 },
@@ -692,6 +689,7 @@
             4: { cellWidth: 25 },
             5: { cellWidth: 60 }
           }
+          // Sin headStyles negros
         });
       }
 
