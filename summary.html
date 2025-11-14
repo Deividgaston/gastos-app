@@ -3,91 +3,608 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Summary · Gastos 2N</title>
+  <title>Gastos 2N · Summary</title>
+
   <link rel="stylesheet" href="assets/style.css">
 
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
+
+  <!-- jsPDF + autoTable para PDF bonito -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Config Firebase -->
   <script src="config.js"></script>
 </head>
+
 <body>
 <header class="topbar">
   <h1>
-    <img src="assets/2n-logo-black.png" style="height:20px;border-radius:4px;">
-    Summary
+    <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:4px;">
+    Gastos 2N · Summary
   </h1>
+
   <a class="badge" href="index.html">🏠 Inicio</a>
+  <a class="badge" href="kms.html">🚗 KM</a>
   <a class="badge" href="export.html">📤 Export</a>
+  <a class="badge active" href="summary.html">📄 Summary</a>
+
+  <div class="header-actions">
+    <span id="whoami" class="badge">No autenticado</span>
+    <button id="btnLogin" class="btn">Iniciar sesión</button>
+    <button id="btnLogout" class="btn danger" style="display:none">Salir</button>
+  </div>
 </header>
 
 <main class="content">
   <div class="grid">
     <div class="card">
-      <h2>Movimientos del mes actual</h2>
-      <table id="tabla">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Proveedor</th>
-            <th>Categoría</th>
-            <th>€</th>
-            <th>Pago</th>
-            <th>Foto</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <h2>Resumen mensual</h2>
+
+      <div class="row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div>
+          <label>Mes</label><br>
+          <select id="selMonth">
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Año</label><br>
+          <input id="selYear" type="number" style="width:120px">
+        </div>
+
+        <div style="flex:1;min-width:200px">
+          <div class="small">
+            Consulta el resumen de gastos y kilómetros del mes seleccionado y genera un PDF tipo informe.
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px;gap:8px;flex-wrap:wrap">
+        <button id="btnRefresh" class="btn">🔄 Actualizar vista</button>
+        <button id="btnPdf" class="btn primary">📄 Generar PDF</button>
+      </div>
+
+      <div id="summaryStatus" class="small" style="margin-top:10px;min-height:2em"></div>
+    </div>
+
+    <div class="card">
+      <h2>Vista previa gastos</h2>
+      <div id="previewExpenses" class="list small"></div>
+    </div>
+
+    <div class="card">
+      <h2>Vista previa KM</h2>
+      <div id="previewKms" class="list small"></div>
+    </div>
+
+    <div class="card">
+      <h2>Totales rápidos</h2>
+      <div id="previewTotals" class="small"></div>
     </div>
   </div>
 </main>
 
+<!-- ======================= FIREBASE AUTH ======================== -->
 <script>
 (function(){
-  if (!firebase.apps.length) firebase.initializeApp(window.__FBCONFIG__);
-  const auth = firebase.auth();
-  const db   = firebase.firestore();
+  try{
+    if (!firebase.apps.length){
+      firebase.initializeApp(window.__FBCONFIG__);
+    }
 
-  async function load(){
-    const u = auth.currentUser;
-    if (!u) return;
+    const auth = firebase.auth();
 
+    if (firebase.auth.Auth.Persistence){
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    }
+    if (auth.getRedirectResult){
+      auth.getRedirectResult().catch(()=>{});
+    }
+
+    function updateUser(user){
+      const who   = document.getElementById('whoami');
+      const btnIn = document.getElementById('btnLogin');
+      const btnOut= document.getElementById('btnLogout');
+
+      if (user){
+        if (who)   who.textContent = 'Conectado: ' + (user.email || user.uid);
+        if (btnIn) btnIn.style.display = 'none';
+        if (btnOut)btnOut.style.display= '';
+      } else {
+        if (who)   who.textContent = 'No autenticado';
+        if (btnIn) btnIn.style.display = '';
+        if (btnOut)btnOut.style.display= 'none';
+      }
+
+      try{
+        document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user}}));
+      }catch(e){}
+    }
+
+    auth.onAuthStateChanged(updateUser);
+
+    window.__APPCTX__ = {
+      auth,
+      db: firebase.firestore(),
+      storage: firebase.storage()
+    };
+
+    const prov   = new firebase.auth.GoogleAuthProvider();
+    const btnIn  = document.getElementById('btnLogin');
+    const btnOut = document.getElementById('btnLogout');
+
+    if (btnIn){
+      btnIn.addEventListener('click', function(){
+        auth.signInWithPopup(prov).catch(function(err){
+          if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')){
+            auth.signInWithRedirect(prov);
+          } else {
+            alert('Error login: ' + (err && err.message || ''));
+          }
+        });
+      });
+    }
+
+    if (btnOut){
+      btnOut.addEventListener('click', function(){
+        auth.signOut();
+      });
+    }
+
+  }catch(e){
+    console.error(e);
+  }
+})();
+</script>
+
+<!-- ======================= SUMMARY LOGIC ========================= -->
+<script>
+(function(){
+
+  function $(id){ return document.getElementById(id); }
+
+  // Inicializar mes y año actuales
+  (function initMonthYear(){
     const now = new Date();
-    const y   = now.getFullYear();
-    const m   = now.getMonth();
+    if ($('selMonth')) $('selMonth').value = String(now.getMonth()+1);
+    if ($('selYear'))  $('selYear').value  = String(now.getFullYear());
+  })();
 
-    const start = new Date(y,m,1);
-    const end   = new Date(y,m+1,1);
+  function setStatus(msg){
+    const el = $('summaryStatus');
+    if (el) el.textContent = msg || '';
+  }
 
-    const snap = await db.collection('users/'+u.uid+'/entries')
-      .where('date','>=',start)
-      .where('date','<', end)
-      .orderBy('date','desc')
-      .get();
+  function formatISO(date){
+    if (!(date instanceof Date)) date = new Date(date);
+    return date.toISOString().slice(0,10);
+  }
 
-    const tbody = document.querySelector('#tabla tbody');
-    tbody.innerHTML = '';
+  function getRange(){
+    const m = parseInt($('selMonth').value,10);
+    const y = parseInt($('selYear').value,10);
+    const start = new Date(Date.UTC(y, m-1, 1));
+    const end   = new Date(Date.UTC(y, m,   1));
+    return { m, y, start, end };
+  }
 
-    snap.forEach(doc=>{
-      const e = doc.data();
-      const d = e.date.toDate().toISOString().slice(0,10);
+  /* ============ LECTURA DE GASTOS ============ */
+  async function getEntries(){
+    const ctx  = window.__APPCTX__ || {};
+    const auth = ctx.auth;
+    const db   = ctx.db;
+    const user = auth && auth.currentUser;
+    const {start,end} = getRange();
+    const entries = [];
 
-      const tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td>'+d+'</td>'+
-        '<td>'+(e.provider||'')+'</td>'+
-        '<td>'+(e.category||'')+'</td>'+
-        '<td>'+Number(e.amount||0).toFixed(2)+'</td>'+
-        '<td>'+(e.paidWith||'')+'</td>'+
-        '<td>'+(e.photoURL ? '<a href="'+e.photoURL+'" target="_blank">📷</a>' : '')+'</td>';
+    if (user && db){
+      const snap = await db.collection('users/' + user.uid + '/entries')
+        .orderBy('date','asc')
+        .get();
 
-      tbody.appendChild(tr);
+      snap.forEach(doc=>{
+        const e = doc.data();
+        const d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
+        if (d >= start && d < end){
+          e._date = d;
+          entries.push(e);
+        }
+      });
+    } else {
+      const arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
+      arr.forEach(e=>{
+        const d = new Date(e.date);
+        if (d >= start && d < end){
+          e._date = d;
+          entries.push(e);
+        }
+      });
+    }
+    return entries;
+  }
+
+  /* ============ LECTURA DE KMS ============ */
+  async function getKmEntries(){
+    const ctx  = window.__APPCTX__ || {};
+    const auth = ctx.auth;
+    const db   = ctx.db;
+    const user = auth && auth.currentUser;
+    const {start,end} = getRange();
+    const kms = [];
+
+    if (user && db){
+      try{
+        const snap = await db.collection('users/' + user.uid + '/kms')
+          .orderBy('date','asc')
+          .get();
+
+        snap.forEach(doc=>{
+          const e = doc.data();
+          const d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
+          if (d >= start && d < end){
+            e._date = d;
+            kms.push(e);
+          }
+        });
+      }catch(e){
+        console.warn('Error leyendo kms de Firestore', e);
+      }
+    } else {
+      const arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
+      arr.forEach(e=>{
+        const d = new Date(e.date);
+        if (d >= start && d < end){
+          e._date = d;
+          kms.push(e);
+        }
+      });
+    }
+
+    return kms;
+  }
+
+  /* ============ VISTA PREVIA ============ */
+  function renderExpensesPreview(entries){
+    const cont = $('previewExpenses');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!entries.length){
+      cont.innerHTML = "<div class='small'>Sin gastos para este mes.</div>";
+      return;
+    }
+
+    entries.slice(0,15).forEach(e=>{
+      const d = e._date || new Date(e.date);
+      const div = document.createElement('div');
+      div.className = 'small';
+      div.textContent =
+        formatISO(d) + ' · ' +
+        (e.provider || '-') + ' · ' +
+        (e.amount || 0) + '€ · ' +
+        (e.category || '') + ' · ' +
+        (e.paidWith === 'personal' ? '💳 Personal' : '🏢 Empresa');
+      cont.appendChild(div);
     });
   }
 
-  auth.onAuthStateChanged(u=>{
-    if (u) load();
-  });
+  function renderKmPreview(kms){
+    const cont = $('previewKms');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!kms.length){
+      cont.innerHTML = "<div class='small'>Sin KM para este mes.</div>";
+      return;
+    }
+
+    kms.slice(0,15).forEach(k=>{
+      const d = k._date || new Date(k.date);
+      const div = document.createElement('div');
+      div.className = 'small';
+      const tipo = (k.type || k.kind || '').toLowerCase();
+      const tipoTxt = tipo.includes('pers') || tipo.includes('priv') ? '🚶‍♂️ Personal' : '🚗 Empresa';
+      div.textContent =
+        formatISO(d) + ' · ' +
+        (k.km || k.distance || 0) + ' km · ' +
+        tipoTxt;
+      cont.appendChild(div);
+    });
+  }
+
+  function computeTotals(entries, kms){
+    let total = 0;
+    let totalEmpresa = 0;
+    let totalPersonal = 0;
+    const porCategoria = {};
+
+    entries.forEach(e=>{
+      const amt = Number(e.amount || 0);
+      if (!amt) return;
+      total += amt;
+      if (e.paidWith === 'personal') totalPersonal += amt;
+      else totalEmpresa += amt;
+
+      const cat = (e.category || 'varios').toLowerCase();
+      porCategoria[cat] = (porCategoria[cat] || 0) + amt;
+    });
+
+    let totalKm = 0;
+    let totalKmPersonal = 0;
+    let totalKmEmpresa = 0;
+
+    kms.forEach(k=>{
+      const dist = Number(k.km || k.distance || 0);
+      if (!dist) return;
+      totalKm += dist;
+      const t = (k.type || k.kind || '').toLowerCase();
+      if (t.includes('pers') || t.includes('priv')){
+        totalKmPersonal += dist;
+      } else {
+        totalKmEmpresa += dist;
+      }
+    });
+
+    return {
+      total,
+      totalEmpresa,
+      totalPersonal,
+      porCategoria,
+      totalKm,
+      totalKmPersonal,
+      totalKmEmpresa
+    };
+  }
+
+  function renderTotals(totals){
+    const cont = $('previewTotals');
+    if (!cont) return;
+
+    if (!totals){
+      cont.textContent = 'Sin datos.';
+      return;
+    }
+
+    const {
+      total,
+      totalEmpresa,
+      totalPersonal,
+      porCategoria,
+      totalKm,
+      totalKmPersonal,
+      totalKmEmpresa
+    } = totals;
+
+    let html = '';
+
+    html += `<b>Gasto total:</b> ${total.toFixed(2)} €<br>`;
+    html += `<b>Pagado con empresa:</b> ${totalEmpresa.toFixed(2)} €<br>`;
+    html += `<b>Pagado con dinero personal:</b> ${totalPersonal.toFixed(2)} €<br><br>`;
+
+    html += `<b>Por categoría:</b><br>`;
+    if (Object.keys(porCategoria).length === 0){
+      html += `&nbsp;&nbsp;Sin desgloses.<br>`;
+    } else {
+      Object.keys(porCategoria).sort().forEach(cat=>{
+        html += `&nbsp;&nbsp;${cat}: ${porCategoria[cat].toFixed(2)} €<br>`;
+      });
+    }
+
+    html += `<br><b>Kilómetros totales:</b> ${totalKm.toFixed(2)} km<br>`;
+    html += `&nbsp;&nbsp;Empresa: ${totalKmEmpresa.toFixed(2)} km<br>`;
+    html += `&nbsp;&nbsp;Personales: ${totalKmPersonal.toFixed(2)} km<br>`;
+
+    cont.innerHTML = html;
+  }
+
+  /* ============ REFRESH GENERAL ============ */
+  async function refreshAll(){
+    try{
+      setStatus('Cargando datos del mes…');
+      const [entries, kms] = await Promise.all([
+        getEntries(),
+        getKmEntries()
+      ]);
+
+      renderExpensesPreview(entries);
+      renderKmPreview(kms);
+
+      const totals = computeTotals(entries, kms);
+      renderTotals(totals);
+
+      if (!entries.length && !kms.length){
+        setStatus('No hay datos para este mes.');
+      } else {
+        setStatus('');
+      }
+    }catch(e){
+      console.error(e);
+      setStatus('Error cargando datos: ' + (e.message || e));
+    }
+  }
+
+  /* ============ GENERAR PDF ============ */
+  async function generatePdf(){
+    try{
+      setStatus('Generando PDF…');
+      const [entries, kms] = await Promise.all([
+        getEntries(),
+        getKmEntries()
+      ]);
+
+      if (!entries.length && !kms.length){
+        alert('No hay datos para este mes.');
+        setStatus('No hay datos para este mes.');
+        return;
+      }
+
+      const totals = computeTotals(entries, kms);
+      const {m,y} = getRange();
+      const mm = String(m).padStart(2,'0');
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p','mm','a4');
+
+      // Título / cabecera
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(16);
+      doc.text('Informe de gastos - 2N', 14, 20);
+
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(11);
+      doc.text(`Empleado: David Gaston`, 14, 28);
+      doc.text(`Cost center: Iberia Team`, 14, 34);
+      doc.text(`Periodo: ${mm}/${y}`, 14, 40);
+
+      // Resumen rápido
+      const t = totals;
+      const resumen = [
+        `Gasto total: ${t.total.toFixed(2)} €`,
+        `   - Empresa: ${t.totalEmpresa.toFixed(2)} €`,
+        `   - Personal: ${t.totalPersonal.toFixed(2)} €`,
+        `Kilómetros totales: ${t.totalKm.toFixed(2)} km`,
+        `   - Empresa: ${t.totalKmEmpresa.toFixed(2)} km`,
+        `   - Personales: ${t.totalKmPersonal.toFixed(2)} km`
+      ];
+      doc.setFontSize(10);
+      let yPos = 48;
+      resumen.forEach(line=>{
+        doc.text(line, 14, yPos);
+        yPos += 5;
+      });
+
+      // Tabla resumen por categoría
+      const catRows = Object.keys(t.porCategoria).sort().map(cat=>[
+        cat,
+        t.porCategoria[cat].toFixed(2) + ' €'
+      ]);
+      if (catRows.length){
+        doc.autoTable({
+          startY: yPos + 3,
+          head: [['Categoría','Importe']],
+          body: catRows,
+          theme: 'striped',
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [0,0,0], textColor: [255,255,255] }
+        });
+      }
+
+      // Tabla de gastos (puede ir en otra página si hace falta)
+      const gastosBody = entries.map(e=>{
+        const d = formatISO(e._date || e.date);
+        const paid = e.paidWith === 'personal' ? 'Personal' : 'Empresa';
+        return [
+          d,
+          e.provider || '',
+          (e.category || ''),
+          (Number(e.amount || 0).toFixed(2) + ' €'),
+          paid,
+          (e.notes || '')
+        ];
+      });
+
+      if (gastosBody.length){
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.setFont('helvetica','bold');
+        doc.text('Detalle de gastos', 14, 20);
+
+        doc.autoTable({
+          startY: 26,
+          head: [['Fecha','Proveedor','Categoría','Importe','Pago','Notas']],
+          body: gastosBody,
+          theme: 'striped',
+          styles: { fontSize: 8, cellWidth: 'wrap' },
+          headStyles: { fillColor: [0,0,0], textColor: [255,255,255] },
+          columnStyles: {
+            0: { cellWidth: 22 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 20 },
+            4: { cellWidth: 22 },
+            5: { cellWidth: 60 }
+          }
+        });
+      }
+
+      // Tabla de KM
+      const kmsBody = kms.map(k=>{
+        const d = formatISO(k._date || k.date);
+        const dist = Number(k.km || k.distance || 0).toFixed(2);
+        const tKm = (k.type || k.kind || '').toLowerCase();
+        const tipoTxt = tKm.includes('pers') || tKm.includes('priv') ? 'Personal' : 'Empresa';
+        return [
+          d,
+          dist,
+          tipoTxt,
+          (k.fuelPrice != null ? String(k.fuelPrice) : ''),
+          (k.totalKm != null ? String(k.totalKm) : ''),
+          (k.notes || '')
+        ];
+      });
+
+      if (kmsBody.length){
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.setFont('helvetica','bold');
+        doc.text('Detalle de kilómetros', 14, 20);
+
+        doc.autoTable({
+          startY: 26,
+          head: [['Fecha','KM','Tipo','Precio combustible','KM total','Notas']],
+          body: kmsBody,
+          theme: 'striped',
+          styles: { fontSize: 8, cellWidth: 'wrap' },
+          headStyles: { fillColor: [0,0,0], textColor: [255,255,255] },
+          columnStyles: {
+            0: { cellWidth: 22 },
+            1: { cellWidth: 15 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 30 },
+            4: { cellWidth: 25 },
+            5: { cellWidth: 60 }
+          }
+        });
+      }
+
+      const filename = `informe_gastos_2n_${y}-${mm}.pdf`;
+      doc.save(filename);
+      setStatus('PDF generado: ' + filename);
+    }catch(e){
+      console.error(e);
+      setStatus('Error generando PDF: ' + (e.message || e));
+    }
+  }
+
+  /* ============ EVENTOS ============ */
+  if ($('btnRefresh')) $('btnRefresh').addEventListener('click', refreshAll);
+  if ($('btnPdf'))     $('btnPdf').addEventListener('click', generatePdf);
+
+  if ($('selMonth')) $('selMonth').addEventListener('change', refreshAll);
+  if ($('selYear'))  $('selYear').addEventListener('change',  refreshAll);
+
+  document.addEventListener('auth-changed', ()=>{ refreshAll(); }, false);
+
+  // Primera carga
+  refreshAll();
+
 })();
 </script>
 
