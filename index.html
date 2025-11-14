@@ -331,7 +331,7 @@
     });
   }
 
-  /* PICK FILE / CAMARA */
+  /* PICK FILE / CÁMARA (CORREGIDO PARA LANZAR OCR AUTO) */
   function pickFile(fromCamera){
     var inp = document.createElement('input');
     inp.type   = 'file';
@@ -342,11 +342,19 @@
       var f = inp.files && inp.files[0];
       if (!f) return;
       window.__lastFile = f;
+
+      // Vista previa
       $('revThumb').src = URL.createObjectURL(f);
-      $('revFileInfo').textContent = (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
+      $('revFileInfo').textContent =
+        (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
+
+      // Fecha por defecto: hoy
       $('revDate').value = new Date().toISOString().slice(0,10);
+
+      // Abrimos modal y lanzamos OCR
       openModal();
-      setTimeout(runOCR, 150);
+      $('revFileInfo').textContent += ' · Analizando ticket…';
+      setTimeout(runOCR, 200);
     };
 
     inp.click();
@@ -356,6 +364,20 @@
   if ($('btnPick')) $('btnPick').addEventListener('click', function(){ pickFile(false); });
   if ($('btnCam'))  $('btnCam').addEventListener('click',  function(){ pickFile(true);  });
   if ($('closeReview')) $('closeReview').addEventListener('click', closeModal);
+
+  /* HELPER: FILE → BASE64 SEGURO */
+  function fileToBase64(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var dataUrl = e.target.result;          // data:image/...;base64,AAAA
+        var base64  = dataUrl.split(',')[1] || '';
+        resolve(base64);
+      };
+      reader.onerror = function(err){ reject(err); };
+      reader.readAsDataURL(file);
+    });
+  }
 
   /* PARSER OCR */
   function normalizarCategoria(raw){
@@ -439,27 +461,44 @@
     return key;
   }
 
+  /* OCR CON GEMINI (CORREGIDO) */
   async function runOCR(){
     try{
       var key  = await ensureKey();
       var file = window.__lastFile;
       if (!key || !file) return;
 
-      var ab  = await file.arrayBuffer();
-      var b64 = btoa(String.fromCharCode.apply(null,new Uint8Array(ab)));
+      if ($('revFileInfo')) {
+        $('revFileInfo').textContent =
+          (file.name || 'ticket') + ' · ' + Math.round((file.size || 0)/1024) +
+          ' KB · Analizando con OCR…';
+      }
+
+      var b64 = await fileToBase64(file);
 
       var body = {
         contents: [{
           role : 'user',
           parts: [
-            { text: 'Extrae proveedor, fecha (YYYY-MM-DD), categoría (comida, peajes, gasolina, transporte, alojamiento, ocio, servicios, varios o ingreso) e importe total EUR. Devuelve JSON con provider,date,category,amount.' },
-            { inline_data: { mime_type:'image/jpeg', data:b64 } }
+            {
+              text:
+                'Extrae proveedor, fecha (YYYY-MM-DD), categoría (comida, peajes, gasolina, ' +
+                'transporte, alojamiento, ocio, servicios, varios o ingreso) e importe total EUR. ' +
+                'Devuelve SOLO un JSON con provider,date,category,amount, sin texto adicional.'
+            },
+            {
+              inline_data: {
+                mime_type: file.type || 'image/jpeg',
+                data     : b64
+              }
+            }
           ]
         }]
       };
 
       var res  = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+
+        encodeURIComponent(key),
         {
           method :'POST',
           headers:{ 'Content-Type':'application/json' },
@@ -467,16 +506,47 @@
         }
       );
 
+      if (!res.ok){
+        console.error('HTTP error OCR', res.status);
+        if ($('revFileInfo')){
+          $('revFileInfo').textContent =
+            'Error OCR (HTTP ' + res.status + '). Revisa la API Key o los límites de uso.';
+        }
+        return;
+      }
+
       var data = await res.json();
-      var text =
-        data &&
-        data.candidates &&
-        data.candidates[0] &&
-        data.candidates[0].content &&
-        data.candidates[0].content.parts &&
-        data.candidates[0].content.parts[0].text
-          ? data.candidates[0].content.parts[0].text
-          : "";
+
+      var text = '';
+      try{
+        var parts =
+          data &&
+          data.candidates &&
+          data.candidates[0] &&
+          data.candidates[0].content &&
+          data.candidates[0].content.parts;
+
+        if (Array.isArray(parts)){
+          for (var i=0; i<parts.length; i++){
+            if (parts[i].text){
+              text += parts[i].text + '\n';
+            }
+          }
+        }
+      }catch(e){
+        console.warn('Error leyendo respuesta de Gemini', e);
+      }
+
+      if (!text){
+        console.warn('Respuesta OCR sin texto útil', data);
+        if ($('revFileInfo')){
+          $('revFileInfo').textContent =
+            'No se ha podido leer el ticket. Prueba con una foto más clara o revisa la clave.';
+        }
+        return;
+      }
+
+      console.log('OCR RAW TEXT:', text);
 
       var parsed = parseOcrText(text);
 
@@ -487,8 +557,18 @@
       if (parsed.category){
         $('revCategory').value = parsed.category;
       }
+
+      if ($('revFileInfo')){
+        $('revFileInfo').textContent =
+          (file.name || 'ticket') + ' · ' + Math.round((file.size || 0)/1024) +
+          ' KB · OCR completado ✅';
+      }
     }catch(e){
       console.warn('OCR error', e);
+      if ($('revFileInfo')){
+        $('revFileInfo').textContent =
+          'Error ejecutando OCR: ' + (e.message || e);
+      }
     }
   }
 
