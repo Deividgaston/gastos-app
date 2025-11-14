@@ -225,8 +225,8 @@
 (function(){
   function $(id){ return document.getElementById(id); }
 
-  // 🔑 cache global de la API key
-  window.__GKEY__ = localStorage.getItem('gkey') || null;
+  // 🔑 Cargar la key en memoria al iniciar
+  window.__GKEY__ = window.__GKEY__ || localStorage.getItem('gkey') || null;
 
   /* MODALES */
   function openModal(){
@@ -274,7 +274,7 @@
       }
       window.__GKEY__ = v;
       localStorage.setItem('gkey', v);
-      $('ocrStatus').textContent = 'Clave guardada correctamente. ✅';
+      $('ocrStatus').textContent = 'Clave guardada correctamente.';
     });
   }
 
@@ -314,7 +314,7 @@
           $('ocrStatus').textContent = 'Error al probar la clave: HTTP '+res.status;
           return;
         }
-        // ✅ Si la clave es válida, la guardamos también
+        // ✅ Si la clave es válida, la guardamos directamente
         window.__GKEY__ = key;
         localStorage.setItem('gkey', key);
         $('ocrStatus').textContent = 'Clave válida y guardada ✅';
@@ -341,7 +341,7 @@
     });
   }
 
-  /* PICK FILE / CAMARA */
+  /* PICK FILE / CAMARA (igual que antes, con OCR auto) */
   function pickFile(fromCamera){
     var inp = document.createElement('input');
     inp.type   = 'file';
@@ -356,7 +356,7 @@
       $('revFileInfo').textContent = (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
       $('revDate').value = new Date().toISOString().slice(0,10);
       openModal();
-      setTimeout(runOCR, 150);
+      setTimeout(runOCR, 150); // ⬅️ IMPORTANTE: OCR automático como antes
     };
 
     inp.click();
@@ -440,16 +440,20 @@
     return out;
   }
 
+  // ✅ NUEVA ensureKey que usa memoria + localStorage
   async function ensureKey(){
-    // ✅ primero miramos la variable global, luego localStorage
-    var key = window.__GKEY__ || localStorage.getItem('gkey');
-    if (key){
-      window.__GKEY__ = key;
-      return key;
+    var key = window.__GKEY__;
+    if (!key){
+      key = localStorage.getItem('gkey');
+      if (key){
+        window.__GKEY__ = key;
+      }
     }
-    // si no hay clave, abrimos el modal para que la pongas una vez
-    openOCRModal();
-    throw new Error('No hay API Key configurada');
+    if (!key){
+      openOCRModal();
+      throw new Error('No hay API Key configurada');
+    }
+    return key;
   }
 
   async function runOCR(){
@@ -479,11 +483,6 @@
           body   : JSON.stringify(body)
         }
       );
-
-      if (!res.ok){
-        console.warn('Error OCR (HTTP '+res.status+')');
-        return;
-      }
 
       var data = await res.json();
       var text =
