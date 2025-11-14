@@ -13,7 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- Config Firebase (usa window.__FBCONFIG__ desde config.js) -->
+  <!-- Config Firebase -->
   <script src="config.js"></script>
 </head>
 <body>
@@ -225,6 +225,9 @@
 (function(){
   function $(id){ return document.getElementById(id); }
 
+  // 🔑 cache global de la API key
+  window.__GKEY__ = localStorage.getItem('gkey') || null;
+
   /* MODALES */
   function openModal(){
     var m = $('reviewModal');
@@ -243,9 +246,11 @@
   function openOCRModal(){
     var m = $('ocrModal');
     if (!m) return;
-    var key = localStorage.getItem('gkey') || '';
+    var key = window.__GKEY__ || localStorage.getItem('gkey') || '';
     $('ocrKeyInput').value = key;
-    $('ocrStatus').textContent = key ? 'Clave cargada en este dispositivo.' : 'No hay clave guardada todavía.';
+    $('ocrStatus').textContent = key
+      ? 'Clave cargada en este dispositivo.'
+      : 'No hay clave guardada todavía.';
     m.classList.add('open');
     m.setAttribute('aria-hidden','false');
   }
@@ -267,13 +272,15 @@
         alert('Introduce una clave válida.');
         return;
       }
+      window.__GKEY__ = v;
       localStorage.setItem('gkey', v);
-      $('ocrStatus').textContent = 'Clave guardada correctamente.';
+      $('ocrStatus').textContent = 'Clave guardada correctamente. ✅';
     });
   }
 
   if ($('btnClearKey')){
     $('btnClearKey').addEventListener('click', function(){
+      window.__GKEY__ = null;
       localStorage.removeItem('gkey');
       $('ocrKeyInput').value = '';
       $('ocrStatus').textContent = 'Clave borrada. El OCR no funcionará hasta que configures una nueva.';
@@ -292,12 +299,11 @@
         var body = {
           contents: [{
             role: 'user',
-            parts:[{ text: 'Hola, responde con un OK.' }]
+            parts:[{ text: 'Hola' }]
           }]
         };
         var res = await fetch(
-          'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key='+
-          encodeURIComponent(key),
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
           {
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -308,7 +314,10 @@
           $('ocrStatus').textContent = 'Error al probar la clave: HTTP '+res.status;
           return;
         }
-        $('ocrStatus').textContent = 'Clave válida ✅';
+        // ✅ Si la clave es válida, la guardamos también
+        window.__GKEY__ = key;
+        localStorage.setItem('gkey', key);
+        $('ocrStatus').textContent = 'Clave válida y guardada ✅';
       }catch(e){
         $('ocrStatus').textContent = 'Error al probar la clave: '+(e.message||e);
       }
@@ -332,7 +341,7 @@
     });
   }
 
-  /* PICK FILE / CÁMARA -> abre modal y lanza OCR auto */
+  /* PICK FILE / CAMARA */
   function pickFile(fromCamera){
     var inp = document.createElement('input');
     inp.type   = 'file';
@@ -343,19 +352,11 @@
       var f = inp.files && inp.files[0];
       if (!f) return;
       window.__lastFile = f;
-
-      // Vista previa
       $('revThumb').src = URL.createObjectURL(f);
-      $('revFileInfo').textContent =
-        (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
-
-      // Fecha por defecto: hoy
+      $('revFileInfo').textContent = (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
       $('revDate').value = new Date().toISOString().slice(0,10);
-
-      // Abrimos modal y lanzamos OCR
       openModal();
-      $('revFileInfo').textContent += ' · Analizando ticket…';
-      setTimeout(runOCR, 200);
+      setTimeout(runOCR, 150);
     };
 
     inp.click();
@@ -366,179 +367,146 @@
   if ($('btnCam'))  $('btnCam').addEventListener('click',  function(){ pickFile(true);  });
   if ($('closeReview')) $('closeReview').addEventListener('click', closeModal);
 
-  /* HELPERS IA (tomados del index que te funcionaba) */
-
-  function fileToBase64(file){
-    return new Promise(function(resolve, reject){
-      var reader = new FileReader();
-      reader.onload = function(e){
-        var dataUrl = e.target.result;          // data:image/...;base64,AAAA
-        var base64  = dataUrl.split(',')[1] || '';
-        resolve(base64);
-      };
-      reader.onerror = function(err){ reject(err); };
-      reader.readAsDataURL(file);
-    });
+  /* PARSER OCR */
+  function normalizarCategoria(raw){
+    if (!raw) return null;
+    var c = String(raw).trim().toLowerCase();
+    if (c.includes('ingres')) return 'ingreso';
+    if (c.includes('comida') || c.includes('rest') || c.includes('food')) return 'comida';
+    if (c.includes('peaje') || c.includes('toll')) return 'peajes';
+    if (c.includes('gas') || c.includes('fuel') || c.includes('diesel')) return 'gasolina';
+    if (c.includes('hotel') || c.includes('aloj')) return 'alojamiento';
+    if (c.includes('ocio') || c.includes('entertain')) return 'ocio';
+    if (c.includes('serv')) return 'servicios';
+    if (c.includes('transp') || c.includes('taxi') || c.includes('uber') || c.includes('cabify')) return 'transporte';
+    return 'varios';
   }
 
-  function safeParseJSON(text){
-    var s = (text || '').trim();
-    if (s.startsWith('```')) {
-      s = s.replace(/^```(?:json)?/i,'').replace(/```$/i,'').trim();
-    }
-    var a = s.indexOf('{');
-    var b = s.lastIndexOf('}');
-    if (a !== -1 && b !== -1) {
-      s = s.slice(a, b+1);
-    }
-    return JSON.parse(s);
-  }
+  function parseOcrText(text){
+    var out = { provider:null, date:null, amount:null, category:null };
 
-  function fallbackParse(text){
-    var t = (text || '').replace(/\s+/g,' ').trim();
-    var amount = 0;
-    var m = t.match(/(\d+[.,]\d{2})\s*(€|eur)?/i);
-    if (m) amount = Number(m[1].replace(',', '.'));
-
-    var dateISO = new Date().toISOString().slice(0,10);
-    var d1 = t.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
-    var d2 = t.match(/(\d{4})[\/\-](\d{2})[\/\-](\d{2})/);
-    if (d2) {
-      dateISO = d2[1] + '-' + d2[2] + '-' + d2[3];
-    } else if (d1) {
-      dateISO = d1[3] + '-' + d1[2] + '-' + d1[1];
+    var jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch){
+      try{
+        var obj = JSON.parse(jsonMatch[0]);
+        out.provider = obj.provider || obj.proveedor || null;
+        out.date     = obj.date     || obj.fecha     || null;
+        out.amount   = obj.amount   || obj.importe   || null;
+        out.category = obj.category || obj.categoria || null;
+      }catch(e){}
     }
 
-    var provider = 'Ticket';
-    var prov = t.match(/^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9&\-. ]{2,40}/);
-    if (prov) provider = prov[0].trim();
+    if (!out.provider){
+      var mProv = text.match(/(?:provider|proveedor)\s*[:=]\s*"?([^\n"]+)/i);
+      if (!mProv) mProv = text.match(/^[A-ZÁÉÍÓÚÑ0-9][^\n]{3,30}$/m);
+      if (mProv) out.provider = (mProv[1] ? mProv[1] : mProv[0]).trim();
+    }
 
-    return { date: dateISO, provider: provider, amount: amount };
+    if (!out.date){
+      var mISO = text.match(/(\d{4}-\d{2}-\d{2})/);
+      if (mISO){
+        out.date = mISO[1];
+      } else {
+        var mEU = text.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+        if (mEU){
+          var d = mEU[1].padStart(2,'0');
+          var m = mEU[2].padStart(2,'0');
+          var y = mEU[3];
+          if (y.length === 2) y = '20'+y;
+          out.date = y+'-'+m+'-'+d;
+        }
+      }
+    }
+
+    if (out.amount == null){
+      var allNums = text.match(/(\d+[.,]\d{2})\s*€?/g);
+      if (allNums && allNums.length){
+        var last = allNums[allNums.length-1];
+        last = last.replace(/[€\s]/g,'').replace(',','.');
+        var val = parseFloat(last);
+        if (!isNaN(val)) out.amount = val;
+      }
+    }
+
+    if (!out.category){
+      var mCat = text.match(/(?:category|categor[ií]a)\s*[:=]\s*"?([a-zA-Záéíóúñ]+)/i);
+      if (mCat) out.category = mCat[1];
+    }
+
+    if (out.category){
+      out.category = normalizarCategoria(out.category);
+    }
+
+    return out;
   }
 
   async function ensureKey(){
-    var key = (localStorage.getItem('gkey') || '').trim();
-    if (!key){
-      openOCRModal();
-      throw new Error('No hay API Key configurada');
+    // ✅ primero miramos la variable global, luego localStorage
+    var key = window.__GKEY__ || localStorage.getItem('gkey');
+    if (key){
+      window.__GKEY__ = key;
+      return key;
     }
-    return key;
+    // si no hay clave, abrimos el modal para que la pongas una vez
+    openOCRModal();
+    throw new Error('No hay API Key configurada');
   }
 
-  /* OCR CON GEMINI (misma lógica que el index bueno) */
   async function runOCR(){
     try{
       var key  = await ensureKey();
       var file = window.__lastFile;
       if (!key || !file) return;
 
-      if ($('revFileInfo')) {
-        $('revFileInfo').textContent =
-          (file.name || 'ticket') + ' · ' + Math.round((file.size || 0)/1024) +
-          ' KB · Analizando con OCR…';
-      }
-
-      var b64 = await fileToBase64(file);
-
-      var prompt = 'Devuelve solo un JSON válido con:\n' +
-        '{"date":"YYYY-MM-DD","provider":"Nombre","amount":0.00}';
+      var ab  = await file.arrayBuffer();
+      var b64 = btoa(String.fromCharCode.apply(null,new Uint8Array(ab)));
 
       var body = {
         contents: [{
           role : 'user',
           parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: file.type || 'image/jpeg',
-                data    : b64
-              }
-            }
+            { text: 'Extrae proveedor, fecha (YYYY-MM-DD), categoría (comida, peajes, gasolina, transporte, alojamiento, ocio, servicios, varios o ingreso) e importe total EUR. Devuelve JSON con provider,date,category,amount.' },
+            { inline_data: { mime_type:'image/jpeg', data:b64 } }
           ]
         }]
       };
 
-      var url = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=' +
-                encodeURIComponent(key);
-
-      var res  = await fetch(url, {
-        method :'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body   : JSON.stringify(body)
-      });
-
-      var rawText = await res.text();
-      var data = null;
-      try{ data = JSON.parse(rawText); }catch(e){}
+      var res  = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
+        {
+          method :'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body   : JSON.stringify(body)
+        }
+      );
 
       if (!res.ok){
-        console.error('HTTP error OCR', res.status, data || rawText);
-        if ($('revFileInfo')){
-          $('revFileInfo').textContent =
-            'Error OCR (HTTP ' + res.status + '). Revisa la API Key o los límites de uso.';
-        }
+        console.warn('Error OCR (HTTP '+res.status+')');
         return;
       }
 
-      var text = '';
-      try{
-        var parts =
-          data &&
-          data.candidates &&
-          data.candidates[0] &&
-          data.candidates[0].content &&
-          data.candidates[0].content.parts;
+      var data = await res.json();
+      var text =
+        data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0].text
+          ? data.candidates[0].content.parts[0].text
+          : "";
 
-        if (Array.isArray(parts)){
-          for (var i=0; i<parts.length; i++){
-            if (parts[i].text){
-              text += parts[i].text + '\n';
-            }
-          }
-        }
-      }catch(e){
-        console.warn('Error leyendo respuesta de Gemini', e);
-      }
+      var parsed = parseOcrText(text);
 
-      if (!text){
-        console.warn('Respuesta OCR sin texto útil', data || rawText);
-        if ($('revFileInfo')){
-          $('revFileInfo').textContent =
-            'No se ha podido leer el ticket. Prueba con una foto más clara o revisa la clave.';
-        }
-        return;
-      }
-
-      console.log('OCR RAW TEXT:', text);
-
-      var parsed;
-      try{
-        parsed = safeParseJSON(text);
-      }catch(e){
-        parsed = fallbackParse(text);
-      }
-
-      var dateStr = parsed.date || new Date().toISOString().slice(0,10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){
-        dateStr = new Date().toISOString().slice(0,10);
-      }
-      $('revDate').value     = dateStr;
-      $('revProvider').value = (parsed.provider || 'Ticket').toString().slice(0,80);
-      if (parsed.amount != null){
+      if (parsed.provider) $('revProvider').value = parsed.provider;
+      if (parsed.date)     $('revDate').value     = parsed.date;
+      if (parsed.amount != null)
         $('revAmount').value = Number(parsed.amount || 0);
-      }
-
-      if ($('revFileInfo')){
-        $('revFileInfo').textContent =
-          (file.name || 'ticket') + ' · ' + Math.round((file.size || 0)/1024) +
-          ' KB · OCR completado ✅';
+      if (parsed.category){
+        $('revCategory').value = parsed.category;
       }
     }catch(e){
       console.warn('OCR error', e);
-      if ($('revFileInfo')){
-        $('revFileInfo').textContent =
-          'Error ejecutando OCR: ' + (e.message || e);
-      }
     }
   }
 
