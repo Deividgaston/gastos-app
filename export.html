@@ -13,7 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- XLSX para generar Excel -->
+  <!-- XLSX para generar/modificar Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <!-- Config Firebase -->
@@ -276,53 +276,51 @@
   }
 
   /* Mapear categoría interna -> columnas plantilla 2N */
-  function mapTo2NRow(e){
-    var d = e._date || new Date(e.date);
-    var fecha     = formatDateISO(d);
-    var proveedor = e.provider || '';
+  function mapTo2NCols(e){
     var cat       = (e.category || '').toString().toLowerCase();
     var importe   = (typeof e.amount === 'number') ? e.amount : Number(e.amount || 0);
-    var notas     = e.notes || '';
-
     if (!importe) importe = 0;
 
     // Omitimos ingresos en la plantilla de gastos
     if (cat === 'ingreso') return null;
 
-    var tolls   = 0;
-    var hotel   = 0;
-    var gas     = 0;
-    var tickets = 0;
-    var other   = 0;
-    var invit   = 0;
-    var meals   = 0;
-    var varios  = 0;
+    var cols = {
+      tolls   : 0, // C
+      hotel   : 0, // D
+      gas     : 0, // E
+      tickets : 0, // F
+      other   : 0, // G
+      invit   : 0, // H
+      meals   : 0, // I
+      varios  : 0  // J
+    };
 
-    if      (cat === 'peajes')      tolls  = importe;
-    else if (cat === 'gasolina')    gas    = importe;
-    else if (cat === 'alojamiento') hotel  = importe;
-    else if (cat === 'transporte')  other  = importe;
-    else if (cat === 'comida')      meals  = importe;
-    else if (cat === 'ocio')        varios = importe;
-    else if (cat === 'servicios')   varios = importe;
-    else                            varios = importe; // 'varios' y cualquier otro
+    if      (cat === 'peajes')      cols.tolls  = importe;
+    else if (cat === 'gasolina')    cols.gas    = importe;
+    else if (cat === 'alojamiento') cols.hotel  = importe;
+    else if (cat === 'transporte')  cols.other  = importe;
+    else if (cat === 'comida')      cols.meals  = importe;
+    else if (cat === 'ocio')        cols.varios = importe;
+    else if (cat === 'servicios')   cols.varios = importe;
+    else                            cols.varios = importe; // 'varios' y cualquier otro
 
-    var total = importe; // en tu plantilla el TOTAL es la suma de C..J
+    return cols;
+  }
 
-    return [
-      fecha,       // DATE
-      proveedor,   // CLIENT / PROVIDER
-      tolls,       // TOLLS & PARKINGS
-      hotel,       // HOTEL
-      gas,         // GASOLINE
-      tickets,     // TICKETS
-      other,       // OTHER TRANSPORTS (Taxi)
-      invit,       // INVITATIONS
-      meals,       // MEALS / TRAVELING
-      varios,      // VARIOUS
-      total,       // TOTAL
-      notas        // DESCRIPTION
-    ];
+  function setCell(ws, addr, value){
+    var cell = ws[addr];
+    if (!cell) {
+      cell = ws[addr] = {};
+    }
+    cell.v = value;
+    if (typeof value === 'number') {
+      cell.t = 'n';
+    } else if (value == null || value === '') {
+      cell.t = 's';
+      cell.v = '';
+    } else {
+      cell.t = 's';
+    }
   }
 
   async function handleExportExcel(){
@@ -340,51 +338,76 @@
 
       renderPreview(entries, range);
 
-      var data = [];
-
-      // ==== CABECERA NDF (datos fijos) ====
-      data.push(['PRENOM', 'david']);
-      data.push(['NOM', 'gaston']);
-      data.push(['COST CENTER', 'iberia team']);
-      data.push([]);
-      data.push([]);
-      data.push([]);
-
-      // ==== CABECERA DE TABLA NDF ====
-      data.push([
-        'DATE',
-        'CLIENT / PROVIDER',
-        'TOLLS & PARKINGS',
-        'HOTEL',
-        'GASOLINE',
-        'TICKETS',
-        'OTHER TRANSPORTS (Taxi)',
-        'INVITATIONS',
-        'MEALS / TRAVELING',
-        'VARIOUS',
-        'TOTAL',
-        'DESCRIPTION'
-      ]);
-
+      // Filtramos entradas válidas (no ingresos)
+      var validEntries = [];
       entries.forEach(function(e){
-        var row = mapTo2NRow(e);
-        if (row) data.push(row);
+        var mapped = mapTo2NCols(e);
+        if (mapped) {
+          validEntries.push({ entry: e, cols: mapped });
+        }
       });
 
-      if (data.length <= 7){
+      if (!validEntries.length){
         setStatus('Solo hay ingresos o apuntes sin importe, nada que exportar en plantilla 2N.');
         return;
       }
 
-      var ws = XLSX.utils.aoa_to_sheet(data);
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'NDF');
+      setStatus('Cargando plantilla 2N…');
 
+      // 👇 Asegúrate de tener "plantilla-2n.xlsx" junto a export.html
+      var tplRes = await fetch('plantilla-2n.xlsx');
+      if (!tplRes.ok){
+        throw new Error('No se puede cargar "plantilla-2n.xlsx" (HTTP ' + tplRes.status + ')');
+      }
+      var ab    = await tplRes.arrayBuffer();
+      var wb    = XLSX.read(ab, { type:'array' });
+      var ws    = wb.Sheets['NDF'] || wb.Sheets[wb.SheetNames[0]];
+
+      // Rellenar cabecera con tus datos
+      setCell(ws, 'B2', 'Gaston');      // NOM (apellido)
+      setCell(ws, 'B3', 'David');       // PRENOM
+      setCell(ws, 'D3', 'iberia team'); // COST CENTER
+
+      // Los datos empiezan en la fila 7 en la plantilla (DATE/CLIENT/etc hasta la 5-6, luego formulas en K7...)
+      var startRow = 7;
+
+      validEntries.forEach(function(obj, idx){
+        var e    = obj.entry;
+        var cols = obj.cols;
+        var row  = startRow + idx;
+
+        var d = e._date || new Date(e.date);
+        var fecha     = formatDateISO(d);
+        var proveedor = e.provider || '';
+        var notas     = e.notes || '';
+
+        // A: DATE
+        setCell(ws, 'A' + row, fecha);
+        // B: CLIENT / PROVIDER
+        setCell(ws, 'B' + row, proveedor);
+
+        // C..J: importes según categoría
+        setCell(ws, 'C' + row, cols.tolls);
+        setCell(ws, 'D' + row, cols.hotel);
+        setCell(ws, 'E' + row, cols.gas);
+        setCell(ws, 'F' + row, cols.tickets);
+        setCell(ws, 'G' + row, cols.other);
+        setCell(ws, 'H' + row, cols.invit);
+        setCell(ws, 'I' + row, cols.meals);
+        setCell(ws, 'J' + row, cols.varios);
+
+        // K (TOTAL) lo dejamos con la fórmula original de la plantilla (=SUM(Crow:Jrow))
+
+        // L: DESCRIPTION
+        setCell(ws, 'L' + row, notas);
+      });
+
+      // Guardar el Excel manteniendo todos los estilos/formulas de la plantilla
       var mm = String(range.m).padStart(2,'0');
       var filename = 'gastos_2n_' + range.y + '-' + mm + '.xlsx';
 
       XLSX.writeFile(wb, filename);
-      setStatus('Excel generado (plantilla 2N): ' + filename);
+      setStatus('Excel generado a partir de la plantilla 2N: ' + filename);
     }catch(e){
       console.error(e);
       setStatus('Error al generar el Excel: ' + (e.message || e));
