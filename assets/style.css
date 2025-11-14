@@ -1,11 +1,30 @@
-:root{--bg:#05070a;--bg2:#0b0f15;--card:#11161f;--border:#1b2430;--text:#ecf2ff;--muted:#9fb1c7;--accent:#09d49a;--danger:#ff6b6b;}
+:root{
+  --bg:#05070a;
+  --bg2:#0b0f15;
+  --card:#11161f;
+  --border:#1b2430;
+  --text:#ecf2ff;
+  --muted:#9fb1c7;
+  --accent:#09d49a;
+  --danger:#ff6b6b;
+}
+
 *{box-sizing:border-box;}
-html,body{margin:0;padding:0;height:100%;}
+
+html,body{
+  margin:0;
+  padding:0;
+  height:100%;
+}
+
 body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,Roboto,Arial,sans-serif;
   background:radial-gradient(circle at top,#151b2c,#05070a);
   color:var(--text);
 }
+
+/* TOP BAR */
+
 .topbar{
   padding:12px 16px;
   border-bottom:1px solid var(--border);
@@ -17,6 +36,7 @@ body{
   top:0;
   z-index:20;
 }
+
 .topbar h1{
   margin:0;
   font-size:18px;
@@ -24,6 +44,7 @@ body{
   align-items:center;
   gap:8px;
 }
+
 .badge{
   display:inline-flex;
   align-items:center;
@@ -35,12 +56,16 @@ body{
   text-decoration:none;
   background:rgba(10,14,20,0.9);
 }
+
 .header-actions{
   margin-left:auto;
   display:flex;
   gap:8px;
   align-items:center;
 }
+
+/* BOTONES */
+
 .btn{
   border-radius:999px;
   border:1px solid transparent;
@@ -50,19 +75,25 @@ body{
   background:#182232;
   color:var(--text);
 }
+
 .btn.primary{
   background:var(--accent);
   color:#020304;
   font-weight:600;
 }
+
 .btn.danger{
   background:#33131a;
   border-color:#52202c;
   color:#ffe3ea;
 }
+
+/* LAYOUT PRINCIPAL */
+
 main.content{
   padding:16px;
 }
+
 .grid{
   max-width:1024px;
   margin:0 auto;
@@ -70,6 +101,7 @@ main.content{
   flex-direction:column;
   gap:16px;
 }
+
 .card{
   background:linear-gradient(145deg,#0b1018,#05070a);
   border-radius:18px;
@@ -77,22 +109,30 @@ main.content{
   padding:16px 18px;
   box-shadow:0 18px 40px rgba(0,0,0,0.45);
 }
+
 .card h2{
   margin-top:0;
   margin-bottom:10px;
   font-size:18px;
 }
+
 .row{
   display:flex;
   flex-wrap:wrap;
   gap:10px;
   align-items:center;
 }
+
 .small{
   font-size:12px;
   color:var(--muted);
 }
-input,select,textarea{
+
+/* FORMULARIOS */
+
+input,
+select,
+textarea{
   background:#05070a;
   border-radius:12px;
   border:1px solid #202a39;
@@ -100,7 +140,13 @@ input,select,textarea{
   padding:8px 10px;
   font:inherit;
 }
-textarea{width:100%;}
+
+textarea{
+  width:100%;
+}
+
+/* MINIATURA IMAGEN */
+
 .thumb{
   width:100px;
   height:100px;
@@ -109,12 +155,18 @@ textarea{width:100%;}
   object-fit:cover;
   background:#05070a;
 }
+
+/* LISTA ÚLTIMOS APUNTES */
+
 .list{
   display:flex;
   flex-direction:column;
   gap:6px;
   font-size:13px;
 }
+
+/* MODALES */
+
 .modal{
   position:fixed;
   inset:0;
@@ -124,7 +176,11 @@ textarea{width:100%;}
   background:rgba(0,0,0,0.6);
   z-index:50;
 }
-.modal.open{display:flex;}
+
+.modal.open{
+  display:flex;
+}
+
 .modal .panel{
   background:#05070a;
   border-radius:18px;
@@ -132,7 +188,15 @@ textarea{width:100%;}
   padding:16px;
   width:min(640px,100% - 32px);
 }
-.kpi-row{display:flex;flex-wrap:wrap;gap:10px;}
+
+/* KPI */
+
+.kpi-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
 .kpi{
   flex:1;
   min-width:150px;
@@ -141,23 +205,69 @@ textarea{width:100%;}
   border:1px solid var(--border);
   background:#05070a;
 }
-.kpi b{display:block;margin-bottom:4px;font-size:13px;}
-.kpi div{font-size:18px;font-weight:600;}
+
+.kpi b{
+  display:block;
+  margin-bottom:4px;
+  font-size:13px;
+}
+
+.kpi div{
+  font-size:18px;
+  font-weight:600;
+}
+
+/* TABLAS */
+
 table{
   width:100%;
   border-collapse:collapse;
   font-size:13px;
 }
-th,td{
+
+th,
+td{
   padding:6px 4px;
   border-bottom:1px solid #202838;
 }
-th{text-align:left;color:var(--muted);font-weight:500;}
+
+th{
+  text-align:left;
+  color:var(--muted);
+  font-weight:500;
+}
+
+/* RESPONSIVE iPHONE 16 PRO MAX (y móviles en general) */
+
 @media (max-width:480px){
-  .topbar{flex-wrap:wrap;gap:6px}
-  .topbar h1{font-size:16px;flex-basis:100%}
-  .header-actions{width:100%;justify-content:flex-end}
-  main.content{padding:10px}
-  .card{padding:14px}
-  .btn{padding:8px 10px}
+  .topbar{
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .topbar h1{
+    font-size:16px;
+    flex-basis:100%;
+  }
+
+  .header-actions{
+    width:100%;
+    justify-content:flex-end;
+  }
+
+  main.content{
+    padding:10px;
+  }
+
+  .card{
+    padding:14px;
+  }
+
+  .btn{
+    padding:8px 10px;
+  }
+
+  .row{
+    gap:8px;
+  }
 }
