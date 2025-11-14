@@ -55,9 +55,10 @@
   </div>
 </main>
 
-<!-- MODAL REVISIÓN / GUARDADO -->
+<!-- MODAL REVISIÓN -->
 <div id="reviewModal" class="modal" aria-hidden="true">
   <div class="panel">
+
     <div class="row" style="justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:16px">Revisar y guardar</h2>
       <button id="closeReview" class="btn">Cerrar</button>
@@ -116,12 +117,14 @@
       </div>
       <button id="saveReview" class="btn primary">Guardar</button>
     </div>
+
   </div>
 </div>
 
-<!-- MODAL CONFIG OCR -->
+<!-- MODAL OCR -->
 <div id="ocrModal" class="modal" aria-hidden="true">
   <div class="panel">
+
     <div class="row" style="justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:16px">Configurar OCR (Gemini)</h2>
       <button id="closeOCR" class="btn">Cerrar</button>
@@ -131,8 +134,7 @@
       <label>API Key de Gemini</label><br>
       <input id="ocrKeyInput" type="text" style="width:100%">
       <div class="small" style="margin-top:6px">
-        Se guarda solo en este dispositivo (localStorage).<br>
-        Puedes conseguir tu API Key en <b>aistudio.google.com</b>.
+        Se guarda en este dispositivo (localStorage).
       </div>
     </div>
 
@@ -140,14 +142,14 @@
       <button id="btnTestKey" class="btn">Probar clave</button>
       <div class="row">
         <button id="btnSaveKey" class="btn primary">Guardar clave</button>
-        <button id="btnClearKey" class="btn danger">Borrar clave</button>
+        <button id="btnClearKey" class="btn danger">Borrar</button>
       </div>
     </div>
 
     <div id="ocrStatus" class="small" style="margin-top:8px"></div>
+
   </div>
 </div>
-
 <!-- FIREBASE + AUTH GOOGLE -->
 <script>
 (function(){
@@ -228,7 +230,8 @@
   // 🔑 Cargar la key en memoria al iniciar
   window.__GKEY__ = window.__GKEY__ || localStorage.getItem('gkey') || null;
 
-  /* MODALES */
+  /* ========= MODALES ========= */
+
   function openModal(){
     var m = $('reviewModal');
     if (!m) return;
@@ -265,6 +268,8 @@
   if ($('btnConfigOCR')) $('btnConfigOCR').addEventListener('click', openOCRModal);
   if ($('closeOCR'))     $('closeOCR').addEventListener('click', closeOCRModal);
 
+  /* ========= GESTIÓN API KEY ========= */
+
   if ($('btnSaveKey')){
     $('btnSaveKey').addEventListener('click', function(){
       var v = $('ocrKeyInput').value.trim();
@@ -274,7 +279,7 @@
       }
       window.__GKEY__ = v;
       localStorage.setItem('gkey', v);
-      $('ocrStatus').textContent = 'Clave guardada correctamente.';
+      $('ocrStatus').textContent = 'Clave guardada correctamente. ✅';
     });
   }
 
@@ -310,11 +315,22 @@
             body:JSON.stringify(body)
           }
         );
+
         if (!res.ok){
-          $('ocrStatus').textContent = 'Error al probar la clave: HTTP '+res.status;
+          // Manejo especial HTTP 404: guardamos igual y dejamos seguir
+          if (res.status === 404){
+            window.__GKEY__ = key;
+            localStorage.setItem('gkey', key);
+            $('ocrStatus').textContent =
+              'No he podido verificar la clave (HTTP 404), pero la he guardado. Prueba a escanear un ticket ✅';
+          } else {
+            $('ocrStatus').textContent =
+              'Error al probar la clave: HTTP '+res.status;
+          }
           return;
         }
-        // ✅ Si la clave es válida, la guardamos directamente
+
+        // Respuesta OK → guardamos
         window.__GKEY__ = key;
         localStorage.setItem('gkey', key);
         $('ocrStatus').textContent = 'Clave válida y guardada ✅';
@@ -324,7 +340,8 @@
     });
   }
 
-  /* INGRESO MANUAL */
+  /* ========= INGRESO MANUAL ========= */
+
   var manualBtn = $('manualBtn');
   if (manualBtn){
     manualBtn.addEventListener('click', function(){
@@ -341,7 +358,8 @@
     });
   }
 
-  /* PICK FILE / CAMARA (igual que antes, con OCR auto) */
+  /* ========= PICK FILE / CÁMARA (OCR AUTO) ========= */
+
   function pickFile(fromCamera){
     var inp = document.createElement('input');
     inp.type   = 'file';
@@ -353,10 +371,12 @@
       if (!f) return;
       window.__lastFile = f;
       $('revThumb').src = URL.createObjectURL(f);
-      $('revFileInfo').textContent = (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
+      $('revFileInfo').textContent =
+        (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
       $('revDate').value = new Date().toISOString().slice(0,10);
       openModal();
-      setTimeout(runOCR, 150); // ⬅️ IMPORTANTE: OCR automático como antes
+      // OCR automático como antes
+      setTimeout(runOCR, 150);
     };
 
     inp.click();
@@ -367,7 +387,8 @@
   if ($('btnCam'))  $('btnCam').addEventListener('click',  function(){ pickFile(true);  });
   if ($('closeReview')) $('closeReview').addEventListener('click', closeModal);
 
-  /* PARSER OCR */
+  /* ========= PARSER OCR ========= */
+
   function normalizarCategoria(raw){
     if (!raw) return null;
     var c = String(raw).trim().toLowerCase();
@@ -440,7 +461,8 @@
     return out;
   }
 
-  // ✅ NUEVA ensureKey que usa memoria + localStorage
+  /* ========= KEY PARA OCR ========= */
+
   async function ensureKey(){
     var key = window.__GKEY__;
     if (!key){
@@ -455,6 +477,8 @@
     }
     return key;
   }
+
+  /* ========= OCR PRINCIPAL ========= */
 
   async function runOCR(){
     try{
@@ -484,6 +508,11 @@
         }
       );
 
+      if (!res.ok){
+        console.warn('OCR error HTTP', res.status);
+        return;
+      }
+
       var data = await res.json();
       var text =
         data &&
@@ -508,6 +537,8 @@
       console.warn('OCR error', e);
     }
   }
+
+  /* ========= GUARDAR ENTRADA ========= */
 
   async function saveEntry(){
     var ctx  = window.__APPCTX__ || {};
@@ -579,7 +610,8 @@
 
   if ($('saveReview')) $('saveReview').addEventListener('click', saveEntry);
 
-  /* LISTA ÚLTIMOS APUNTES */
+  /* ========= LISTA ÚLTIMOS APUNTES ========= */
+
   function renderList(){
     var cont = $('lista');
     if (!cont) return;
@@ -628,11 +660,13 @@
     }
   }
 
-  document.addEventListener('auth-changed',     renderList, false);
-  document.addEventListener('entries-updated',  renderList, false);
+  document.addEventListener('auth-changed',    renderList, false);
+  document.addEventListener('entries-updated', renderList, false);
   renderList();
 })();
 </script>
-
 </body>
 </html>
+
+
+  
