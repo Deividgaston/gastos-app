@@ -3,286 +3,601 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Exportar · Gastos 2N</title>
+  <title>Gastos 2N · Export</title>
+
   <link rel="stylesheet" href="assets/style.css">
 
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-  <script src="config.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- Exportar a Excel -->
+  <!-- XLSX para generar Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Config Firebase -->
+  <script src="config.js"></script>
 </head>
 <body>
 <header class="topbar">
   <h1>
-    <img src="assets/2n-logo-black.png" style="height:20px;border-radius:4px;">
-    Exportar
+    <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:4px;">
+    Gastos 2N · Export
   </h1>
+
   <a class="badge" href="index.html">🏠 Inicio</a>
+  <a class="badge" href="kms.html">🚗 KM</a>
+  <a class="badge active" href="export.html">📤 Export</a>
   <a class="badge" href="summary.html">📄 Summary</a>
+
+  <div class="header-actions">
+    <span id="whoami" class="badge">No autenticado</span>
+    <button id="btnLogin" class="btn">Iniciar sesión</button>
+    <button id="btnLogout" class="btn danger" style="display:none">Salir</button>
+  </div>
 </header>
 
 <main class="content">
   <div class="grid">
     <div class="card">
-      <h2>Mes a exportar</h2>
-      <div class="row">
+      <h2>Exportar gastos</h2>
+      <div class="row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
         <div>
-          <label>Mes</label><br>
-          <input id="monthInput" type="month">
+          <label for="selMonth">Mes</label><br>
+          <select id="selMonth">
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+          </select>
         </div>
         <div>
-          <label>&nbsp;</label><br>
-          <span id="monthLabel" class="badge">Mes actual</span>
+          <label for="selYear">Año</label><br>
+          <input id="selYear" type="number" style="width:110px">
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div class="small">
+            Se exportan los apuntes del mes seleccionado, leyendo de Firestore si hay login
+            o de localStorage si no.
+          </div>
         </div>
       </div>
-      <div class="small">
-        Solo se suman como <b>Gastos (mi dinero)</b> los movimientos pagados con <b>Mi dinero</b>.
+
+      <div class="row" style="margin-top:16px;gap:8px;flex-wrap:wrap">
+        <button id="btnExportExcel" class="btn primary">📥 Descargar Excel (plantilla 2N)</button>
+        <button id="btnExportPhotos" class="btn">🖼 Descargar fotos del mes</button>
+        <button id="btnExportKmPersonal" class="btn">🚶‍♂️ Descargar KM personales</button>
       </div>
+
+      <div id="exportStatus" class="small" style="margin-top:10px;min-height:1.5em"></div>
     </div>
 
     <div class="card">
-      <h2>Resumen económico</h2>
-      <div class="kpi-row">
-        <div class="kpi">
-          <b>Gastos (mi dinero)</b>
-          <div id="kpiPersonal">0,00 €</div>
-        </div>
-        <div class="kpi">
-          <b>Otros pagos</b>
-          <div id="kpiOtros">0,00 €</div>
-        </div>
-        <div class="kpi">
-          <b>Ingresos</b>
-          <div id="kpiIngresos">0,00 €</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Exportación mensual</h2>
-      <div class="row">
-        <button id="btnExcel" class="btn primary">📊 Descargar Excel 2N</button>
-        <button id="btnFotos" class="btn">📸 Descargar todas las fotos del mes</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Movimientos del mes</h2>
-      <div id="tableWrapper" class="small">Cargando…</div>
+      <h2>Vista previa rápida</h2>
+      <div id="previewList" class="list small"></div>
     </div>
   </div>
 </main>
 
+<!-- FIREBASE + AUTH GOOGLE -->
 <script>
 (function(){
-  if (!firebase.apps.length) firebase.initializeApp(window.__FBCONFIG__);
-  const auth = firebase.auth();
-  const db   = firebase.firestore();
-
-  let currentRows = [];
-
-  const monthInput   = document.getElementById('monthInput');
-  const monthLabel   = document.getElementById('monthLabel');
-  const kpiPersonal  = document.getElementById('kpiPersonal');
-  const kpiOtros     = document.getElementById('kpiOtros');
-  const kpiIngresos  = document.getElementById('kpiIngresos');
-  const tableWrapper = document.getElementById('tableWrapper');
-
-  function formatEUR(n){
-    n = Number(n||0);
-    return n.toFixed(2).replace('.',',') + ' €';
-  }
-
-  function setMonthLabel(value){
-    if (!value){
-      monthLabel.textContent = 'Mes actual';
-      return;
+  try{
+    if (!firebase.apps.length) {
+      firebase.initializeApp(window.__FBCONFIG__);
     }
-    const p = value.split('-');
-    if (p.length !== 2){
-      monthLabel.textContent = 'Mes actual';
-      return;
-    }
-    const y = parseInt(p[0],10);
-    const m = parseInt(p[1],10) - 1;
-    const d = new Date(y,m,1);
-    monthLabel.textContent = d.toLocaleDateString('es-ES',{month:'long',year:'numeric'});
-  }
 
-  (function initMonth(){
-    const now = new Date();
-    const y   = now.getFullYear();
-    const m   = String(now.getMonth()+1).padStart(2,'0');
-    monthInput.value = y + '-' + m;
-    setMonthLabel(monthInput.value);
+    var auth = firebase.auth();
+
+    if (firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+    }
+    if (auth.getRedirectResult) {
+      auth.getRedirectResult().catch(function(){});
+    }
+
+    function updateUser(u){
+      var who = document.getElementById('whoami');
+      var bL  = document.getElementById('btnLogin');
+      var bO  = document.getElementById('btnLogout');
+
+      if (u){
+        if (who) who.textContent = 'Conectado: ' + (u.email || u.uid);
+        if (bL)  bL.style.display = 'none';
+        if (bO)  bO.style.display = '';
+      } else {
+        if (who) who.textContent = 'No autenticado';
+        if (bL)  bL.style.display = '';
+        if (bO)  bO.style.display = 'none';
+      }
+
+      try{
+        document.dispatchEvent(new CustomEvent('auth-changed',{ detail:{ user:u } }));
+      }catch(e){}
+    }
+
+    auth.onAuthStateChanged(updateUser);
+
+    window.__APPCTX__ = {
+      auth   : auth,
+      db     : firebase.firestore(),
+      storage: firebase.storage()
+    };
+
+    var prov   = new firebase.auth.GoogleAuthProvider();
+    var btnIn  = document.getElementById('btnLogin');
+    var btnOut = document.getElementById('btnLogout');
+
+    if (btnIn){
+      btnIn.addEventListener('click', function(){
+        auth.signInWithPopup(prov).catch(function(err){
+          if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')){
+            auth.signInWithRedirect(prov);
+          } else {
+            alert('Error login: ' + (err && err.message || ''));
+          }
+        });
+      });
+    }
+
+    if (btnOut){
+      btnOut.addEventListener('click', function(){
+        auth.signOut();
+      });
+    }
+  }catch(e){
+    console.error(e);
+  }
+})();
+</script>
+
+<!-- LÓGICA EXPORT -->
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+
+  /* Inicializar mes/año por defecto */
+  (function initMonthYear(){
+    var now  = new Date();
+    var m    = now.getMonth() + 1;
+    var y    = now.getFullYear();
+    if ($('selMonth')) $('selMonth').value = String(m);
+    if ($('selYear'))  $('selYear').value  = String(y);
   })();
 
-  monthInput.addEventListener('change', function(){
-    setMonthLabel(this.value);
-    loadCurrentMonth();
-  });
+  function setStatus(msg){
+    var el = $('exportStatus');
+    if (el) el.textContent = msg || '';
+  }
 
-  async function loadCurrentMonth(){
-    const user = auth.currentUser;
-    if (!user){
-      tableWrapper.innerHTML = 'Inicia sesión.';
-      return;
-    }
+  function formatDateISO(d){
+    if (!(d instanceof Date)) d = new Date(d);
+    return d.toISOString().slice(0,10);
+  }
 
-    let ym = monthInput.value;
-    if (!ym){
-      const now = new Date();
-      const y   = now.getFullYear();
-      const m   = String(now.getMonth()+1).padStart(2,'0');
-      ym = y + '-' + m;
-      monthInput.value = ym;
-      setMonthLabel(ym);
-    }
+  function slugify(str){
+    return (str || '')
+      .toString()
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'-')
+      .replace(/-+/g,'-')
+      .replace(/^-|-$/g,'') || 'ticket';
+  }
 
-    const p = ym.split('-');
-    const y = parseInt(p[0],10);
-    const m = parseInt(p[1],10) - 1;
+  function getMonthRange(){
+    var m = parseInt($('selMonth').value,10);
+    var y = parseInt($('selYear').value,10);
+    if (!m || !y) throw new Error('Mes o año no válidos');
+    var start = new Date(Date.UTC(y, m-1, 1, 0,0,0));
+    var end   = new Date(Date.UTC(y, m,   1, 0,0,0));
+    return { m, y, start, end };
+  }
 
-    const start = new Date(y,m,1);
-    const end   = new Date(y,m+1,1);
+  /* ==== GASTOS (entries) ==== */
 
-    try{
-      tableWrapper.innerHTML = 'Cargando…';
+  async function getMonthEntries(){
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
 
-      const snap = await db.collection('users/'+user.uid+'/entries')
-        .where('date','>=', start)
-        .where('date','<',  end)
+    var range = getMonthRange();
+    var start = range.start;
+    var end   = range.end;
+
+    var entries = [];
+
+    if (user && db){
+      // Leemos todo ordenado y filtramos en cliente para evitar problemas de índices
+      var snap = await db.collection('users/' + user.uid + '/entries')
         .orderBy('date','asc')
         .get();
 
-      currentRows = [];
-      let totalPersonal = 0;
-      let totalOtros    = 0;
-      let totalIngresos = 0;
-
-      snap.forEach(doc=>{
-        const e = doc.data();
-        const d = e.date.toDate();
-
-        const row = {
-          date    : d.toISOString().slice(0,10),
-          provider: e.provider || '',
-          category: e.category || '',
-          amount  : Number(e.amount || 0),
-          paidWith: e.paidWith || '',
-          notes   : e.notes || '',
-          photoURL: e.photoURL || ''
-        };
-
-        currentRows.push(row);
-
-        if (row.category === 'ingreso')       totalIngresos += row.amount;
-        else if (row.paidWith === 'personal') totalPersonal += row.amount;
-        else                                  totalOtros    += row.amount;
+      snap.forEach(function(doc){
+        var e = doc.data();
+        var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
+        if (d >= start && d < end){
+          e._id   = doc.id;
+          e._date = d;
+          entries.push(e);
+        }
       });
+    } else {
+      var arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
+      arr.forEach(function(e){
+        var d = new Date(e.date);
+        if (d >= start && d < end){
+          e._date = d;
+          entries.push(e);
+        }
+      });
+    }
 
-      kpiPersonal.textContent = formatEUR(totalPersonal);
-      kpiOtros.textContent    = formatEUR(totalOtros);
-      kpiIngresos.textContent = formatEUR(totalIngresos);
+    return { entries, range };
+  }
 
-      if (!currentRows.length){
-        tableWrapper.innerHTML = 'No hay movimientos.';
+  function renderPreview(entries, range){
+    var cont = $('previewList');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!entries.length){
+      cont.innerHTML = '<div class="small">Sin apuntes para este mes.</div>';
+      return;
+    }
+
+    var title = document.createElement('div');
+    title.className = 'small';
+    title.style.fontWeight = 'bold';
+    title.textContent = 'Mostrando hasta 10 primeros apuntes del mes (gastos):';
+    cont.appendChild(title);
+
+    entries.slice(0,10).forEach(function(e){
+      var d = e._date || new Date(e.date);
+      var div = document.createElement('div');
+      div.className = 'small';
+      div.textContent =
+        formatDateISO(d) + ' · ' +
+        (e.provider || '-') + ' · ' +
+        (e.amount || 0) + '€ · ' +
+        (e.category || '');
+      cont.appendChild(div);
+    });
+  }
+
+  /* Mapear categoría interna -> columnas plantilla 2N */
+  function mapTo2NRow(e){
+    var d = e._date || new Date(e.date);
+    var fecha     = formatDateISO(d);
+    var proveedor = e.provider || '';
+    var cat       = (e.category || '').toString().toLowerCase();
+    var importe   = (typeof e.amount === 'number') ? e.amount : Number(e.amount || 0);
+    var notas     = e.notes || '';
+
+    if (!importe) importe = 0;
+
+    // Omitimos ingresos en la plantilla de gastos
+    if (cat === 'ingreso') return null;
+
+    var tolls   = 0;
+    var hotel   = 0;
+    var gas     = 0;
+    var tickets = 0;
+    var other   = 0;
+    var invit   = 0;
+    var meals   = 0;
+    var varios  = 0;
+
+    if      (cat === 'peajes')      tolls  = importe;
+    else if (cat === 'gasolina')    gas    = importe;
+    else if (cat === 'alojamiento') hotel  = importe;
+    else if (cat === 'transporte')  other  = importe;
+    else if (cat === 'comida')      meals  = importe;
+    else if (cat === 'ocio')        varios = importe;
+    else if (cat === 'servicios')   varios = importe;
+    else                            varios = importe; // 'varios' y cualquier otro
+
+    var total = importe; // en tu plantilla el TOTAL es la suma de C..J
+
+    return [
+      fecha,       // DATE
+      proveedor,   // CLIENT / PROVIDER
+      tolls,       // TOLLS & PARKINGS
+      hotel,       // HOTEL
+      gas,         // GASOLINE
+      tickets,     // TICKETS
+      other,       // OTHER TRANSPORTS (Taxi)
+      invit,       // INVITATIONS
+      meals,       // MEALS / TRAVELING
+      varios,      // VARIOUS
+      total,       // TOTAL
+      notas        // DESCRIPTION
+    ];
+  }
+
+  async function handleExportExcel(){
+    try{
+      setStatus('Cargando apuntes del mes…');
+      var res = await getMonthEntries();
+      var entries = res.entries;
+      var range   = res.range;
+
+      if (!entries.length){
+        setStatus('No hay apuntes para ese mes.');
+        renderPreview([], range);
         return;
       }
 
-      let html = '<table><thead><tr>' +
-        '<th>Fecha</th><th>Proveedor</th><th>Categoría</th>' +
-        '<th>Importe</th><th>Pagado con</th><th>Notas</th><th>Foto</th>' +
-        '</tr></thead><tbody>';
+      renderPreview(entries, range);
 
-      currentRows.forEach(r=>{
-        html +=
-          '<tr>' +
-          '<td>'+r.date+'</td>' +
-          '<td>'+r.provider+'</td>' +
-          '<td>'+r.category+'</td>' +
-          '<td style="text-align:right">'+r.amount.toFixed(2)+'</td>' +
-          '<td>'+r.paidWith+'</td>' +
-          '<td>'+(r.notes||'')+'</td>' +
-          '<td>'+(r.photoURL ? '<a href="'+r.photoURL+'" target="_blank">📷</a>' : '')+'</td>' +
-          '</tr>';
+      var data = [];
+
+      // ==== CABECERA NDF (datos fijos) ====
+      data.push(['PRENOM', 'david']);
+      data.push(['NOM', 'gaston']);
+      data.push(['COST CENTER', 'iberia team']);
+      data.push([]);
+      data.push([]);
+      data.push([]);
+
+      // ==== CABECERA DE TABLA NDF ====
+      data.push([
+        'DATE',
+        'CLIENT / PROVIDER',
+        'TOLLS & PARKINGS',
+        'HOTEL',
+        'GASOLINE',
+        'TICKETS',
+        'OTHER TRANSPORTS (Taxi)',
+        'INVITATIONS',
+        'MEALS / TRAVELING',
+        'VARIOUS',
+        'TOTAL',
+        'DESCRIPTION'
+      ]);
+
+      entries.forEach(function(e){
+        var row = mapTo2NRow(e);
+        if (row) data.push(row);
       });
 
-      html += '</tbody></table>';
-      tableWrapper.innerHTML = html;
+      if (data.length <= 7){
+        setStatus('Solo hay ingresos o apuntes sin importe, nada que exportar en plantilla 2N.');
+        return;
+      }
 
+      var ws = XLSX.utils.aoa_to_sheet(data);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'NDF');
+
+      var mm = String(range.m).padStart(2,'0');
+      var filename = 'gastos_2n_' + range.y + '-' + mm + '.xlsx';
+
+      XLSX.writeFile(wb, filename);
+      setStatus('Excel generado (plantilla 2N): ' + filename);
     }catch(e){
       console.error(e);
-      tableWrapper.innerHTML = 'Error cargando datos.';
+      setStatus('Error al generar el Excel: ' + (e.message || e));
     }
   }
 
-  function exportExcel(){
-    if (!currentRows.length){
-      alert('No hay datos.');
-      return;
-    }
-    const ym = monthInput.value || '';
-    const p  = ym.split('-');
-    let suf  = 'mes';
-    if (p.length===2) suf = p[0]+'-'+p[1];
+  /* ==== FOTOS ==== */
 
-    const data = [['Fecha','Proveedor','Categoría','Importe','Pagado con','Notas','URL Foto']];
-    currentRows.forEach(r=>{
-      data.push([r.date,r.provider,r.category,r.amount,r.paidWith,r.notes||'',r.photoURL||'']);
-    });
+  async function handleExportPhotos(){
+    try{
+      setStatus('Cargando apuntes del mes…');
+      var ctx  = window.__APPCTX__ || {};
+      var st   = ctx.storage;
+      var auth = ctx.auth;
+      var user = auth && auth.currentUser;
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,'Gastos');
-    XLSX.writeFile(wb,'gastos_2n_'+suf+'.xlsx');
-  }
+      var res = await getMonthEntries();
+      var entries = res.entries;
+      var range   = res.range;
 
-  async function downloadAllPhotos(){
-    if (!currentRows.length){
-      alert('No hay datos.');
-      return;
-    }
-
-    const rows = currentRows.filter(r=>r.photoURL);
-    if (!rows.length){
-      alert('No hay fotos.');
-      return;
-    }
-
-    if (!confirm('Se van a descargar '+rows.length+' fotos. ¿Continuar?')) return;
-
-    for (let i=0;i<rows.length;i++){
-      const r = rows[i];
-      try{
-        const resp = await fetch(r.photoURL);
-        const blob = await resp.blob();
-        const url  = URL.createObjectURL(blob);
-
-        const safe = (r.provider||'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = r.date + '_' + safe + '_' + i + '.jpg';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        await new Promise(res=>setTimeout(res,200));
-      }catch(e){
-        console.warn('No se pudo descargar', r.photoURL, e);
+      if (!entries.length){
+        setStatus('No hay apuntes para ese mes.');
+        renderPreview([], range);
+        return;
       }
+
+      renderPreview(entries, range);
+
+      var photos = [];
+      for (var i=0; i<entries.length; i++){
+        var e = entries[i];
+        if (e.photoURL){
+          photos.push({ entry: e, url: e.photoURL });
+        } else if (e.photoPath && st && user){
+          try{
+            var ref = st.ref(e.photoPath);
+            var url = await ref.getDownloadURL();
+            photos.push({ entry: e, url: url });
+          }catch(err){
+            console.warn('No se pudo obtener URL de', e.photoPath, err);
+          }
+        }
+      }
+
+      if (!photos.length){
+        setStatus('No hay fotos asociadas a los apuntes de este mes.');
+        return;
+      }
+
+      setStatus('Descargando ' + photos.length + ' fotos… (el navegador puede mostrar varias descargas seguidas)');
+
+      photos.forEach(function(obj, idx){
+        var e = obj.entry;
+        var url = obj.url;
+        var d = e._date || new Date(e.date);
+        var fecha = formatDateISO(d);
+        var prov  = slugify(e.provider || 'ticket');
+        var name  = fecha + '_' + prov + '_' + String(idx+1) + '.jpg';
+
+        setTimeout(function(){
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }, idx * 350);
+      });
+    }catch(e){
+      console.error(e);
+      setStatus('Error al descargar las fotos: ' + (e.message || e));
     }
   }
 
-  document.getElementById('btnExcel').addEventListener('click', exportExcel);
-  document.getElementById('btnFotos').addEventListener('click', downloadAllPhotos);
+  /* ==== KM PERSONALES ==== */
 
-  auth.onAuthStateChanged(u=>{
-    if (u) loadCurrentMonth();
-    else   tableWrapper.innerHTML = 'Inicia sesión.';
-  });
+  async function getMonthKmEntries(){
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
+
+    var range = getMonthRange();
+    var start = range.start;
+    var end   = range.end;
+
+    var kms = [];
+
+    if (user && db){
+      try{
+        var snap = await db.collection('users/' + user.uid + '/kms')
+          .orderBy('date','asc')
+          .get();
+
+        snap.forEach(function(doc){
+          var e = doc.data();
+          var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
+          if (d >= start && d < end){
+            e._id   = doc.id;
+            e._date = d;
+            kms.push(e);
+          }
+        });
+      }catch(e){
+        console.warn('Error leyendo kms de Firestore', e);
+      }
+    } else {
+      var arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
+      arr.forEach(function(e){
+        var d = new Date(e.date);
+        if (d >= start && d < end){
+          e._date = d;
+          kms.push(e);
+        }
+      });
+    }
+
+    return { kms, range };
+  }
+
+  function isPersonalKm(entry){
+    var type = (entry.type || entry.kind || entry.category || '').toString().toLowerCase();
+    return (
+      type.includes('perso') ||
+      type.includes('parti') ||
+      type.includes('priv')
+    );
+  }
+
+  async function handleExportKmPersonal(){
+    try{
+      setStatus('Cargando KM del mes…');
+      var res = await getMonthKmEntries();
+      var kms = res.kms;
+      var range = res.range;
+
+      if (!kms.length){
+        setStatus('No hay registros de KM para este mes.');
+        return;
+      }
+
+      var personales = kms.filter(isPersonalKm);
+      if (!personales.length){
+        setStatus('No hay KM personales en este mes.');
+        return;
+      }
+
+      var data = [];
+      // Cabecera propia para KM personales
+      data.push(['DATE', 'KM', 'TYPE', 'FUEL PRICE', 'KM TOTAL', 'NOTES']);
+
+      personales.forEach(function(e){
+        var d = e._date || new Date(e.date);
+        var fecha = formatDateISO(d);
+        var km    = (typeof e.km === 'number') ? e.km : Number(e.km || e.distance || 0);
+        var type  = e.type || e.kind || '';
+        var fuel  = (typeof e.fuelPrice === 'number') ? e.fuelPrice : Number(e.fuelPrice || 0);
+        var totalKm = (typeof e.totalKm === 'number') ? e.totalKm : Number(e.totalKm || e.odo || e.kmTotal || 0);
+        var notes = e.notes || '';
+
+        data.push([fecha, km, type, fuel, totalKm, notes]);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(data);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'KM personales');
+
+      var mm = String(range.m).padStart(2,'0');
+      var filename = 'kms_personales_' + range.y + '-' + mm + '.xlsx';
+
+      XLSX.writeFile(wb, filename);
+      setStatus('Excel KM personales generado: ' + filename);
+    }catch(e){
+      console.error(e);
+      setStatus('Error al generar Excel de KM personales: ' + (e.message || e));
+    }
+  }
+
+  /* Listeners */
+  if ($('btnExportExcel')){
+    $('btnExportExcel').addEventListener('click', handleExportExcel);
+  }
+  if ($('btnExportPhotos')){
+    $('btnExportPhotos').addEventListener('click', handleExportPhotos);
+  }
+  if ($('btnExportKmPersonal')){
+    $('btnExportKmPersonal').addEventListener('click', handleExportKmPersonal);
+  }
+
+  // Recargar vista previa cuando cambie mes/año o usuario
+  function refreshPreview(){
+    getMonthEntries()
+      .then(function(res){
+        renderPreview(res.entries, res.range);
+        if (!res.entries.length){
+          setStatus('Sin apuntes para ese mes.');
+        } else {
+          setStatus('');
+        }
+      })
+      .catch(function(e){
+        console.error(e);
+        setStatus('Error cargando apuntes: ' + (e.message || e));
+      });
+  }
+
+  if ($('selMonth')) $('selMonth').addEventListener('change', refreshPreview);
+  if ($('selYear'))  $('selYear').addEventListener('change', refreshPreview);
+
+  document.addEventListener('auth-changed', function(){ refreshPreview(); }, false);
+
+  // Primera carga
+  refreshPreview();
 })();
 </script>
 
