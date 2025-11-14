@@ -55,10 +55,9 @@
   </div>
 </main>
 
-<!-- MODAL REVISIÓN -->
+<!-- MODAL REVISIÓN / GUARDADO -->
 <div id="reviewModal" class="modal" aria-hidden="true">
   <div class="panel">
-
     <div class="row" style="justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:16px">Revisar y guardar</h2>
       <button id="closeReview" class="btn">Cerrar</button>
@@ -117,14 +116,12 @@
       </div>
       <button id="saveReview" class="btn primary">Guardar</button>
     </div>
-
   </div>
 </div>
 
-<!-- MODAL OCR -->
+<!-- MODAL CONFIG OCR -->
 <div id="ocrModal" class="modal" aria-hidden="true">
   <div class="panel">
-
     <div class="row" style="justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:16px">Configurar OCR (Gemini)</h2>
       <button id="closeOCR" class="btn">Cerrar</button>
@@ -134,7 +131,8 @@
       <label>API Key de Gemini</label><br>
       <input id="ocrKeyInput" type="text" style="width:100%">
       <div class="small" style="margin-top:6px">
-        Se guarda en este dispositivo (localStorage).
+        Se guarda solo en este dispositivo (localStorage).<br>
+        Puedes conseguir tu API Key en <b>aistudio.google.com</b>.
       </div>
     </div>
 
@@ -142,14 +140,14 @@
       <button id="btnTestKey" class="btn">Probar clave</button>
       <div class="row">
         <button id="btnSaveKey" class="btn primary">Guardar clave</button>
-        <button id="btnClearKey" class="btn danger">Borrar</button>
+        <button id="btnClearKey" class="btn danger">Borrar clave</button>
       </div>
     </div>
 
     <div id="ocrStatus" class="small" style="margin-top:8px"></div>
-
   </div>
 </div>
+
 <!-- FIREBASE + AUTH GOOGLE -->
 <script>
 (function(){
@@ -307,8 +305,9 @@
             parts:[{ text: 'Hola' }]
           }]
         };
+        // 👉 usamos el mismo endpoint que el OCR real (v1, gemini-2.0-flash)
         var res = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
+          'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(key),
           {
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -317,7 +316,6 @@
         );
 
         if (!res.ok){
-          // Manejo especial HTTP 404: guardamos igual y dejamos seguir
           if (res.status === 404){
             window.__GKEY__ = key;
             localStorage.setItem('gkey', key);
@@ -330,7 +328,6 @@
           return;
         }
 
-        // Respuesta OK → guardamos
         window.__GKEY__ = key;
         localStorage.setItem('gkey', key);
         $('ocrStatus').textContent = 'Clave válida y guardada ✅';
@@ -375,7 +372,7 @@
         (f.name || 'ticket') + ' · ' + Math.round((f.size || 0)/1024) + ' KB';
       $('revDate').value = new Date().toISOString().slice(0,10);
       openModal();
-      // OCR automático como antes
+      // OCR automático
       setTimeout(runOCR, 150);
     };
 
@@ -406,6 +403,7 @@
   function parseOcrText(text){
     var out = { provider:null, date:null, amount:null, category:null };
 
+    // Intentar JSON directo
     var jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch){
       try{
@@ -417,6 +415,7 @@
       }catch(e){}
     }
 
+    // Fallbacks (por si Gemini devuelve texto suelto)
     if (!out.provider){
       var mProv = text.match(/(?:provider|proveedor)\s*[:=]\s*"?([^\n"]+)/i);
       if (!mProv) mProv = text.match(/^[A-ZÁÉÍÓÚÑ0-9][^\n]{3,30}$/m);
@@ -494,13 +493,14 @@
           role : 'user',
           parts: [
             { text: 'Extrae proveedor, fecha (YYYY-MM-DD), categoría (comida, peajes, gasolina, transporte, alojamiento, ocio, servicios, varios o ingreso) e importe total EUR. Devuelve JSON con provider,date,category,amount.' },
-            { inline_data: { mime_type:'image/jpeg', data:b64 } }
+            { inlineData: { mimeType:'image/jpeg', data:b64 } }
           ]
         }]
       };
 
+      // 👉 Usamos el endpoint v1, modelo gemini-2.0-flash, como el código que te funcionaba
       var res  = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
+        'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(key),
         {
           method :'POST',
           headers:{ 'Content-Type':'application/json' },
@@ -665,8 +665,6 @@
   renderList();
 })();
 </script>
+
 </body>
 </html>
-
-
-  
