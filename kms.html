@@ -15,6 +15,34 @@
 
   <!-- Config Firebase -->
   <script src="config.js"></script>
+
+  <style>
+    .km-row {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      padding:6px 8px;
+      border-radius:8px;
+      margin-bottom:4px;
+      background:rgba(0,0,0,0.1);
+    }
+    .km-row-main {
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      font-size:12px;
+    }
+    .km-row-main strong {
+      font-size:12px;
+    }
+    .km-row-meta {
+      font-size:11px;
+      opacity:0.8;
+    }
+    .km-row button {
+      white-space:nowrap;
+    }
+  </style>
 </head>
 <body>
 
@@ -86,10 +114,10 @@
 
     <!-- LISTA KM -->
     <div class="card">
-      <h2>Últimos registros</h2>
+      <h2>Registros de KM</h2>
       <div id="kmList" class="list small" style="max-height:260px;overflow:auto;"></div>
       <div class="small" style="margin-top:6px">
-        Se muestran los últimos 20 registros de KM.
+        Se muestran los últimos 20 registros de KM. Puedes borrar cada línea con el botón 🗑.
       </div>
     </div>
 
@@ -194,16 +222,25 @@
     el.textContent = msg || '';
   }
 
+  function leerLocalKmRaw(){
+    return JSON.parse(localStorage.getItem('kms_local') || '[]');
+  }
+
   function leerLocalKm(){
-    var arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
-    return arr.slice(-20).reverse().map(function(o){
+    var raw = leerLocalKmRaw();
+    // añadimos índice original para poder borrar luego
+    return raw.map(function(o, idx){
       o._date = new Date(o.date);
+      o._localIndex = idx;
+      o._src = 'local';
       return o;
-    });
+    }).sort(function(a,b){
+      return b._date - a._date;
+    }).slice(0,20);
   }
 
   function guardarLocalKm(entry){
-    var arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
+    var arr = leerLocalKmRaw();
     arr.push(entry);
     localStorage.setItem('kms_local', JSON.stringify(arr));
   }
@@ -258,8 +295,9 @@
       var result = [];
       snap.forEach(function(doc){
         var o = doc.data();
-        var d = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
-        o._date = d;
+        o.id   = doc.id;
+        o._src = 'remote';
+        o._date = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
         result.push(o);
       });
       return result;
@@ -281,8 +319,9 @@
     }
 
     list.forEach(function(e){
-      var div = document.createElement('div');
-      div.className = 'small';
+      var row = document.createElement('div');
+      row.className = 'km-row';
+
       var d = e._date instanceof Date ? e._date : new Date(e._date || e.date);
       var fecha = d.toISOString().slice(0,10);
 
@@ -290,22 +329,47 @@
         ? 'Personal'
         : 'Empresa';
 
-      var kmVal = Number(e.km || e.distance || 0);
-      var linea =
-        fecha + ' · ' +
-        kmVal.toFixed(1) + ' km · ' +
-        tipo;
+      var kmVal = Number(e.km || e.distance || 0) || 0;
+      var fuel  = (e.fuelPrice != null && e.fuelPrice !== '')
+        ? Number(e.fuelPrice)
+        : null;
 
+      var main = document.createElement('div');
+      main.className = 'km-row-main';
+
+      var l1 = document.createElement('strong');
+      l1.textContent = fecha + ' · ' + kmVal.toFixed(1) + ' km · ' + tipo;
+
+      var meta = document.createElement('div');
+      meta.className = 'km-row-meta';
+      var parts = [];
+      if (fuel != null && !isNaN(fuel) && fuel > 0){
+        parts.push('Comb: ' + fuel.toFixed(2) + ' €/L');
+      }
       if (e.totalKm != null && e.totalKm !== ''){
-        linea += ' · Odómetro: ' + e.totalKm;
+        parts.push('Odómetro: ' + e.totalKm);
       }
-
-      if (e.fuelPrice != null && e.fuelPrice !== ''){
-        linea += ' · Comb.: ' + Number(e.fuelPrice).toFixed(2) + ' €/L';
+      if (e.notes){
+        parts.push('Notas: ' + e.notes);
       }
+      meta.textContent = parts.join(' · ');
 
-      div.textContent = linea;
-      cont.appendChild(div);
+      main.appendChild(l1);
+      if (parts.length) main.appendChild(meta);
+
+      var btn = document.createElement('button');
+      btn.className = 'btn danger';
+      btn.textContent = '🗑';
+      btn.style.padding = '2px 8px';
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        deleteKm(e);
+      });
+
+      row.appendChild(main);
+      row.appendChild(btn);
+
+      cont.appendChild(row);
     });
   }
 
@@ -333,7 +397,10 @@
     cont.innerHTML =
       '<b>KM totales (últimos 20 registros):</b> ' + total.toFixed(1) + ' km<br>' +
       '<b>KM empresa:</b> ' + emp.toFixed(1) + ' km<br>' +
-      '<b>KM personales:</b> ' + per.toFixed(1) + ' km';
+      '<b>KM personales:</b> ' + per.toFixed(1) + ' km<br>' +
+      '<span class="small" style="display:block;margin-top:4px;">' +
+      'Los datos se muestran según el usuario actual (Firebase o este dispositivo).' +
+      '</span>';
   }
 
   async function refreshKm(){
@@ -347,6 +414,51 @@
     }catch(e){
       console.error(e);
       setKmStatus('Error cargando registros de KM.');
+    }
+  }
+
+  /* ====== BORRAR KM ====== */
+  async function deleteKm(entry){
+    if (!confirm('¿Seguro que quieres borrar este registro de KM?')){
+      return;
+    }
+
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
+
+    setKmStatus('Borrando…');
+
+    try{
+      if (user && db && entry._src === 'remote' && entry.id){
+        await db.collection('users/'+user.uid+'/kms').doc(entry.id).delete();
+      } else {
+        // LocalStorage
+        var arr = leerLocalKmRaw();
+        if (typeof entry._localIndex === 'number'){
+          if (entry._localIndex >= 0 && entry._localIndex < arr.length){
+            arr.splice(entry._localIndex, 1);
+          }
+        } else {
+          // Fallback por coincidencia de campos
+          var idx = arr.findIndex(function(x){
+            return x.date === entry.date &&
+                   Number(x.km || x.distance || 0) === Number(entry.km || entry.distance || 0) &&
+                   (x.type || '') === (entry.type || '');
+          });
+          if (idx >= 0) arr.splice(idx, 1);
+        }
+        localStorage.setItem('kms_local', JSON.stringify(arr));
+      }
+
+      setKmStatus('KM eliminado ✅');
+      document.dispatchEvent(new CustomEvent('kms-updated'));
+      refreshKm();
+    }catch(e){
+      console.error(e);
+      alert('Error al borrar KM: ' + (e && e.message || ''));
+      setKmStatus('Error al borrar KM.');
     }
   }
 
@@ -387,7 +499,6 @@
 
     try{
       if (user && db){
-        // 👉 Guardar SOLO en Firestore cuando hay login
         await db.collection('users/'+user.uid+'/kms').add({
           date     : new Date(dateISO),
           km       : distance,
@@ -399,7 +510,6 @@
         });
         setKmStatus('KM guardado en Firebase ✅');
       } else {
-        // Sin login → localStorage (como en index)
         guardarLocalKm(entryBase);
         setKmStatus('KM guardado en este dispositivo (sin login) ✅');
       }
