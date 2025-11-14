@@ -13,8 +13,8 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- XLSX para generar/modificar Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- XLSX con soporte de estilos (xlsx-js-style) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.full.min.js"></script>
 
   <!-- Config Firebase -->
   <script src="config.js"></script>
@@ -218,7 +218,6 @@
     var entries = [];
 
     if (user && db){
-      // Leemos todo ordenado y filtramos en cliente para evitar problemas de índices
       var snap = await db.collection('users/' + user.uid + '/entries')
         .orderBy('date','asc')
         .get();
@@ -246,7 +245,7 @@
     return { entries, range };
   }
 
-  function renderPreview(entries, range){
+  function renderPreview(entries){
     var cont = $('previewList');
     if (!cont) return;
     cont.innerHTML = '';
@@ -302,12 +301,12 @@
     else if (cat === 'comida')      cols.meals  = importe;
     else if (cat === 'ocio')        cols.varios = importe;
     else if (cat === 'servicios')   cols.varios = importe;
-    else                            cols.varios = importe; // 'varios' y cualquier otro
+    else                            cols.varios = importe;
 
     return cols;
   }
 
-  // 👉 IMPORTANTE: ahora preservamos el estilo original (bordes, negrita, formato número, etc.)
+  // 👉 Set cell conservando estilo, formato y fórmula
   function setCell(ws, addr, value){
     var cell = ws[addr];
     var originalStyle = cell && cell.s ? cell.s : undefined;
@@ -318,7 +317,7 @@
       cell = ws[addr] = {};
     }
 
-    // Solo sobreescribimos el valor; si la celda tenía fórmula, la respetamos
+    // Solo sobreescribimos valor si no hay fórmula
     if (!originalFmla){
       cell.v = value;
       if (typeof value === 'number'){
@@ -329,7 +328,6 @@
       }
     }
 
-    // Volvemos a aplicar estilo y formato original (si existían)
     if (originalStyle) cell.s = originalStyle;
     if (originalFmt)   cell.z = originalFmt;
     if (originalFmla)  cell.f = originalFmla;
@@ -344,19 +342,16 @@
 
       if (!entries.length){
         setStatus('No hay apuntes para ese mes.');
-        renderPreview([], range);
+        renderPreview([]);
         return;
       }
 
-      renderPreview(entries, range);
+      renderPreview(entries);
 
-      // Filtramos entradas válidas (no ingresos)
       var validEntries = [];
       entries.forEach(function(e){
         var mapped = mapTo2NCols(e);
-        if (mapped) {
-          validEntries.push({ entry: e, cols: mapped });
-        }
+        if (mapped) validEntries.push({ entry: e, cols: mapped });
       });
 
       if (!validEntries.length){
@@ -366,7 +361,6 @@
 
       setStatus('Cargando plantilla 2N…');
 
-      // Usamos la plantilla que has subido a assets
       var tplRes = await fetch('assets/plantilla-2n.xlsx');
       if (!tplRes.ok){
         throw new Error('No se puede cargar "assets/plantilla-2n.xlsx" (HTTP ' + tplRes.status + ')');
@@ -375,13 +369,12 @@
       var wb    = XLSX.read(ab, { type:'array' });
       var ws    = wb.Sheets['NDF'] || wb.Sheets[wb.SheetNames[0]];
 
-      // Rellenar cabecera con tus datos
-      // Ajusta estas celdas si en tu plantilla real están en otra posición
-      setCell(ws, 'B2', 'Gaston');      // NOM (apellido)
+      // Cabecera con tus datos
+      setCell(ws, 'B2', 'Gaston');      // NOM
       setCell(ws, 'B3', 'David');       // PRENOM
       setCell(ws, 'D3', 'iberia team'); // COST CENTER
 
-      // Los datos empiezan en la fila 7 en la plantilla (ajusta si tu plantilla usa otra)
+      // Fila inicial de datos (ajústala si tu plantilla usa otra)
       var startRow = 7;
 
       validEntries.forEach(function(obj, idx){
@@ -394,12 +387,9 @@
         var proveedor = e.provider || '';
         var notas     = e.notes || '';
 
-        // A: DATE
-        setCell(ws, 'A' + row, fecha);
-        // B: CLIENT / PROVIDER
-        setCell(ws, 'B' + row, proveedor);
+        setCell(ws, 'A' + row, fecha);      // DATE
+        setCell(ws, 'B' + row, proveedor);  // CLIENT / PROVIDER
 
-        // C..J: importes según categoría
         setCell(ws, 'C' + row, cols.tolls);
         setCell(ws, 'D' + row, cols.hotel);
         setCell(ws, 'E' + row, cols.gas);
@@ -408,17 +398,14 @@
         setCell(ws, 'H' + row, cols.invit);
         setCell(ws, 'I' + row, cols.meals);
         setCell(ws, 'J' + row, cols.varios);
-
-        // K (TOTAL) se deja la fórmula original de la plantilla (=SUM(Crow:Jrow))
-        // L: DESCRIPTION
-        setCell(ws, 'L' + row, notas);
+        // K = TOTAL -> conserva la fórmula
+        setCell(ws, 'L' + row, notas);      // DESCRIPTION
       });
 
-      // Guardar el Excel manteniendo todos los estilos/fórmulas de la plantilla
       var mm = String(range.m).padStart(2,'0');
       var filename = 'gastos_2n_' + range.y + '-' + mm + '.xlsx';
-
       XLSX.writeFile(wb, filename);
+
       setStatus('Excel generado a partir de la plantilla 2N (con formato): ' + filename);
     }catch(e){
       console.error(e);
@@ -442,11 +429,11 @@
 
       if (!entries.length){
         setStatus('No hay apuntes para ese mes.');
-        renderPreview([], range);
+        renderPreview([]);
         return;
       }
 
-      renderPreview(entries, range);
+      renderPreview(entries);
 
       var photos = [];
       for (var i=0; i<entries.length; i++){
@@ -469,7 +456,7 @@
         return;
       }
 
-      setStatus('Descargando ' + photos.length + ' fotos… (el navegador puede mostrar varias descargas seguidas)');
+      setStatus('Descargando ' + photos.length + ' fotos…');
 
       photos.forEach(function(obj, idx){
         var e = obj.entry;
@@ -568,7 +555,6 @@
       }
 
       var data = [];
-      // Cabecera propia para KM personales
       data.push(['DATE', 'KM', 'TYPE', 'FUEL PRICE', 'KM TOTAL', 'NOTES']);
 
       personales.forEach(function(e){
@@ -609,11 +595,10 @@
     $('btnExportKmPersonal').addEventListener('click', handleExportKmPersonal);
   }
 
-  // Recargar vista previa cuando cambie mes/año o usuario
   function refreshPreview(){
     getMonthEntries()
       .then(function(res){
-        renderPreview(res.entries, res.range);
+        renderPreview(res.entries);
         if (!res.entries.length){
           setStatus('Sin apuntes para ese mes.');
         } else {
