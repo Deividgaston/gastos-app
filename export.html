@@ -354,21 +354,22 @@
 
       setStatus('Cargando plantilla 2N…');
 
-      // 👇 Asegúrate de tener "plantilla-2n.xlsx" junto a export.html
-      var tplRes = await fetch('plantilla-2n.xlsx');
+      // 👇 Usamos la plantilla que has subido a assets
+      var tplRes = await fetch('assets/plantilla-2n.xlsx');
       if (!tplRes.ok){
-        throw new Error('No se puede cargar "plantilla-2n.xlsx" (HTTP ' + tplRes.status + ')');
+        throw new Error('No se puede cargar "assets/plantilla-2n.xlsx" (HTTP ' + tplRes.status + ')');
       }
       var ab    = await tplRes.arrayBuffer();
       var wb    = XLSX.read(ab, { type:'array' });
       var ws    = wb.Sheets['NDF'] || wb.Sheets[wb.SheetNames[0]];
 
       // Rellenar cabecera con tus datos
+      // Ajusta estas celdas si en tu plantilla real están en otra posición
       setCell(ws, 'B2', 'Gaston');      // NOM (apellido)
       setCell(ws, 'B3', 'David');       // PRENOM
       setCell(ws, 'D3', 'iberia team'); // COST CENTER
 
-      // Los datos empiezan en la fila 7 en la plantilla (DATE/CLIENT/etc hasta la 5-6, luego formulas en K7...)
+      // Los datos empiezan en la fila 7 en la plantilla (ajusta si tu plantilla usa otra)
       var startRow = 7;
 
       validEntries.forEach(function(obj, idx){
@@ -396,13 +397,12 @@
         setCell(ws, 'I' + row, cols.meals);
         setCell(ws, 'J' + row, cols.varios);
 
-        // K (TOTAL) lo dejamos con la fórmula original de la plantilla (=SUM(Crow:Jrow))
-
+        // K (TOTAL) se deja la fórmula original de la plantilla (=SUM(Crow:Jrow))
         // L: DESCRIPTION
         setCell(ws, 'L' + row, notas);
       });
 
-      // Guardar el Excel manteniendo todos los estilos/formulas de la plantilla
+      // Guardar el Excel manteniendo todos los estilos/fórmulas de la plantilla
       var mm = String(range.m).padStart(2,'0');
       var filename = 'gastos_2n_' + range.y + '-' + mm + '.xlsx';
 
