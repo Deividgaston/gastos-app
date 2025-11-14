@@ -16,10 +16,6 @@
   <!-- SheetJS para Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- JSZip + FileSaver para ZIP de imágenes -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
   <!-- Config Firebase -->
   <script src="config.js"></script>
 
@@ -138,12 +134,12 @@
       </div>
       <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">
         <button id="btnExcelKmPersonal" class="btn">🚗 Descargar Excel KM personales</button>
-        <button id="btnZipFotos" class="btn">🖼 Descargar ZIP fotos tickets</button>
+        <button id="btnFotosTickets" class="btn">🖼 Descargar fotos tickets</button>
       </div>
       <div class="small" style="margin-top:8px">
-        • El Excel de gastos usa la plantilla <b>assets/plantilla-2n.xlsx</b> y rellena las líneas con los apuntes del mes.<br>
+        • El Excel de gastos usa la plantilla <b>assets/plantilla-2n.xlsx</b> y rellena las líneas desde la fila 7.<br>
         • El Excel de KM personales incluye km, precio €/L y coste calculado (km × €/L × 6L/100km).<br>
-        • El ZIP descarga todas las fotos de tickets del mes (si las hay).
+        • El botón de fotos lanza la descarga de todas las imágenes de tickets del mes (una por fichero).
       </div>
     </div>
 
@@ -229,6 +225,10 @@
 
   let currentEntries = [];
   let currentKms     = [];
+
+  const PRENOM      = 'david';
+  const NOM         = 'gaston';
+  const COST_CENTER = 'iberia team';
 
   function setStatus(msg){
     const el = $('exportStatus');
@@ -470,7 +470,7 @@
     }
   }
 
-  /* =================== EXPORT EXCEL GASTOS (PLANTILLA) =================== */
+  /* =================== EXPORT EXCEL GASTOS (PLANTILLA, FILA 7) =================== */
   async function exportExcelGastos(){
     if (!currentEntries.length){
       alert('No hay gastos en este mes.');
@@ -489,37 +489,47 @@
       const sheetName = wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
 
-      // Rellenamos la tabla de líneas.
-      // Ajusta startRow si tu plantilla empieza en otra fila.
-      const startRow = 17;
+      // Rellenar cabecera PRENOM / NOM / COST CENTER
+      // Ajusta C3/C4/C5 si en tu plantilla van en otras celdas.
+      function setHeaderCell(ref, val){
+        if (!ws[ref]) ws[ref] = {};
+        ws[ref].v = val;
+        ws[ref].t = 's';
+      }
+      setHeaderCell('C3', PRENOM);
+      setHeaderCell('C4', NOM);
+      setHeaderCell('C5', COST_CENTER);
+
+      // Rellenamos desde la fila 7 (requisito)
+      const startRow = 7;
+
       currentEntries.forEach((e, idx)=>{
         const r = startRow + idx;
         const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
         const iso = d.toISOString().slice(0,10); // YYYY-MM-DD
         const [yyyy,mm,dd] = iso.split('-');
 
-        function setCell(addr, val){
-          const cellRef = addr.replace('{ROW}', r);
+        function setCell(col, val){
+          const cellRef = col + String(r);
           if (!ws[cellRef]) ws[cellRef] = {};
           ws[cellRef].v = val;
           ws[cellRef].t = (typeof val === 'number') ? 'n' : 's';
         }
 
-        // Ejemplo de mapeo:
+        // Mapeo básico (ajusta columnas si tu plantilla tiene otro orden):
         // A = Día, B = Mes, C = Año, D = Proveedor, E = Concepto/Notas, F = Importe, G = Medio de pago
-        setCell('A{ROW}', Number(dd));
-        setCell('B{ROW}', Number(mm));
-        setCell('C{ROW}', Number(yyyy));
-        setCell('D{ROW}', e.provider || '');
-        setCell('E{ROW}', e.notes || '');
-        setCell('F{ROW}', Number(e.amount || 0));
-        setCell('G{ROW}', e.paidWith || '');
+        setCell('A', Number(dd));
+        setCell('B', Number(mm));
+        setCell('C', Number(yyyy));
+        setCell('D', e.provider || '');
+        setCell('E', e.notes || '');
+        setCell('F', Number(e.amount || 0));
+        setCell('G', e.paidWith || '');
       });
 
       const month = $('monthInput').value || '';
       const filename = 'gastos-2n-' + (month || 'mes') + '.xlsx';
 
-      // Escribe el archivo manteniendo estilos de la plantilla
       XLSX.writeFile(wb, filename);
       setStatus('Excel de gastos generado ✅');
     }catch(e){
@@ -575,44 +585,40 @@
     }
   }
 
-  /* =================== EXPORT ZIP FOTOS TICKETS =================== */
-  async function exportZipFotos(){
-    const entriesWithPhoto = currentEntries.filter(e => e.photoURL || e.photoPath);
+  /* =================== DESCARGAR FOTOS TICKETS (SIN ZIP) =================== */
+  async function exportFotosTickets(){
+    const entriesWithPhoto = currentEntries.filter(e => e.photoURL);
     if (!entriesWithPhoto.length){
       alert('No hay tickets con foto en este mes.');
       return;
     }
 
     try{
-      setStatus('Preparando ZIP de fotos…');
+      setStatus('Lanzando descargas de fotos…');
 
-      const zip = new JSZip();
       const month = $('monthInput').value || '';
 
-      for (let i=0; i<entriesWithPhoto.length; i++){
-        const e = entriesWithPhoto[i];
+      entriesWithPhoto.forEach((e, i)=>{
         const url = e.photoURL;
-        if (!url) continue;
+        if (!url) return;
         const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
         const iso = d.toISOString().slice(0,10);
+        const safeProv = (e.provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+        const fname = iso + '_' + safeProv + '_' + i + '.jpg';
 
-        const filenameSafeProv = (e.provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
-        const fname = iso + '_' + filenameSafeProv + '_' + i + '.jpg';
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
 
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        const blob = await res.blob();
-        zip.file(fname, blob);
-      }
-
-      const content = await zip.generateAsync({ type:'blob' });
-      saveAs(content, 'tickets-' + (month || 'mes') + '.zip');
-
-      setStatus('ZIP de fotos generado ✅');
+      setStatus('Descarga de fotos lanzada ✅ (el navegador puede pedir confirmación).');
     }catch(e){
       console.error(e);
-      alert('Error al generar el ZIP de fotos: ' + (e && e.message || ''));
-      setStatus('Error al generar ZIP de fotos.');
+      alert('Error al lanzar la descarga de fotos: ' + (e && e.message || ''));
+      setStatus('Error al descargar fotos.');
     }
   }
 
@@ -626,8 +632,8 @@
   if ($('btnExcelKmPersonal')){
     $('btnExcelKmPersonal').addEventListener('click', exportExcelKmPersonal);
   }
-  if ($('btnZipFotos')){
-    $('btnZipFotos').addEventListener('click', exportZipFotos);
+  if ($('btnFotosTickets')){
+    $('btnFotosTickets').addEventListener('click', exportFotosTickets);
   }
 
   document.addEventListener('auth-changed', refreshAll, false);
