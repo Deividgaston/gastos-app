@@ -307,20 +307,32 @@
     return cols;
   }
 
+  // 👉 IMPORTANTE: ahora preservamos el estilo original (bordes, negrita, formato número, etc.)
   function setCell(ws, addr, value){
     var cell = ws[addr];
-    if (!cell) {
+    var originalStyle = cell && cell.s ? cell.s : undefined;
+    var originalFmt   = cell && cell.z ? cell.z : undefined;
+    var originalFmla  = cell && cell.f ? cell.f : undefined;
+
+    if (!cell){
       cell = ws[addr] = {};
     }
-    cell.v = value;
-    if (typeof value === 'number') {
-      cell.t = 'n';
-    } else if (value == null || value === '') {
-      cell.t = 's';
-      cell.v = '';
-    } else {
-      cell.t = 's';
+
+    // Solo sobreescribimos el valor; si la celda tenía fórmula, la respetamos
+    if (!originalFmla){
+      cell.v = value;
+      if (typeof value === 'number'){
+        cell.t = 'n';
+      } else {
+        cell.t = 's';
+        cell.v = (value == null ? '' : value);
+      }
     }
+
+    // Volvemos a aplicar estilo y formato original (si existían)
+    if (originalStyle) cell.s = originalStyle;
+    if (originalFmt)   cell.z = originalFmt;
+    if (originalFmla)  cell.f = originalFmla;
   }
 
   async function handleExportExcel(){
@@ -354,7 +366,7 @@
 
       setStatus('Cargando plantilla 2N…');
 
-      // 👇 Usamos la plantilla que has subido a assets
+      // Usamos la plantilla que has subido a assets
       var tplRes = await fetch('assets/plantilla-2n.xlsx');
       if (!tplRes.ok){
         throw new Error('No se puede cargar "assets/plantilla-2n.xlsx" (HTTP ' + tplRes.status + ')');
@@ -407,7 +419,7 @@
       var filename = 'gastos_2n_' + range.y + '-' + mm + '.xlsx';
 
       XLSX.writeFile(wb, filename);
-      setStatus('Excel generado a partir de la plantilla 2N: ' + filename);
+      setStatus('Excel generado a partir de la plantilla 2N (con formato): ' + filename);
     }catch(e){
       console.error(e);
       setStatus('Error al generar el Excel: ' + (e.message || e));
