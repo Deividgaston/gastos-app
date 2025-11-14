@@ -13,13 +13,91 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- jsPDF + autoTable -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <!-- jsPDF + autotable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- Config Firebase -->
   <script src="config.js"></script>
-</head>
 
+  <style>
+    .layout-summary {
+      display:flex;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    .layout-summary .list-panel {
+      flex:1 1 55%;
+      min-width:260px;
+      max-height:420px;
+      overflow:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.06);
+      padding:8px;
+    }
+    .layout-summary .preview-panel {
+      flex:1 1 35%;
+      min-width:220px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.06);
+      padding:8px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-start;
+    }
+    .entry-row {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:6px 8px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+    .entry-row:hover {
+      background:rgba(255,255,255,0.04);
+    }
+    .entry-row.active {
+      background:rgba(0,200,120,0.18);
+    }
+    .entry-main {
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .entry-main span:first-child {
+      font-weight:600;
+      font-size:13px;
+    }
+    .entry-main span:last-child {
+      font-size:11px;
+      opacity:0.8;
+    }
+    .entry-amount {
+      font-weight:600;
+      font-size:13px;
+      white-space:nowrap;
+      margin-left:6px;
+    }
+    .preview-img {
+      max-width:100%;
+      max-height:260px;
+      border-radius:12px;
+      object-fit:contain;
+      background:#111;
+    }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      padding:2px 6px;
+      border-radius:999px;
+      font-size:10px;
+      border:1px solid rgba(255,255,255,0.2);
+      gap:4px;
+    }
+  </style>
+</head>
 <body>
 
 <header class="topbar">
@@ -41,538 +119,482 @@
 </header>
 
 <main class="content">
-  <div class="grid">
-    <div class="card">
-      <h2>Resumen mensual</h2>
 
-      <div class="row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div>
-          <label>Mes</label><br>
-          <select id="selMonth">
-            <option value="1">Enero</option>
-            <option value="2">Febrero</option>
-            <option value="3">Marzo</option>
-            <option value="4">Abril</option>
-            <option value="5">Mayo</option>
-            <option value="6">Junio</option>
-            <option value="7">Julio</option>
-            <option value="8">Agosto</option>
-            <option value="9">Septiembre</option>
-            <option value="10">Octubre</option>
-            <option value="11">Noviembre</option>
-            <option value="12">Diciembre</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Año</label><br>
-          <input id="selYear" type="number" style="width:120px">
-        </div>
-
-        <div style="flex:1;min-width:200px">
-          <div class="small">
-            Consulta los gastos del mes y genera el PDF oficial.
-          </div>
-        </div>
+  <div class="card">
+    <h2>Resumen mensual</h2>
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label>Mes</label><br>
+        <input id="monthInput" type="month" style="min-width:140px">
       </div>
-
-      <div class="row" style="margin-top:16px;gap:8px;flex-wrap:wrap">
-        <button id="btnRefresh" class="btn">🔄 Actualizar vista</button>
-        <button id="btnPdf" class="btn primary">📄 Generar PDF</button>
+      <div class="small">
+        Se muestran gastos y KM del mes seleccionado.<br>
+        Recuerda iniciar sesión para ver los datos sincronizados.
       </div>
-
-      <div id="summaryStatus" class="small" style="margin-top:10px;min-height:2em"></div>
+      <div style="flex:1"></div>
+      <button id="btnPdf" class="btn primary">📄 Descargar PDF</button>
     </div>
 
-    <div class="card">
-      <h2>Vista previa gastos</h2>
-
-      <div class="row" style="align-items:flex-start;gap:12px">
-        <div id="previewExpenses"
-             class="list small"
-             style="flex:2;max-height:260px;overflow:auto;"></div>
-
-        <div style="flex:1;min-width:130px;">
-          <div class="small">Vista previa ticket</div>
-          <div style="
-            margin-top:6px;
-            border:1px solid #ddd;
-            border-radius:8px;
-            padding:4px;
-            min-height:80px;
-            display:flex;
-            align-items:center;
-            justify-content:center;">
-            <img id="previewPhoto"
-                 src=""
-                 alt="Vista previa ticket"
-                 style="max-width:100%;max-height:220px;border-radius:6px;display:none;">
-          </div>
-        </div>
+    <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
+      <div class="pill">
+        💶 Total gastos: <span id="totGastos" style="font-weight:600;margin-left:4px">0,00 €</span>
+      </div>
+      <div class="pill">
+        🧾 Pagado con mi dinero:
+        <span id="totPersonalPaid" style="font-weight:600;margin-left:4px">0,00 €</span>
+      </div>
+      <div class="pill">
+        🏢 KM empresa: <span id="totKmEmp" style="font-weight:600;margin-left:4px">0,0 km</span>
+      </div>
+      <div class="pill">
+        🧍 KM personales: <span id="totKmPer" style="font-weight:600;margin-left:4px">0,0 km</span>
+      </div>
+      <div class="pill">
+        ⛽ Coste KM personales:
+        <span id="totKmPerCost" style="font-weight:600;margin-left:4px">0,00 €</span>
+      </div>
+      <div class="pill">
+        💼 Lo que me debe la empresa:
+        <span id="totOwed" style="font-weight:600;margin-left:4px">0,00 €</span>
       </div>
     </div>
-
-    <div class="card">
-      <h2>Vista previa KM</h2>
-      <div id="previewKms" class="list small"></div>
-    </div>
-
-    <div class="card">
-      <h2>Totales rápidos</h2>
-      <div id="previewTotals" class="small"></div>
-    </div>
-
   </div>
+
+  <div class="card">
+    <h2>Detalle gastos + tickets</h2>
+    <div class="layout-summary">
+      <div class="list-panel" id="listPanel">
+        <!-- filas de apuntes -->
+      </div>
+      <div class="preview-panel">
+        <div style="font-size:12px;font-weight:600;width:100%;">Vista previa ticket</div>
+        <img id="ticketPreview" class="preview-img" alt="Ticket">
+        <div id="previewMeta" class="small" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
+<!-- FIREBASE + AUTH -->
 <script>
 (function(){
-  if (!firebase.apps.length){
-    firebase.initializeApp(window.__FBCONFIG__);
-  }
-
-  const auth = firebase.auth();
-
-  auth.onAuthStateChanged(function(user){
-    const who   = document.getElementById('whoami');
-    const inBtn = document.getElementById('btnLogin');
-    const outBtn= document.getElementById('btnLogout');
-
-    if (user){
-      who.textContent = "Conectado: " + (user.email || user.uid);
-      inBtn.style.display = "none";
-      outBtn.style.display = "";
-    } else {
-      who.textContent = "No autenticado";
-      inBtn.style.display = "";
-      outBtn.style.display = "none";
+  try{
+    if (!firebase.apps.length) {
+      firebase.initializeApp(window.__FBCONFIG__);
     }
 
-    document.dispatchEvent(new CustomEvent("auth-changed",{detail:{user}}));
-  });
+    var auth = firebase.auth();
 
-  document.getElementById("btnLogin").onclick = ()=>{
-    const prov = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(prov).catch(()=>auth.signInWithRedirect(prov));
-  };
+    if (firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+    }
+    if (auth.getRedirectResult) {
+      auth.getRedirectResult().catch(function(){});
+    }
 
-  document.getElementById("btnLogout").onclick = ()=>auth.signOut();
+    function updateUser(u){
+      var who = document.getElementById('whoami');
+      var bL  = document.getElementById('btnLogin');
+      var bO  = document.getElementById('btnLogout');
 
-  window.__APPCTX__ = {
-    auth,
-    db: firebase.firestore(),
-    storage: firebase.storage()
-  };
+      if (u){
+        if (who) who.textContent = 'Conectado: ' + (u.email || u.uid);
+        if (bL)  bL.style.display = 'none';
+        if (bO)  bO.style.display = '';
+      } else {
+        if (who) who.textContent = 'No autenticado';
+        if (bL)  bL.style.display = '';
+        if (bO)  bO.style.display = 'none';
+      }
+
+      try{
+        document.dispatchEvent(new CustomEvent('auth-changed',{ detail:{ user:u } }));
+      }catch(e){}
+    }
+
+    auth.onAuthStateChanged(updateUser);
+
+    window.__APPCTX__ = {
+      auth   : auth,
+      db     : firebase.firestore(),
+      storage: firebase.storage()
+    };
+
+    var prov   = new firebase.auth.GoogleAuthProvider();
+    var btnIn  = document.getElementById('btnLogin');
+    var btnOut = document.getElementById('btnLogout');
+
+    if (btnIn){
+      btnIn.addEventListener('click', function(){
+        auth.signInWithPopup(prov).catch(function(err){
+          if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')){
+            auth.signInWithRedirect(prov);
+          } else {
+            alert('Error login: ' + (err && err.message || ''));
+          }
+        });
+      });
+    }
+
+    if (btnOut){
+      btnOut.addEventListener('click', function(){
+        auth.signOut();
+      });
+    }
+  }catch(e){
+    console.error(e);
+  }
 })();
 </script>
 
+<!-- LÓGICA SUMMARY -->
 <script>
 (function(){
-
   function $(id){ return document.getElementById(id); }
 
-  let __currentEntries = [];
-  let __logo = null;
-
-  // ✅ Inicializar mes/año al entrar
-  (function initMonthYear(){
-    const now = new Date();
-    const m = now.getMonth() + 1;
-    const y = now.getFullYear();
-    if ($('selMonth')) $('selMonth').value = String(m);
-    if ($('selYear'))  $('selYear').value  = String(y);
+  // Mes actual por defecto
+  (function initMonth(){
+    var m = $('monthInput');
+    if (!m) return;
+    var now = new Date();
+    var iso = now.toISOString().slice(0,7); // YYYY-MM
+    m.value = iso;
   })();
 
-  function setStatus(msg){
-    $("summaryStatus").textContent = msg || "";
+  function getMonthRange(ym){
+    if (!ym) return null;
+    var parts = ym.split('-');
+    var y = parseInt(parts[0],10);
+    var m = parseInt(parts[1],10)-1;
+    var start = new Date(Date.UTC(y,m,1,0,0,0));
+    var end   = new Date(Date.UTC(y,m+1,1,0,0,0));
+    return { start, end };
   }
 
-  function formatISO(d){
-    if (!(d instanceof Date)) d = new Date(d);
-    return d.toISOString().slice(0,10);
-  }
+  async function loadEntriesAndKms(){
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
 
-  // ✅ getRange con fallback a fecha actual si hay NaN
-  function getRange(){
-    let m = parseInt($("selMonth").value,10);
-    let y = parseInt($("selYear").value,10);
-    const now = new Date();
+    var monthValue = $('monthInput').value;
+    var range = getMonthRange(monthValue);
 
-    if (isNaN(m) || m < 1 || m > 12) m = now.getMonth() + 1;
-    if (isNaN(y) || y < 2000)        y = now.getFullYear();
+    var entries = [];
+    var kms     = [];
 
-    return {
-      m, y,
-      start: new Date(Date.UTC(y,m-1,1)),
-      end:   new Date(Date.UTC(y,m,1))
-    };
-  }
-
-  /* ------------ CARGA GASTOS ------------ */
-  async function getEntries(){
-    const ctx = window.__APPCTX__;
-    const db = ctx.db;
-    const auth = ctx.auth;
-    const user = auth.currentUser;
-
-    const {start,end} = getRange();
-    const list = [];
-
-    if (user){
-      const snap = await db.collection("users/"+user.uid+"/entries")
-                           .orderBy("date","asc").get();
-      snap.forEach(doc=>{
-        const o = doc.data();
-        const d = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
-        if (d>=start && d<end){
-          o._date = d;
-          list.push(o);
-        }
+    // --- GASTOS ---
+    if (user && db && range){
+      var snap = await db.collection('users/'+user.uid+'/entries')
+                         .where('date','>=', range.start)
+                         .where('date','<',  range.end)
+                         .orderBy('date','desc')
+                         .get();
+      snap.forEach(function(doc){
+        var o = doc.data();
+        o.id  = doc.id;
+        o.dateJs = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
+        entries.push(o);
       });
     } else {
-      const local = JSON.parse(localStorage.getItem("entries_local")||"[]");
-      local.forEach(o=>{
-        const d = new Date(o.date);
-        if (d>=start && d<end){
-          o._date = d;
-          list.push(o);
-        }
-      });
+      var arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
+      entries = arr.filter(function(e){
+        var d = new Date(e.date);
+        return d >= range.start && d < range.end;
+      }).map(function(e){
+        e.dateJs = new Date(e.date);
+        return e;
+      }).sort(function(a,b){ return b.dateJs - a.dateJs; });
     }
 
-    return list;
+    // --- KM ---
+    if (user && db && range){
+      var snapKm = await db.collection('users/'+user.uid+'/kms')
+                           .where('date','>=', range.start)
+                           .where('date','<',  range.end)
+                           .orderBy('date','desc')
+                           .get();
+      snapKm.forEach(function(doc){
+        var o = doc.data();
+        o.id  = doc.id;
+        o.dateJs = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
+        kms.push(o);
+      });
+    } else {
+      var kArr = JSON.parse(localStorage.getItem('kms_local') || '[]');
+      kms = kArr.filter(function(e){
+        var d = new Date(e.date);
+        return d >= range.start && d < range.end;
+      }).map(function(e){
+        e.dateJs = new Date(e.date);
+        return e;
+      }).sort(function(a,b){ return b.dateJs - a.dateJs; });
+    }
+
+    return { entries, kms };
   }
 
-  /* ------------ CARGA KMS ------------ */
-  async function getKmEntries(){
-    const ctx = window.__APPCTX__;
-    const db = ctx.db;
-    const auth = ctx.auth;
-    const user = auth.currentUser;
+  function formatEuro(v){
+    return (v || 0).toFixed(2).replace('.',',') + ' €';
+  }
+  function formatKm(v){
+    return (v || 0).toFixed(1).replace('.',',') + ' km';
+  }
 
-    const {start,end} = getRange();
-    const list = [];
+  function renderSummaryTotals(entries, kms){
+    let totG   = 0;
+    let totPersonalPaid = 0;
 
-    if (user){
-      try{
-        const snap = await db.collection("users/"+user.uid+"/kms")
-                             .orderBy("date","asc").get();
-        snap.forEach(doc=>{
-          const o = doc.data();
-          const d = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
-          if (d>=start && d<end){
-            o._date = d;
-            list.push(o);
-          }
-        });
-      }catch(e){
-        console.warn("Error leyendo kms", e);
+    entries.forEach(function(e){
+      const amount = Number(e.amount || 0);
+      totG += amount;
+      if ((e.paidWith || '').toLowerCase() === 'personal'){
+        totPersonalPaid += amount;
       }
-    } else {
-      const local = JSON.parse(localStorage.getItem("kms_local")||"[]");
-      local.forEach(o=>{
-        const d = new Date(o.date);
-        if (d>=start && d<end){
-          o._date = d;
-          list.push(o);
+    });
+
+    let kmEmp = 0;
+    let kmPer = 0;
+    let costPer = 0;
+
+    kms.forEach(function(k){
+      const km = Number(k.km || k.distance || 0) || 0;
+      const fuel = (k.fuelPrice != null && k.fuelPrice !== '')
+        ? Number(k.fuelPrice)
+        : NaN;
+
+      if ((k.type || '').toLowerCase().includes('per')){ // personales
+        kmPer += km;
+        if (!isNaN(fuel) && fuel > 0){
+          // coste = km * €/L * 6L/100km
+          costPer += km * fuel * 6 / 100;
         }
-      });
-    }
+      } else {
+        kmEmp += km;
+      }
+    });
 
-    return list;
+    const owed = totPersonalPaid - costPer;
+
+    $('totGastos').textContent      = formatEuro(totG);
+    $('totPersonalPaid').textContent= formatEuro(totPersonalPaid);
+    $('totKmEmp').textContent       = formatKm(kmEmp);
+    $('totKmPer').textContent       = formatKm(kmPer);
+    $('totKmPerCost').textContent   = formatEuro(costPer);
+    $('totOwed').textContent        = formatEuro(owed);
   }
 
-  /* ------------ PREVIEW GASTOS + FOTO ------------ */
-  function showPhoto(entry){
-    const img = $("previewPhoto");
-    if (!img) return;
-    if (entry && entry.photoURL){
-      img.src = entry.photoURL;
-      img.style.display = "block";
-    } else {
-      img.src = "";
-      img.style.display = "none";
-    }
-  }
+  let currentEntries = [];
+  let currentKms     = [];
+  let currentSelectedIdx = -1;
 
-  function renderExpensesPreview(entries){
-    const cont = $("previewExpenses");
-    cont.innerHTML = "";
-    __currentEntries = entries;
+  function renderList(entries){
+    currentEntries = entries || [];
+    var panel = $('listPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
 
     if (!entries.length){
-      cont.innerHTML = "<div class='small'>Sin gastos.</div>";
-      showPhoto(null);
+      panel.innerHTML = '<div class="small">Sin apuntes en este mes.</div>';
+      $('ticketPreview').src = '';
+      $('previewMeta').textContent = 'Selecciona un apunte para ver la foto del ticket.';
       return;
     }
 
-    entries.forEach((e)=>{
-      const div = document.createElement("div");
-      div.className = "small";
-      div.style.padding = "4px 6px";
-      div.style.cursor = "pointer";
-      div.style.borderRadius = "4px";
+    entries.forEach(function(e, idx){
+      var row = document.createElement('div');
+      row.className = 'entry-row';
+      row.dataset.idx = idx;
 
-      div.textContent =
-        formatISO(e._date)+" · "+
-        (e.provider||"-")+" · "+
-        (e.amount||0)+"€ · "+
-        (e.category||"");
+      var fecha = e.dateJs instanceof Date
+        ? e.dateJs.toISOString().slice(0,10)
+        : (e.date || '');
 
-      div.onclick = ()=>{
-        [...cont.children].forEach(n=>n.style.background="transparent");
-        div.style.background="rgba(0,0,0,0.05)";
-        showPhoto(e);
-      };
+      var main = document.createElement('div');
+      main.className = 'entry-main';
+      var s1 = document.createElement('span');
+      s1.textContent = (e.provider || '-');
+      var s2 = document.createElement('span');
+      s2.textContent =
+        fecha + ' · ' +
+        (e.category || '-') + ' · ' +
+        (e.paidWith || '');
+      main.appendChild(s1);
+      main.appendChild(s2);
 
-      cont.appendChild(div);
+      var amt = document.createElement('div');
+      amt.className = 'entry-amount';
+      amt.textContent = formatEuro(Number(e.amount||0));
+
+      row.appendChild(main);
+      row.appendChild(amt);
+
+      row.addEventListener('click', function(){
+        selectEntry(idx);
+      });
+
+      panel.appendChild(row);
     });
 
-    const first = entries.find(e=>e.photoURL) || entries[0];
-    showPhoto(first);
-    if (cont.firstChild) cont.firstChild.style.background="rgba(0,0,0,0.05)";
+    selectEntry(0);
   }
 
-  /* ------------ PREVIEW KMS ------------ */
-  function renderKmPreview(kms){
-    const cont = $("previewKms");
-    cont.innerHTML = "";
+  function selectEntry(idx){
+    currentSelectedIdx = idx;
+    var panel = $('listPanel');
+    if (!panel) return;
 
-    if (!kms.length){
-      cont.innerHTML = "<div class='small'>Sin KM.</div>";
+    Array.prototype.forEach.call(
+      panel.querySelectorAll('.entry-row'),
+      function(n){
+        n.classList.remove('active');
+      }
+    );
+    var sel = panel.querySelector('.entry-row[data-idx="'+idx+'"]');
+    if (sel) sel.classList.add('active');
+
+    var e = currentEntries[idx];
+    if (!e){
+      $('ticketPreview').src = '';
+      $('previewMeta').textContent = '';
       return;
     }
 
-    kms.forEach(k=>{
-      const div = document.createElement("div");
-      div.className = "small";
-      const tipo = (k.type||"").toLowerCase().includes("per") ? "🧍 Personal" : "🚗 Empresa";
-      div.textContent =
-        formatISO(k._date)+" · "+
-        (k.km||k.distance||0)+" km · "+tipo;
-      cont.appendChild(div);
-    });
-  }
-
-  /* ------------ TOTALES ------------ */
-  function computeTotals(entries,kms){
-    let total = 0, empresa = 0, personal = 0;
-    const categorias = {};
-
-    entries.forEach(e=>{
-      const a = Number(e.amount||0);
-      total += a;
-      if (e.paidWith==="personal") personal+=a;
-      else empresa+=a;
-
-      const cat = (e.category||"varios").toLowerCase();
-      categorias[cat] = (categorias[cat]||0)+a;
-    });
-
-    let totalKm=0, kmE=0, kmP=0;
-    kms.forEach(k=>{
-      const d = Number(k.km||k.distance||0);
-      totalKm += d;
-      if ((k.type||"").toLowerCase().includes("per")) kmP+=d;
-      else kmE+=d;
-    });
-
-    return {total,empresa,personal,categorias,totalKm,kmE,kmP};
-  }
-
-  function renderTotals(t){
-    const cont = $("previewTotals");
-    cont.innerHTML = `
-      <b>Total:</b> ${t.total.toFixed(2)} €<br>
-      <b>Empresa:</b> ${t.empresa.toFixed(2)} €<br>
-      <b>Personal:</b> ${t.personal.toFixed(2)} €<br><br>
-      <b>KM totales:</b> ${t.totalKm.toFixed(2)} km<br>
-      <b>KM empresa:</b> ${t.kmE.toFixed(2)} km<br>
-      <b>KM personales:</b> ${t.kmP.toFixed(2)} km<br>
-    `;
-  }
-
-  /* ------------ LOGO PDF ------------ */
-  async function loadLogo(){
-    if (__logo) return __logo;
-    return new Promise(res=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const c = document.createElement("canvas");
-        c.width = img.width;
-        c.height = img.height;
-        c.getContext("2d").drawImage(img,0,0);
-        __logo = c.toDataURL("image/png");
-        res(__logo);
-      };
-      img.onerror = ()=>res(null);
-      img.src = "assets/2n-logo-black.png";
-    });
-  }
-
-  /* ------------ PDF ------------ */
-  async function generatePdf(){
-    try{
-      setStatus("Generando PDF…");
-      const entries = await getEntries();
-      const kms     = await getKmEntries();
-
-      if (!entries.length && !kms.length){
-        alert("No hay datos para este mes.");
-        setStatus("No hay datos para este mes.");
-        return;
-      }
-
-      const totals = computeTotals(entries,kms);
-      const {m,y} = getRange();
-      const mm = String(m).padStart(2,"0");
-
-      const {jsPDF} = window.jspdf;
-      const doc = new jsPDF("p","mm","a4");
-      const logo = await loadLogo();
-
-      if (logo){
-        doc.addImage(logo,"PNG",150,10,40,12);
-      }
-
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(18);
-      doc.text("Informe de gastos - 2N",14,20);
-
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(11);
-      doc.text("Empleado: David Gaston",14,28);
-      doc.text("Cost center: Iberia Team",14,34);
-      doc.text(`Periodo: ${mm}/${y}`,14,40);
-
-      // Bloque gastos
-      doc.setFillColor(245,245,245);
-      doc.roundedRect(14,48,90,30,3,3,"FD");
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(12);
-      doc.text("Resumen de gastos",18,56);
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(10);
-      doc.text(`Total: ${totals.total.toFixed(2)} €`,18,64);
-      doc.text(`Empresa: ${totals.empresa.toFixed(2)} €`,18,70);
-      doc.text(`Personal: ${totals.personal.toFixed(2)} €`,18,76);
-
-     
-
-      // Bloque km
-      doc.setFillColor(245,245,245);
-      doc.roundedRect(14,84,90,28,3,3,"FD");
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(12);
-      doc.text("Resumen de kilómetros",18,92);
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(10);
-      doc.text(`Total:  ${totals.totalKm.toFixed(2)} km`,18,100);
-      doc.text(`Empresa:  ${totals.kmE.toFixed(2)} km`,18,106);
-      doc.text(`Personal: ${totals.kmP.toFixed(2)} km`,18,112);
-
-      // Categorías
-      const catRows = Object.keys(totals.categorias)
-        .sort()
-        .map(k=>[k, totals.categorias[k].toFixed(2)+" €"]);
-      if (catRows.length){
-        doc.setFont("helvetica","bold");
-        doc.setFontSize(12);
-        doc.text("Desglose por categoría",14,125);
-        doc.autoTable({
-          startY:129,
-          head:[["Categoría","Importe"]],
-          body:catRows,
-          theme:"striped",
-          styles:{fontSize:9}
-        });
-      }
-
-      // Detalle gastos
-      const gastosBody = entries.map(e=>[
-        formatISO(e._date),
-        e.provider||"",
-        e.category||"",
-        Number(e.amount||0).toFixed(2)+" €",
-        (e.paidWith==="personal"?"Personal":"Empresa"),
-        e.notes||""
-      ]);
-
-      if (gastosBody.length){
-        doc.addPage();
-        if (logo) doc.addImage(logo,"PNG",150,10,40,12);
-        doc.setFont("helvetica","bold");
-        doc.setFontSize(14);
-        doc.text("Detalle de gastos",14,20);
-        doc.autoTable({
-          startY:26,
-          head:[["Fecha","Proveedor","Categoría","Importe","Pago","Notas"]],
-          body:gastosBody,
-          theme:"striped",
-          styles:{fontSize:8,cellWidth:"wrap"}
-        });
-      }
-
-      // Detalle kms
-      const kmsBody = kms.map(k=>[
-        formatISO(k._date),
-        Number(k.km||k.distance||0).toFixed(2),
-        ((k.type||"").toLowerCase().includes("per")?"Personal":"Empresa"),
-        k.fuelPrice||"",
-        k.totalKm||"",
-        k.notes||""
-      ]);
-
-      if (kmsBody.length){
-        doc.addPage();
-        if (logo) doc.addImage(logo,"PNG",150,10,40,12);
-        doc.setFont("helvetica","bold");
-        doc.setFontSize(14);
-        doc.text("Detalle de kilómetros",14,20);
-        doc.autoTable({
-          startY:26,
-          head:[["Fecha","KM","Tipo","Precio combustible","KM total","Notas"]],
-          body:kmsBody,
-          theme:"striped",
-          styles:{fontSize:8,cellWidth:"wrap"}
-        });
-      }
-
-      doc.save(`informe_gastos_2n_${y}-${mm}.pdf`);
-      setStatus("PDF generado correctamente.");
-    }catch(e){
-      console.error(e);
-      setStatus("Error generando PDF: "+(e.message||e));
+    var img = $('ticketPreview');
+    if (e.photoURL){
+      img.src = e.photoURL;
+    } else {
+      img.src = '';
     }
+
+    var fecha = e.dateJs instanceof Date
+      ? e.dateJs.toISOString().slice(0,10)
+      : (e.date || '');
+
+    var meta = fecha + ' · ' + (e.provider||'-') +
+      ' · ' + formatEuro(Number(e.amount||0)) +
+      '\nCat: ' + (e.category||'-') +
+      ' · Pagado con: ' + (e.paidWith || '-') +
+      (e.notes ? '\nNotas: ' + e.notes : '');
+
+    $('previewMeta').textContent = meta;
   }
 
   async function refreshAll(){
     try{
-      setStatus("Cargando datos…");
-      const entries = await getEntries();
-      const kms     = await getKmEntries();
-      const totals  = computeTotals(entries,kms);
-
-      renderExpensesPreview(entries);
-      renderKmPreview(kms);
-      renderTotals(totals);
-      setStatus("");
+      var d = await loadEntriesAndKms();
+      currentEntries = d.entries;
+      currentKms     = d.kms;
+      renderSummaryTotals(d.entries, d.kms);
+      renderList(d.entries);
     }catch(e){
       console.error(e);
-      setStatus("Error cargando datos: "+(e.message||e));
+      alert('Error cargando datos del resumen: ' + (e && e.message || ''));
     }
   }
 
-  $("btnRefresh").onclick = refreshAll;
-  $("btnPdf").onclick     = generatePdf;
-  $("selMonth").onchange  = refreshAll;
-  $("selYear").onchange   = refreshAll;
+  // -------- PDF --------
+  async function buildPdf(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-  document.addEventListener("auth-changed",refreshAll);
+    var month = $('monthInput').value || '';
 
-  // Primera carga
+    doc.setFontSize(16);
+    doc.text('Gastos 2N - Resumen mensual', 14, 16);
+    doc.setFontSize(11);
+    doc.text('Mes: ' + (month || 'N/D'), 14, 24);
+
+    let totG   = 0;
+    let totPersonalPaid = 0;
+
+    currentEntries.forEach(e => {
+      const amount = Number(e.amount || 0);
+      totG += amount;
+      if ((e.paidWith || '').toLowerCase() === 'personal'){
+        totPersonalPaid += amount;
+      }
+    });
+
+    let kmEmp = 0, kmPer = 0, costPer = 0;
+    currentKms.forEach(k=>{
+      const km = Number(k.km || k.distance || 0) || 0;
+      const fuel = (k.fuelPrice != null && k.fuelPrice !== '')
+        ? Number(k.fuelPrice)
+        : NaN;
+
+      if ((k.type || '').toLowerCase().includes('per')){
+        kmPer += km;
+        if (!isNaN(fuel) && fuel > 0){
+          costPer += km * fuel * 6 / 100;
+        }
+      } else {
+        kmEmp += km;
+      }
+    });
+
+    const owed = totPersonalPaid - costPer;
+
+    // Caja gastos
+    doc.setDrawColor(200);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(12, 30, 90, 32, 3, 3);
+    doc.setFontSize(11);
+    doc.text('Resumen gastos', 16, 36);
+    doc.setFontSize(10);
+    doc.text('Total gastos: ' + formatEuro(totG), 16, 44);
+    doc.text('Pagado con mi dinero: ' + formatEuro(totPersonalPaid), 16, 50);
+    doc.text('Lo que me debe la empresa: ' + formatEuro(owed), 16, 56);
+
+    // Caja KM
+    doc.roundedRect(110, 30, 88, 32, 3, 3);
+    doc.setFontSize(11);
+    doc.text('Resumen KM', 114, 36);
+    doc.setFontSize(10);
+    doc.text('KM empresa: ' + formatKm(kmEmp), 114, 44);
+    doc.text('KM personales: ' + formatKm(kmPer), 114, 50);
+    doc.text(
+      'Coste km pers. (km × €/L × 6L/100km): ' + formatEuro(costPer),
+      114, 56
+    );
+
+    // Tabla gastos
+    var rows = currentEntries.map(function(e){
+      var d = e.dateJs instanceof Date ? e.dateJs.toISOString().slice(0,10) : (e.date || '');
+      return [
+        d,
+        e.provider || '',
+        e.category || '',
+        (e.paidWith || ''),
+        (e.notes || '').slice(0,40),
+        (Number(e.amount||0)).toFixed(2)
+      ];
+    });
+
+    doc.autoTable({
+      startY: 66,
+      head: [['Fecha','Proveedor','Cat.','Pago','Notas','Importe']],
+      body: rows,
+      styles:{ fontSize:8 },
+      headStyles:{ fillColor:[0,0,0] }
+    });
+
+    doc.save('gastos-2n-summary-'+(month||'')+'.pdf');
+  }
+
+  if ($('monthInput')){
+    $('monthInput').addEventListener('change', refreshAll);
+  }
+  if ($('btnPdf')){
+    $('btnPdf').addEventListener('click', buildPdf);
+  }
+
+  document.addEventListener('auth-changed', refreshAll, false);
+  document.addEventListener('entries-updated', refreshAll, false);
+  document.addEventListener('kms-updated', refreshAll, false);
+
   refreshAll();
-
 })();
 </script>
 
