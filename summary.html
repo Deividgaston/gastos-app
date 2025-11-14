@@ -90,6 +90,11 @@
     </div>
 
     <div class="card">
+      <h2>Vista previa imágenes</h2>
+      <div id="previewImages" class="list small" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+    </div>
+
+    <div class="card">
       <h2>Vista previa KM</h2>
       <div id="previewKms" class="list small"></div>
     </div>
@@ -280,7 +285,7 @@
     return kms;
   }
 
-  /* ============ VISTA PREVIA ============ */
+  /* ============ VISTAS PREVIAS ============ */
   function renderExpensesPreview(entries){
     const cont = $('previewExpenses');
     if (!cont) return;
@@ -302,6 +307,46 @@
         (e.category || '') + ' · ' +
         (e.paidWith === 'personal' ? '💳 Personal' : '🏢 Empresa');
       cont.appendChild(div);
+    });
+  }
+
+  function renderImagesPreview(entries){
+    const cont = $('previewImages');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    const withPhotos = entries.filter(e => e.photoURL);
+    if (!withPhotos.length){
+      cont.innerHTML = "<div class='small'>Sin imágenes para este mes.</div>";
+      return;
+    }
+
+    withPhotos.slice(0,12).forEach(e=>{
+      const d = e._date || new Date(e.date);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'small';
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '4px';
+
+      const img = document.createElement('img');
+      img.src = e.photoURL;
+      img.alt = e.provider || 'ticket';
+      img.style.width = '70px';
+      img.style.height = 'auto';
+      img.style.borderRadius = '6px';
+      img.style.objectFit = 'cover';
+      img.loading = 'lazy';
+
+      const caption = document.createElement('div');
+      caption.textContent = formatISO(d);
+      caption.style.fontSize = '10px';
+      caption.style.textAlign = 'center';
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(caption);
+      cont.appendChild(wrapper);
     });
   }
 
@@ -424,6 +469,7 @@
       ]);
 
       renderExpensesPreview(entries);
+      renderImagesPreview(entries);
       renderKmPreview(kms);
 
       const totals = computeTotals(entries, kms);
@@ -438,6 +484,36 @@
       console.error(e);
       setStatus('Error cargando datos: ' + (e.message || e));
     }
+  }
+
+  /* ============ LOGO 2N PARA PDF ============ */
+  let __logoDataURL = null;
+
+  async function loadLogoDataURL(){
+    if (__logoDataURL) return __logoDataURL;
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){
+        try{
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img,0,0);
+          __logoDataURL = canvas.toDataURL('image/png');
+          resolve(__logoDataURL);
+        }catch(e){
+          console.warn('No se pudo convertir logo a dataURL', e);
+          resolve(null);
+        }
+      };
+      img.onerror = function(err){
+        console.warn('No se pudo cargar logo 2N', err);
+        resolve(null);
+      };
+      img.src = 'assets/2n-logo-black.png';
+    });
   }
 
   /* ============ GENERAR PDF ============ */
@@ -459,54 +535,83 @@
       const {m,y} = getRange();
       const mm = String(m).padStart(2,'0');
 
+      const logoDataURL = await loadLogoDataURL();
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('p','mm','a4');
 
+      // Fondo suave en todo el documento (opcional)
+      // doc.setFillColor(248,248,248);
+      // doc.rect(0,0,210,297,'F');
+
+      // Logo 2N en esquina superior derecha
+      if (logoDataURL){
+        doc.addImage(logoDataURL,'PNG',150,10,40,12);
+      }
+
       // Título / cabecera
       doc.setFont('helvetica','bold');
-      doc.setFontSize(16);
+      doc.setFontSize(18);
       doc.text('Informe de gastos - 2N', 14, 20);
 
       doc.setFont('helvetica','normal');
       doc.setFontSize(11);
-      doc.text(`Empleado: David Gaston`, 14, 28);
-      doc.text(`Cost center: Iberia Team`, 14, 34);
+      doc.text('Empleado: David Gaston', 14, 28);
+      doc.text('Cost center: Iberia Team', 14, 34);
       doc.text(`Periodo: ${mm}/${y}`, 14, 40);
 
-      // Resumen rápido
+      // Bloques de resumen profesional
       const t = totals;
-      const resumen = [
-        `Gasto total: ${t.total.toFixed(2)} €`,
-        `   - Empresa: ${t.totalEmpresa.toFixed(2)} €`,
-        `   - Personal: ${t.totalPersonal.toFixed(2)} €`,
-        `Kilómetros totales: ${t.totalKm.toFixed(2)} km`,
-        `   - Empresa: ${t.totalKmEmpresa.toFixed(2)} km`,
-        `   - Personales: ${t.totalKmPersonal.toFixed(2)} km`
-      ];
+
+      // Bloque 1: Gastos
+      doc.setDrawColor(220,220,220);
+      doc.setFillColor(245,245,245);
+      doc.roundedRect(14, 48, 90, 30, 3, 3, 'FD');
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(12);
+      doc.text('Resumen de gastos', 18, 56);
+
+      doc.setFont('helvetica','normal');
       doc.setFontSize(10);
-      let yPos = 48;
-      resumen.forEach(line=>{
-        doc.text(line, 14, yPos);
-        yPos += 5;
-      });
+      doc.text(`Total: ${t.total.toFixed(2)} €`, 18, 64);
+      doc.text(`Empresa: ${t.totalEmpresa.toFixed(2)} €`, 18, 70);
+      doc.text(`Personal: ${t.totalPersonal.toFixed(2)} €`, 18, 76);
+
+      // Bloque 2: Kilómetros
+      doc.roundedRect(110, 48, 86, 30, 3, 3, 'FD');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(12);
+      doc.text('Resumen de kilómetros', 114, 56);
+
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(10);
+      doc.text(`Total: ${t.totalKm.toFixed(2)} km`, 114, 64);
+      doc.text(`Empresa: ${t.totalKmEmpresa.toFixed(2)} km`, 114, 70);
+      doc.text(`Personales: ${t.totalKmPersonal.toFixed(2)} km`, 114, 76);
 
       // Tabla resumen por categoría
       const catRows = Object.keys(t.porCategoria).sort().map(cat=>[
         cat,
         t.porCategoria[cat].toFixed(2) + ' €'
       ]);
+      let currentY = 86;
       if (catRows.length){
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(11);
+        doc.text('Desglose por categoría', 14, currentY);
+
         doc.autoTable({
-          startY: yPos + 3,
+          startY: currentY + 4,
           head: [['Categoría','Importe']],
           body: catRows,
           theme: 'striped',
           styles: { fontSize: 9 },
           headStyles: { fillColor: [0,0,0], textColor: [255,255,255] }
         });
+        currentY = doc.lastAutoTable.finalY + 6;
       }
 
-      // Tabla de gastos (puede ir en otra página si hace falta)
+      // Tabla de gastos
       const gastosBody = entries.map(e=>{
         const d = formatISO(e._date || e.date);
         const paid = e.paidWith === 'personal' ? 'Personal' : 'Empresa';
@@ -522,8 +627,11 @@
 
       if (gastosBody.length){
         doc.addPage();
-        doc.setFontSize(14);
+        if (logoDataURL){
+          doc.addImage(logoDataURL,'PNG',150,10,40,12);
+        }
         doc.setFont('helvetica','bold');
+        doc.setFontSize(14);
         doc.text('Detalle de gastos', 14, 20);
 
         doc.autoTable({
@@ -562,8 +670,11 @@
 
       if (kmsBody.length){
         doc.addPage();
-        doc.setFontSize(14);
+        if (logoDataURL){
+          doc.addImage(logoDataURL,'PNG',150,10,40,12);
+        }
         doc.setFont('helvetica','bold');
+        doc.setFontSize(14);
         doc.text('Detalle de kilómetros', 14, 20);
 
         doc.autoTable({
