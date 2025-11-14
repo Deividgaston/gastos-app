@@ -7,7 +7,7 @@
 
   <link rel="stylesheet" href="assets/style.css">
 
-  <!-- Firebase compat (solo para login/header) -->
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
@@ -89,7 +89,7 @@
       <h2>Últimos registros</h2>
       <div id="kmList" class="list small" style="max-height:260px;overflow:auto;"></div>
       <div class="small" style="margin-top:6px">
-        Se muestran los últimos 20 registros de KM guardados en este dispositivo.
+        Se muestran los últimos 20 registros de KM.
       </div>
     </div>
 
@@ -102,7 +102,7 @@
   </div>
 </main>
 
-<!-- FIREBASE + AUTH (solo para mostrar login en el header) -->
+<!-- FIREBASE + AUTH -->
 <script>
 (function(){
   try{
@@ -133,11 +133,19 @@
         if (bL)  bL.style.display = '';
         if (bO)  bO.style.display = 'none';
       }
+
+      try{
+        document.dispatchEvent(new CustomEvent('auth-changed',{ detail:{ user:u } }));
+      }catch(e){}
     }
 
     auth.onAuthStateChanged(updateUser);
 
-    window.__APPCTX__ = { auth: auth };
+    window.__APPCTX__ = {
+      auth : auth,
+      db   : firebase.firestore()
+    };
+
     var prov   = new firebase.auth.GoogleAuthProvider();
     var btnIn  = document.getElementById('btnLogin');
     var btnOut = document.getElementById('btnLogout');
@@ -165,7 +173,7 @@
 })();
 </script>
 
-<!-- LÓGICA KM (SOLO LOCALSTORAGE) -->
+<!-- LÓGICA KM -->
 <script>
 (function(){
   function $(id){ return document.getElementById(id); }
@@ -173,7 +181,7 @@
   // Último odómetro conocido (para auto-sumar)
   window.__LAST_ODOMETER__ = null;
 
-  // Inicializar fecha por defecto a hoy
+  // Fecha por defecto = hoy
   (function initForm(){
     var hoy = new Date().toISOString().slice(0,10);
     var f = $('kmDate');
@@ -188,7 +196,6 @@
 
   function leerLocalKm(){
     var arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
-    // orden cronológico inverso (últimos primero)
     return arr.slice(-20).reverse().map(function(o){
       o._date = new Date(o.date);
       return o;
@@ -236,7 +243,33 @@
     recalcOdometer();
   }
 
-  /* ====== PINTAR LISTA KM ====== */
+  /* ====== LEER KM (Firebase si hay login, si no local) ====== */
+  async function loadKmEntries(){
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
+
+    if (user && db){
+      var snap = await db.collection('users/'+user.uid+'/kms')
+                         .orderBy('date','desc')
+                         .limit(20)
+                         .get();
+      var result = [];
+      snap.forEach(function(doc){
+        var o = doc.data();
+        var d = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
+        o._date = d;
+        result.push(o);
+      });
+      return result;
+    }
+
+    // sin login → local
+    return leerLocalKm();
+  }
+
+  /* ====== PINTAR LISTA ====== */
   function renderKmList(list){
     var cont = $('kmList');
     if (!cont) return;
@@ -276,7 +309,7 @@
     });
   }
 
-  /* ====== RESUMEN KM ====== */
+  /* ====== RESUMEN ====== */
   function renderKmTotals(list){
     var cont = $('kmTotals');
     if (!cont) return;
@@ -300,23 +333,30 @@
     cont.innerHTML =
       '<b>KM totales (últimos 20 registros):</b> ' + total.toFixed(1) + ' km<br>' +
       '<b>KM empresa:</b> ' + emp.toFixed(1) + ' km<br>' +
-      '<b>KM personales:</b> ' + per.toFixed(1) + ' km<br>' +
-      '<span class="small" style="display:block;margin-top:4px;">' +
-      'Los datos de KM se guardan solo en este dispositivo.' +
-      '</span>';
+      '<b>KM personales:</b> ' + per.toFixed(1) + ' km';
   }
 
-  function refreshKm(){
+  async function refreshKm(){
     setKmStatus('Cargando registros…');
-    var list = leerLocalKm();
-    renderKmList(list);
-    renderKmTotals(list);
-    actualizarLastOdometer(list);
-    setKmStatus('');
+    try{
+      var list = await loadKmEntries();
+      renderKmList(list);
+      renderKmTotals(list);
+      actualizarLastOdometer(list);
+      setKmStatus('');
+    }catch(e){
+      console.error(e);
+      setKmStatus('Error cargando registros de KM.');
+    }
   }
 
   /* ====== GUARDAR KM ====== */
-  function saveKm(){
+  async function saveKm(){
+    var ctx  = window.__APPCTX__ || {};
+    var auth = ctx.auth;
+    var db   = ctx.db;
+    var user = auth && auth.currentUser;
+
     var dateISO  = $('kmDate').value || new Date().toISOString().slice(0,10);
     var distance = Number($('kmDistance').value || 0);
     var type     = $('kmType').value;
@@ -334,7 +374,7 @@
       totalKm = window.__LAST_ODOMETER__ + distance;
     }
 
-    var entry = {
+    var entryBase = {
       date    : dateISO,
       km      : distance,
       type    : type,
@@ -345,19 +385,40 @@
 
     setKmStatus('Guardando…');
 
-    guardarLocalKm(entry);
+    try{
+      if (user && db){
+        // 👉 Guardar SOLO en Firestore cuando hay login
+        await db.collection('users/'+user.uid+'/kms').add({
+          date     : new Date(dateISO),
+          km       : distance,
+          type     : type,
+          fuelPrice: fuel !== '' ? Number(fuel) : null,
+          totalKm  : totalKm,
+          notes    : notes || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        setKmStatus('KM guardado en Firebase ✅');
+      } else {
+        // Sin login → localStorage (como en index)
+        guardarLocalKm(entryBase);
+        setKmStatus('KM guardado en este dispositivo (sin login) ✅');
+      }
 
-    if (totalKm != null && !isNaN(totalKm)){
-      window.__LAST_ODOMETER__ = totalKm;
+      if (totalKm != null && !isNaN(totalKm)){
+        window.__LAST_ODOMETER__ = totalKm;
+      }
+
+      $('kmDistance').value = '';
+      $('kmNotes').value    = '';
+      recalcOdometer();
+
+      document.dispatchEvent(new CustomEvent('kms-updated'));
+      refreshKm();
+    }catch(e){
+      console.error(e);
+      alert('Error guardando KM en Firebase: ' + (e && e.message || ''));
+      setKmStatus('Error al guardar en Firebase. Revisa las reglas de Firestore.');
     }
-
-    setKmStatus('KM guardado en este dispositivo ✅');
-
-    $('kmDistance').value = '';
-    $('kmNotes').value    = '';
-    recalcOdometer();
-
-    refreshKm();
   }
 
   function clearKmForm(){
@@ -376,6 +437,9 @@
   if ($('btnSaveKm'))  $('btnSaveKm').addEventListener('click', saveKm);
   if ($('btnClearKm')) $('btnClearKm').addEventListener('click', clearKmForm);
   if ($('kmDistance')) $('kmDistance').addEventListener('input', recalcOdometer);
+
+  document.addEventListener('auth-changed',  refreshKm, false);
+  document.addEventListener('kms-updated',   refreshKm, false);
 
   // Primera carga
   refreshKm();
