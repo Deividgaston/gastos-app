@@ -13,10 +13,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- Utilidades (para export en otras páginas, no estorban aquí) -->
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
   <!-- Config Firebase -->
   <script src="config.js"></script>
 </head>
@@ -152,7 +148,7 @@
   </div>
 </div>
 
-<!-- BOOTSTRAP FIREBASE + AUTH GOOGLE -->
+<!-- FIREBASE + AUTH GOOGLE -->
 <script>
 (function(){
   try{
@@ -161,6 +157,7 @@
     }
 
     var auth = firebase.auth();
+
     if (firebase.auth.Auth.Persistence) {
       auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
     }
@@ -223,11 +220,12 @@
 })();
 </script>
 
-<!-- LÓGICA PAGINA (OCR + GUARDADO + CONFIG OCR) -->
+<!-- LÓGICA OCR + GUARDADO + LISTA -->
 <script>
 (function(){
   function $(id){ return document.getElementById(id); }
 
+  /* MODALES */
   function openModal(){
     var m = $('reviewModal');
     if (!m) return;
@@ -259,18 +257,11 @@
     m.setAttribute('aria-hidden','true');
   }
 
-  var cfgBtn = $('btnConfigOCR');
-  if (cfgBtn){
-    cfgBtn.addEventListener('click', openOCRModal);
-  }
-  var closeOCR = $('closeOCR');
-  if (closeOCR){
-    closeOCR.addEventListener('click', closeOCRModal);
-  }
+  if ($('btnConfigOCR')) $('btnConfigOCR').addEventListener('click', openOCRModal);
+  if ($('closeOCR'))     $('closeOCR').addEventListener('click', closeOCRModal);
 
-  var saveKeyBtn = $('btnSaveKey');
-  if (saveKeyBtn){
-    saveKeyBtn.addEventListener('click', function(){
+  if ($('btnSaveKey')){
+    $('btnSaveKey').addEventListener('click', function(){
       var v = $('ocrKeyInput').value.trim();
       if (!v){
         alert('Introduce una clave válida.');
@@ -281,18 +272,16 @@
     });
   }
 
-  var clearKeyBtn = $('btnClearKey');
-  if (clearKeyBtn){
-    clearKeyBtn.addEventListener('click', function(){
+  if ($('btnClearKey')){
+    $('btnClearKey').addEventListener('click', function(){
       localStorage.removeItem('gkey');
       $('ocrKeyInput').value = '';
       $('ocrStatus').textContent = 'Clave borrada. El OCR no funcionará hasta que configures una nueva.';
     });
   }
 
-  var testKeyBtn = $('btnTestKey');
-  if (testKeyBtn){
-    testKeyBtn.addEventListener('click', async function(){
+  if ($('btnTestKey')){
+    $('btnTestKey').addEventListener('click', async function(){
       var key = $('ocrKeyInput').value.trim();
       if (!key){
         alert('Introduce una clave para probar.');
@@ -306,11 +295,14 @@
             parts:[{ text: 'Hola' }]
           }]
         };
-        var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify(body)
-        });
+        var res = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
+          {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(body)
+          }
+        );
         if (!res.ok){
           $('ocrStatus').textContent = 'Error al probar la clave: HTTP '+res.status;
           return;
@@ -322,6 +314,7 @@
     });
   }
 
+  /* INGRESO MANUAL */
   var manualBtn = $('manualBtn');
   if (manualBtn){
     manualBtn.addEventListener('click', function(){
@@ -338,6 +331,7 @@
     });
   }
 
+  /* PICK FILE / CAMARA */
   function pickFile(fromCamera){
     var inp = document.createElement('input');
     inp.type   = 'file';
@@ -358,22 +352,82 @@
     inp.click();
   }
 
-  var scanBtn = $('scanBtn');
-  if (scanBtn){
-    scanBtn.addEventListener('click', function(){ pickFile(true); });
-  }
-  var btnPick = $('btnPick');
-  if (btnPick){
-    btnPick.addEventListener('click', function(){ pickFile(false); });
-  }
-  var btnCam = $('btnCam');
-  if (btnCam){
-    btnCam.addEventListener('click', function(){ pickFile(true); });
+  if ($('scanBtn')) $('scanBtn').addEventListener('click', function(){ pickFile(true); });
+  if ($('btnPick')) $('btnPick').addEventListener('click', function(){ pickFile(false); });
+  if ($('btnCam'))  $('btnCam').addEventListener('click',  function(){ pickFile(true);  });
+  if ($('closeReview')) $('closeReview').addEventListener('click', closeModal);
+
+  /* PARSER OCR */
+  function normalizarCategoria(raw){
+    if (!raw) return null;
+    var c = String(raw).trim().toLowerCase();
+    if (c.includes('ingres')) return 'ingreso';
+    if (c.includes('comida') || c.includes('rest') || c.includes('food')) return 'comida';
+    if (c.includes('peaje') || c.includes('toll')) return 'peajes';
+    if (c.includes('gas') || c.includes('fuel') || c.includes('diesel')) return 'gasolina';
+    if (c.includes('hotel') || c.includes('aloj')) return 'alojamiento';
+    if (c.includes('ocio') || c.includes('entertain')) return 'ocio';
+    if (c.includes('serv')) return 'servicios';
+    if (c.includes('transp') || c.includes('taxi') || c.includes('uber') || c.includes('cabify')) return 'transporte';
+    return 'varios';
   }
 
-  var closeBtn = $('closeReview');
-  if (closeBtn){
-    closeBtn.addEventListener('click', closeModal);
+  function parseOcrText(text){
+    var out = { provider:null, date:null, amount:null, category:null };
+
+    var jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch){
+      try{
+        var obj = JSON.parse(jsonMatch[0]);
+        out.provider = obj.provider || obj.proveedor || null;
+        out.date     = obj.date     || obj.fecha     || null;
+        out.amount   = obj.amount   || obj.importe   || null;
+        out.category = obj.category || obj.categoria || null;
+      }catch(e){}
+    }
+
+    if (!out.provider){
+      var mProv = text.match(/(?:provider|proveedor)\s*[:=]\s*"?([^\n"]+)/i);
+      if (!mProv) mProv = text.match(/^[A-ZÁÉÍÓÚÑ0-9][^\n]{3,30}$/m);
+      if (mProv) out.provider = (mProv[1] ? mProv[1] : mProv[0]).trim();
+    }
+
+    if (!out.date){
+      var mISO = text.match(/(\d{4}-\d{2}-\d{2})/);
+      if (mISO){
+        out.date = mISO[1];
+      } else {
+        var mEU = text.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+        if (mEU){
+          var d = mEU[1].padStart(2,'0');
+          var m = mEU[2].padStart(2,'0');
+          var y = mEU[3];
+          if (y.length === 2) y = '20'+y;
+          out.date = y+'-'+m+'-'+d;
+        }
+      }
+    }
+
+    if (out.amount == null){
+      var allNums = text.match(/(\d+[.,]\d{2})\s*€?/g);
+      if (allNums && allNums.length){
+        var last = allNums[allNums.length-1];
+        last = last.replace(/[€\s]/g,'').replace(',','.');
+        var val = parseFloat(last);
+        if (!isNaN(val)) out.amount = val;
+      }
+    }
+
+    if (!out.category){
+      var mCat = text.match(/(?:category|categor[ií]a)\s*[:=]\s*"?([a-zA-Záéíóúñ]+)/i);
+      if (mCat) out.category = mCat[1];
+    }
+
+    if (out.category){
+      out.category = normalizarCategoria(out.category);
+    }
+
+    return out;
   }
 
   async function ensureKey(){
@@ -404,31 +458,34 @@
         }]
       };
 
-      var res  = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),{
-        method :'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body   : JSON.stringify(body)
-      });
+      var res  = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+encodeURIComponent(key),
+        {
+          method :'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body   : JSON.stringify(body)
+        }
+      );
 
       var data = await res.json();
-      var text = data && data.candidates && data.candidates[0] &&
-                 data.candidates[0].content && data.candidates[0].content.parts &&
-                 data.candidates[0].content.parts[0].text || '';
+      var text =
+        data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0].text
+          ? data.candidates[0].content.parts[0].text
+          : "";
 
-      var match = text.match(/\{[\s\S]*\}/);
-      if (!match) return;
-      var j = JSON.parse(match[0]);
+      var parsed = parseOcrText(text);
 
-      if (j.provider) $('revProvider').value = j.provider;
-      if (j.date)     $('revDate').value     = j.date;
-      if (j.amount != null) $('revAmount').value = Number(j.amount || 0);
-
-      if (j.category){
-        var c = String(j.category).toLowerCase();
-        if (!/comida|peajes|gasolina|transporte|alojamiento|ocio|servicios|varios|ingreso/.test(c)){
-          c = 'varios';
-        }
-        $('revCategory').value = c;
+      if (parsed.provider) $('revProvider').value = parsed.provider;
+      if (parsed.date)     $('revDate').value     = parsed.date;
+      if (parsed.amount != null)
+        $('revAmount').value = Number(parsed.amount || 0);
+      if (parsed.category){
+        $('revCategory').value = parsed.category;
       }
     }catch(e){
       console.warn('OCR error', e);
@@ -436,7 +493,7 @@
   }
 
   async function saveEntry(){
-    var ctx = window.__APPCTX__ || {};
+    var ctx  = window.__APPCTX__ || {};
     var auth = ctx.auth;
     var db   = ctx.db;
     var st   = ctx.storage;
@@ -452,7 +509,7 @@
     var file     = window.__lastFile || null;
 
     try{
-      var photoURL = null;
+      var photoURL  = null;
       var photoPath = null;
 
       if (file && user && st){
@@ -503,11 +560,9 @@
     }
   }
 
-  var saveBtn = $('saveReview');
-  if (saveBtn){
-    saveBtn.addEventListener('click', saveEntry);
-  }
+  if ($('saveReview')) $('saveReview').addEventListener('click', saveEntry);
 
+  /* LISTA ÚLTIMOS APUNTES */
   function renderList(){
     var cont = $('lista');
     if (!cont) return;
@@ -533,7 +588,10 @@
             var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
             var div = document.createElement('div');
             div.className = 'small';
-            div.textContent = d.toISOString().slice(0,10) + ' · ' + (e.provider || '-') + ' · ' + (e.amount || 0) + '€';
+            div.textContent =
+              d.toISOString().slice(0,10) + ' · ' +
+              (e.provider || '-') + ' · ' +
+              (e.amount || 0) + '€';
             cont.appendChild(div);
           });
         });
@@ -546,16 +604,18 @@
       arr.slice(-5).reverse().forEach(function(e){
         var div = document.createElement('div');
         div.className = 'small';
-        div.textContent = e.date + ' · ' + (e.provider || '-') + ' · ' + (e.amount || 0) + '€';
+        div.textContent =
+          e.date + ' · ' + (e.provider || '-') + ' · ' + (e.amount || 0) + '€';
         cont.appendChild(div);
       });
     }
   }
 
-  document.addEventListener('auth-changed', renderList, false);
-  document.addEventListener('entries-updated', renderList, false);
+  document.addEventListener('auth-changed',     renderList, false);
+  document.addEventListener('entries-updated',  renderList, false);
   renderList();
-})();</script>
+})();
+</script>
 
 </body>
 </html>
