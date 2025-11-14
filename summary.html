@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Summary · Gastos 2N</title>
   <link rel="stylesheet" href="assets/style.css">
+
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
@@ -19,6 +20,7 @@
   <a class="badge" href="index.html">🏠 Inicio</a>
   <a class="badge" href="export.html">📤 Export</a>
 </header>
+
 <main class="content">
   <div class="grid">
     <div class="card">
@@ -26,7 +28,12 @@
       <table id="tabla">
         <thead>
           <tr>
-            <th>Fecha</th><th>Proveedor</th><th>Categoría</th><th>€</th><th>Pago</th><th>Foto</th>
+            <th>Fecha</th>
+            <th>Proveedor</th>
+            <th>Categoría</th>
+            <th>€</th>
+            <th>Pago</th>
+            <th>Foto</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -34,29 +41,55 @@
     </div>
   </div>
 </main>
+
 <script>
 (function(){
   if (!firebase.apps.length) firebase.initializeApp(window.__FBCONFIG__);
-  const auth=firebase.auth();const db=firebase.firestore();
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
 
   async function load(){
-    const u=auth.currentUser;
-    if(!u)return;
-    const now=new Date();const y=now.getFullYear();const m=now.getMonth();
-    const start=new Date(y,m,1);const end=new Date(y,m+1,1);
-    const snap=await db.collection('users/'+u.uid+'/entries')
-      .where('date','>=',start).where('date','<',end).orderBy('date','desc').get();
-    const tbody=document.querySelector('#tabla tbody');tbody.innerHTML='';
+    const u = auth.currentUser;
+    if (!u) return;
+
+    const now = new Date();
+    const y   = now.getFullYear();
+    const m   = now.getMonth();
+
+    const start = new Date(y,m,1);
+    const end   = new Date(y,m+1,1);
+
+    const snap = await db.collection('users/'+u.uid+'/entries')
+      .where('date','>=',start)
+      .where('date','<', end)
+      .orderBy('date','desc')
+      .get();
+
+    const tbody = document.querySelector('#tabla tbody');
+    tbody.innerHTML = '';
+
     snap.forEach(doc=>{
-      const e=doc.data();const d=e.date.toDate().toISOString().slice(0,10);
-      const tr=document.createElement('tr');
-      tr.innerHTML='<td>'+d+'</td><td>'+(e.provider||'')+'</td><td>'+(e.category||'')+
-                   '</td><td>'+Number(e.amount||0).toFixed(2)+
-                   '</td><td>'+(e.paidWith||'')+'</td><td>'+(e.photoURL?'<a href="'+e.photoURL+'" target="_blank">📷</a>':'')+'</td>';
+      const e = doc.data();
+      const d = e.date.toDate().toISOString().slice(0,10);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>'+d+'</td>'+
+        '<td>'+(e.provider||'')+'</td>'+
+        '<td>'+(e.category||'')+'</td>'+
+        '<td>'+Number(e.amount||0).toFixed(2)+'</td>'+
+        '<td>'+(e.paidWith||'')+'</td>'+
+        '<td>'+(e.photoURL ? '<a href="'+e.photoURL+'" target="_blank">📷</a>' : '')+'</td>';
+
       tbody.appendChild(tr);
     });
   }
-  auth.onAuthStateChanged(u=>{ if(u) load(); });
-})();</script>
+
+  auth.onAuthStateChanged(u=>{
+    if (u) load();
+  });
+})();
+</script>
+
 </body>
 </html>
