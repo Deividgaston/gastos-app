@@ -293,38 +293,25 @@
     return cols;
   }
 
-  // Estilos base tomados de la fila modelo (fila 7)
-  let __baseStyles = {};
-  let __baseFormats = {};
-
-  // Set cell conservando estilo, formato y fórmulas
+  // 👉 NO tocamos estilos ni formatos, solo valores
   function setCell(ws, addr, value){
-    const col = addr.replace(/\d+/g,''); // A, B, C...
-    let cell = ws[addr] || {};
-    const originalFmla = cell.f;
-
-    // Si no tiene estilo, copiamos el de la fila modelo
-    if (!cell.s && __baseStyles[col]){
-      cell.s = __baseStyles[col];
+    let cell = ws[addr];
+    if (!cell){
+      cell = {};
+      ws[addr] = cell;
     }
-    if (!cell.z && __baseFormats[col]){
-      cell.z = __baseFormats[col];
-    }
+    const hadFormula = !!cell.f;
 
-    // Si tiene fórmula, no tocamos el valor
-    if (!originalFmla){
-      cell.v = value;
+    if (!hadFormula){
       if (typeof value === 'number'){
         cell.t = 'n';
+        cell.v = value;
       } else {
         cell.t = 's';
         cell.v = (value == null ? '' : value);
       }
-    } else {
-      cell.f = originalFmla;
     }
-
-    ws[addr] = cell;
+    // cell.s, cell.z y cell.f se dejan tal cual vengan de la plantilla
   }
 
   /* ============ EXPORTAR EXCEL ============ */
@@ -361,25 +348,17 @@
       const wb = XLSX.read(ab,{type:'array'});
       const ws = wb.Sheets['NDF'] || wb.Sheets[wb.SheetNames[0]];
 
-      // Datos personales (cabecera)
+      // === Cabecera con tus datos ===
       setCell(ws,'B2','Gaston');      // NOM
       setCell(ws,'B3','David');       // PRENOM
       setCell(ws,'D3','iberia team'); // COST CENTER
 
-      // Leer estilos base de la fila 7 (modelo)
-      __baseStyles = {};
-      __baseFormats = {};
-      const cols = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-      const modelRow = 7;
-      cols.forEach(col=>{
-        const addr = col + modelRow;
-        const c = ws[addr];
-        if (c && c.s) __baseStyles[col]  = c.s;
-        if (c && c.z) __baseFormats[col] = c.z;
-      });
+      // IMPORTANTE:
+      // Para que se mantenga TODO el formato de la tabla (bordes, rayas, etc.),
+      // deja en la plantilla 2N las filas de datos (por ejemplo A7:L100) ya formateadas.
+      // Aquí solo cambiamos el valor; los estilos vienen de la plantilla.
 
-      // Fila de inicio de datos
-      let row = 7;
+      let row = 7; // fila de inicio de datos en tu NDF
       valid.forEach(({e,m})=>{
         setCell(ws,`A${row}`,formatISO(e._date));   // DATE
         setCell(ws,`B${row}`,e.provider || '');     // CLIENT / PROVIDER
@@ -392,8 +371,8 @@
         setCell(ws,`H${row}`,m.H);
         setCell(ws,`I${row}`,m.I);
         setCell(ws,`J${row}`,m.J);
-        // K = TOTAL tiene fórmula en plantilla → no tocamos valor
-        setCell(ws,`L${row}`,e.notes || '');
+        // K = TOTAL → tiene fórmula en la plantilla, no tocamos valor
+        setCell(ws,`L${row}`,e.notes || '');        // DESCRIPTION
 
         row++;
       });
@@ -403,7 +382,7 @@
       const filename = `gastos_2n_${y}-${mm}.xlsx`;
 
       XLSX.writeFile(wb, filename);
-      setStatus('Excel generado correctamente a partir de la plantilla 2N.');
+      setStatus('Excel generado correctamente a partir de la plantilla 2N (respetando todo el formato).');
     }catch(e){
       console.error(e);
       setStatus('Error al generar el Excel: ' + (e.message || e));
