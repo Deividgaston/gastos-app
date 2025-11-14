@@ -14,18 +14,18 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
   <!-- XLSX con soporte de estilos (xlsx-js-style) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
   <!-- Config Firebase -->
   <script src="config.js"></script>
 </head>
+
 <body>
 <header class="topbar">
   <h1>
     <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:4px;">
     Gastos 2N · Export
   </h1>
-
   <a class="badge" href="index.html">🏠 Inicio</a>
   <a class="badge" href="kms.html">🚗 KM</a>
   <a class="badge active" href="export.html">📤 Export</a>
@@ -38,13 +38,15 @@
   </div>
 </header>
 
+
 <main class="content">
   <div class="grid">
     <div class="card">
       <h2>Exportar gastos</h2>
+
       <div class="row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
         <div>
-          <label for="selMonth">Mes</label><br>
+          <label>Mes</label><br>
           <select id="selMonth">
             <option value="1">Enero</option>
             <option value="2">Febrero</option>
@@ -60,564 +62,388 @@
             <option value="12">Diciembre</option>
           </select>
         </div>
+
         <div>
-          <label for="selYear">Año</label><br>
-          <input id="selYear" type="number" style="width:110px">
+          <label>Año</label><br>
+          <input id="selYear" type="number" style="width:120px">
         </div>
-        <div style="flex:1;min-width:220px">
+
+        <div style="flex:1;min-width:200px">
           <div class="small">
-            Se exportan los apuntes del mes seleccionado, leyendo de Firestore si hay login
-            o de localStorage si no.
+            Exporta los gastos del mes seleccionando la plantilla oficial 2N.
           </div>
         </div>
       </div>
 
       <div class="row" style="margin-top:16px;gap:8px;flex-wrap:wrap">
-        <button id="btnExportExcel" class="btn primary">📥 Descargar Excel (plantilla 2N)</button>
-        <button id="btnExportPhotos" class="btn">🖼 Descargar fotos del mes</button>
-        <button id="btnExportKmPersonal" class="btn">🚶‍♂️ Descargar KM personales</button>
+        <button id="btnExportExcel" class="btn primary">📥 Exportar Excel (plantilla 2N)</button>
+        <button id="btnExportPhotos" class="btn">🖼 Descargar fotos</button>
+        <button id="btnExportKmPersonal" class="btn">🚶 KM personales</button>
       </div>
 
-      <div id="exportStatus" class="small" style="margin-top:10px;min-height:1.5em"></div>
+      <div id="exportStatus" class="small" style="margin-top:10px;min-height:2em"></div>
     </div>
 
     <div class="card">
-      <h2>Vista previa rápida</h2>
+      <h2>Vista previa</h2>
       <div id="previewList" class="list small"></div>
     </div>
   </div>
 </main>
 
-<!-- FIREBASE + AUTH GOOGLE -->
+
+<!-- ============================================================= -->
+<!-- ======================= FIREBASE AUTH ======================== -->
+<!-- ============================================================= -->
+
 <script>
 (function(){
-  try{
-    if (!firebase.apps.length) {
-      firebase.initializeApp(window.__FBCONFIG__);
-    }
 
-    var auth = firebase.auth();
-
-    if (firebase.auth.Auth.Persistence) {
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
-    }
-    if (auth.getRedirectResult) {
-      auth.getRedirectResult().catch(function(){});
-    }
-
-    function updateUser(u){
-      var who = document.getElementById('whoami');
-      var bL  = document.getElementById('btnLogin');
-      var bO  = document.getElementById('btnLogout');
-
-      if (u){
-        if (who) who.textContent = 'Conectado: ' + (u.email || u.uid);
-        if (bL)  bL.style.display = 'none';
-        if (bO)  bO.style.display = '';
-      } else {
-        if (who) who.textContent = 'No autenticado';
-        if (bL)  bL.style.display = '';
-        if (bO)  bO.style.display = 'none';
-      }
-
-      try{
-        document.dispatchEvent(new CustomEvent('auth-changed',{ detail:{ user:u } }));
-      }catch(e){}
-    }
-
-    auth.onAuthStateChanged(updateUser);
-
-    window.__APPCTX__ = {
-      auth   : auth,
-      db     : firebase.firestore(),
-      storage: firebase.storage()
-    };
-
-    var prov   = new firebase.auth.GoogleAuthProvider();
-    var btnIn  = document.getElementById('btnLogin');
-    var btnOut = document.getElementById('btnLogout');
-
-    if (btnIn){
-      btnIn.addEventListener('click', function(){
-        auth.signInWithPopup(prov).catch(function(err){
-          if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user')){
-            auth.signInWithRedirect(prov);
-          } else {
-            alert('Error login: ' + (err && err.message || ''));
-          }
-        });
-      });
-    }
-
-    if (btnOut){
-      btnOut.addEventListener('click', function(){
-        auth.signOut();
-      });
-    }
-  }catch(e){
-    console.error(e);
+  if (!firebase.apps.length){
+    firebase.initializeApp(window.__FBCONFIG__);
   }
+
+  const auth = firebase.auth();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+
+  function updateUser(user){
+    const who = document.getElementById('whoami');
+    const btnIn = document.getElementById('btnLogin');
+    const btnOut = document.getElementById('btnLogout');
+
+    if (user){
+      who.textContent = "Conectado: " + (user.email || user.uid);
+      btnIn.style.display = "none";
+      btnOut.style.display = "";
+    } else {
+      who.textContent = "No autenticado";
+      btnIn.style.display = "";
+      btnOut.style.display = "none";
+    }
+
+    document.dispatchEvent(new CustomEvent("auth-changed",{detail:{user}}));
+  }
+
+  auth.onAuthStateChanged(updateUser);
+
+  document.getElementById("btnLogin").onclick = ()=> auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  document.getElementById("btnLogout").onclick = ()=> auth.signOut();
+
+  window.__APPCTX__ = {
+    auth,
+    db: firebase.firestore(),
+    storage: firebase.storage()
+  };
+
 })();
 </script>
 
-<!-- LÓGICA EXPORT -->
+
+<!-- ============================================================= -->
+<!-- ======================= EXPORT LOGIC ========================= -->
+<!-- ============================================================= -->
+
 <script>
 (function(){
+
   function $(id){ return document.getElementById(id); }
 
-  /* Inicializar mes/año por defecto */
+  // Inicializar mes y año automáticamente
   (function initMonthYear(){
-    var now  = new Date();
-    var m    = now.getMonth() + 1;
-    var y    = now.getFullYear();
-    if ($('selMonth')) $('selMonth').value = String(m);
-    if ($('selYear'))  $('selYear').value  = String(y);
+    const now = new Date();
+    $('selMonth').value = String(now.getMonth()+1);
+    $('selYear').value  = String(now.getFullYear());
   })();
 
+
   function setStatus(msg){
-    var el = $('exportStatus');
-    if (el) el.textContent = msg || '';
+    $('exportStatus').textContent = msg;
   }
 
-  function formatDateISO(d){
-    if (!(d instanceof Date)) d = new Date(d);
-    return d.toISOString().slice(0,10);
+  function formatISO(date){
+    if (!(date instanceof Date)) date = new Date(date);
+    return date.toISOString().slice(0,10);
   }
 
-  function slugify(str){
-    return (str || '')
-      .toString()
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,'-')
-      .replace(/-+/g,'-')
-      .replace(/^-|-$/g,'') || 'ticket';
+  function getRange(){
+    const m = parseInt($('selMonth').value,10);
+    const y = parseInt($('selYear').value,10);
+    return {
+      m, y,
+      start: new Date(Date.UTC(y,m-1,1)),
+      end:   new Date(Date.UTC(y,m,1))
+    };
   }
 
-  function getMonthRange(){
-    var m = parseInt($('selMonth').value,10);
-    var y = parseInt($('selYear').value,10);
-    if (!m || !y) throw new Error('Mes o año no válidos');
-    var start = new Date(Date.UTC(y, m-1, 1, 0,0,0));
-    var end   = new Date(Date.UTC(y, m,   1, 0,0,0));
-    return { m, y, start, end };
-  }
 
-  /* ==== GASTOS (entries) ==== */
+  /* ================== LECTURA DE ENTRIES ================== */
 
-  async function getMonthEntries(){
-    var ctx  = window.__APPCTX__ || {};
-    var auth = ctx.auth;
-    var db   = ctx.db;
-    var user = auth && auth.currentUser;
+  async function getEntries(){
+    const {auth,db} = window.__APPCTX__;
+    const user = auth.currentUser;
 
-    var range = getMonthRange();
-    var start = range.start;
-    var end   = range.end;
+    const {start,end} = getRange();
+    const entries = [];
 
-    var entries = [];
-
-    if (user && db){
-      var snap = await db.collection('users/' + user.uid + '/entries')
-        .orderBy('date','asc')
+    if (user){
+      const snap = await db.collection(`users/${user.uid}/entries`)
+        .orderBy("date","asc")
         .get();
 
-      snap.forEach(function(doc){
-        var e = doc.data();
-        var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
-        if (d >= start && d < end){
-          e._id   = doc.id;
+      snap.forEach(doc=>{
+        const e = doc.data();
+        const d = e.date?.toDate?.() ?? new Date(e.date);
+        if (d>=start && d<end){
           e._date = d;
           entries.push(e);
         }
       });
+
     } else {
-      var arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
-      arr.forEach(function(e){
-        var d = new Date(e.date);
-        if (d >= start && d < end){
-          e._date = d;
+      const arr = JSON.parse(localStorage.getItem("entries_local")||"[]");
+      arr.forEach(e=>{
+        const d = new Date(e.date);
+        if (d>=start && d<end){
+          e._date=d;
           entries.push(e);
         }
       });
     }
 
-    return { entries, range };
+    return entries;
   }
 
+
+  /* ================= VISTA PREVIA ================= */
+
   function renderPreview(entries){
-    var cont = $('previewList');
-    if (!cont) return;
-    cont.innerHTML = '';
+    const cont = $('previewList');
+    cont.innerHTML = "";
 
     if (!entries.length){
-      cont.innerHTML = '<div class="small">Sin apuntes para este mes.</div>';
+      cont.innerHTML = "<div class='small'>Sin apuntes.</div>";
       return;
     }
 
-    var title = document.createElement('div');
-    title.className = 'small';
-    title.style.fontWeight = 'bold';
-    title.textContent = 'Mostrando hasta 10 primeros apuntes del mes (gastos):';
-    cont.appendChild(title);
-
-    entries.slice(0,10).forEach(function(e){
-      var d = e._date || new Date(e.date);
-      var div = document.createElement('div');
-      div.className = 'small';
-      div.textContent =
-        formatDateISO(d) + ' · ' +
-        (e.provider || '-') + ' · ' +
-        (e.amount || 0) + '€ · ' +
-        (e.category || '');
-      cont.appendChild(div);
+    entries.slice(0,10).forEach(e=>{
+      const line = document.createElement("div");
+      line.className="small";
+      line.textContent = `${formatISO(e._date)} · ${e.provider||"-"} · ${e.amount||0}€ · ${e.category}`;
+      cont.appendChild(line);
     });
   }
 
-  /* Mapear categoría interna -> columnas plantilla 2N */
-  function mapTo2NCols(e){
-    var cat       = (e.category || '').toString().toLowerCase();
-    var importe   = (typeof e.amount === 'number') ? e.amount : Number(e.amount || 0);
-    if (!importe) importe = 0;
 
-    // Omitimos ingresos en la plantilla de gastos
-    if (cat === 'ingreso') return null;
+  /* ================== MAPEAR CATEGORÍAS → PLANTILLA ================== */
 
-    var cols = {
-      tolls   : 0, // C
-      hotel   : 0, // D
-      gas     : 0, // E
-      tickets : 0, // F
-      other   : 0, // G
-      invit   : 0, // H
-      meals   : 0, // I
-      varios  : 0  // J
+  function mapTo2N(e){
+    const cat = (e.category||"").toLowerCase();
+    const amt = Number(e.amount||0);
+
+    if (cat==="ingreso") return null;
+
+    const cols = {
+      C: 0, // peajes
+      D: 0, // hotel
+      E: 0, // gasolina
+      F: 0, // tickets
+      G: 0, // taxis
+      H: 0, // invitaciones
+      I: 0, // comidas
+      J: 0  // varios
     };
 
-    if      (cat === 'peajes')      cols.tolls  = importe;
-    else if (cat === 'gasolina')    cols.gas    = importe;
-    else if (cat === 'alojamiento') cols.hotel  = importe;
-    else if (cat === 'transporte')  cols.other  = importe;
-    else if (cat === 'comida')      cols.meals  = importe;
-    else if (cat === 'ocio')        cols.varios = importe;
-    else if (cat === 'servicios')   cols.varios = importe;
-    else                            cols.varios = importe;
+    if (cat.includes("peaje")) cols.C = amt;
+    else if (cat.includes("aloj")) cols.D = amt;
+    else if (cat.includes("gasol")||cat.includes("fuel")) cols.E = amt;
+    else if (cat.includes("ticket")) cols.F = amt;
+    else if (cat.includes("transp")||cat.includes("taxi")) cols.G = amt;
+    else if (cat.includes("invit")) cols.H = amt;
+    else if (cat.includes("comid")||cat.includes("meal")) cols.I = amt;
+    else cols.J = amt;
 
     return cols;
   }
 
-  // 👉 Set cell conservando estilo, formato y fórmula
+
+  /* ================== IMPORTANTE: CONSERVAR ESTILOS ================== */
+
   function setCell(ws, addr, value){
-    var cell = ws[addr];
-    var originalStyle = cell && cell.s ? cell.s : undefined;
-    var originalFmt   = cell && cell.z ? cell.z : undefined;
-    var originalFmla  = cell && cell.f ? cell.f : undefined;
-
-    if (!cell){
-      cell = ws[addr] = {};
-    }
-
-    // Solo sobreescribimos valor si no hay fórmula
-    if (!originalFmla){
-      cell.v = value;
-      if (typeof value === 'number'){
-        cell.t = 'n';
-      } else {
-        cell.t = 's';
-        cell.v = (value == null ? '' : value);
-      }
-    }
-
-    if (originalStyle) cell.s = originalStyle;
-    if (originalFmt)   cell.z = originalFmt;
-    if (originalFmla)  cell.f = originalFmla;
+    const old = ws[addr] || {};
+    ws[addr] = {
+      v: old.f ? old.v : value,
+      t: old.f ? old.t : (typeof value==="number"?"n":"s"),
+      f: old.f,
+      z: old.z,
+      s: old.s
+    };
   }
 
-  async function handleExportExcel(){
-    try{
-      setStatus('Cargando apuntes del mes…');
-      var res = await getMonthEntries();
-      var entries = res.entries;
-      var range   = res.range;
 
+  /* ================== EXPORTAR EXCEL ================== */
+
+  async function exportExcel(){
+    try{
+      setStatus("Cargando datos…");
+      const entries = await getEntries();
       if (!entries.length){
-        setStatus('No hay apuntes para ese mes.');
-        renderPreview([]);
+        setStatus("No hay apuntes.");
         return;
       }
 
       renderPreview(entries);
 
-      var validEntries = [];
-      entries.forEach(function(e){
-        var mapped = mapTo2NCols(e);
-        if (mapped) validEntries.push({ entry: e, cols: mapped });
+      const valid = [];
+      entries.forEach(e=>{
+        const m = mapTo2N(e);
+        if (m) valid.push({e,m});
       });
 
-      if (!validEntries.length){
-        setStatus('Solo hay ingresos o apuntes sin importe, nada que exportar en plantilla 2N.');
+      if (!valid.length){
+        setStatus("Nada que exportar (solo ingresos).");
         return;
       }
 
-      setStatus('Cargando plantilla 2N…');
+      setStatus("Cargando plantilla…");
+      const tpl = await fetch("assets/plantilla-2n.xlsx");
+      if (!tpl.ok) throw new Error("No se encuentra plantilla-2n.xlsx");
+      const ab = await tpl.arrayBuffer();
 
-      var tplRes = await fetch('assets/plantilla-2n.xlsx');
-      if (!tplRes.ok){
-        throw new Error('No se puede cargar "assets/plantilla-2n.xlsx" (HTTP ' + tplRes.status + ')');
-      }
-      var ab    = await tplRes.arrayBuffer();
-      var wb    = XLSX.read(ab, { type:'array' });
-      var ws    = wb.Sheets['NDF'] || wb.Sheets[wb.SheetNames[0]];
+      const wb = XLSX.read(ab,{type:"array"});
+      const ws = wb.Sheets["NDF"] || wb.Sheets[wb.SheetNames[0]];
 
-      // Cabecera con tus datos
-      setCell(ws, 'B2', 'Gaston');      // NOM
-      setCell(ws, 'B3', 'David');       // PRENOM
-      setCell(ws, 'D3', 'iberia team'); // COST CENTER
+      // Datos personales
+      setCell(ws,"B2","Gaston");
+      setCell(ws,"B3","David");
+      setCell(ws,"D3","iberia team");
 
-      // Fila inicial de datos (ajústala si tu plantilla usa otra)
-      var startRow = 7;
+      // Fila 7 es el inicio oficial
+      let row = 7;
 
-      validEntries.forEach(function(obj, idx){
-        var e    = obj.entry;
-        var cols = obj.cols;
-        var row  = startRow + idx;
+      valid.forEach(({e,m})=>{
+        setCell(ws,`A${row}`,formatISO(e._date));
+        setCell(ws,`B${row}`,e.provider||"");
 
-        var d = e._date || new Date(e.date);
-        var fecha     = formatDateISO(d);
-        var proveedor = e.provider || '';
-        var notas     = e.notes || '';
+        setCell(ws,`C${row}`,m.C);
+        setCell(ws,`D${row}`,m.D);
+        setCell(ws,`E${row}`,m.E);
+        setCell(ws,`F${row}`,m.F);
+        setCell(ws,`G${row}`,m.G);
+        setCell(ws,`H${row}`,m.H);
+        setCell(ws,`I${row}`,m.I);
+        setCell(ws,`J${row}`,m.J);
 
-        setCell(ws, 'A' + row, fecha);      // DATE
-        setCell(ws, 'B' + row, proveedor);  // CLIENT / PROVIDER
+        // K es fórmula → NO se toca
+        setCell(ws,`L${row}`,e.notes||"");
 
-        setCell(ws, 'C' + row, cols.tolls);
-        setCell(ws, 'D' + row, cols.hotel);
-        setCell(ws, 'E' + row, cols.gas);
-        setCell(ws, 'F' + row, cols.tickets);
-        setCell(ws, 'G' + row, cols.other);
-        setCell(ws, 'H' + row, cols.invit);
-        setCell(ws, 'I' + row, cols.meals);
-        setCell(ws, 'J' + row, cols.varios);
-        // K = TOTAL -> conserva la fórmula
-        setCell(ws, 'L' + row, notas);      // DESCRIPTION
+        row++;
       });
 
-      var mm = String(range.m).padStart(2,'0');
-      var filename = 'gastos_2n_' + range.y + '-' + mm + '.xlsx';
-      XLSX.writeFile(wb, filename);
+      const {m,y} = getRange();
+      const mm = String(m).padStart(2,"0");
+      const filename = `gastos_2n_${y}-${mm}.xlsx`;
 
-      setStatus('Excel generado a partir de la plantilla 2N (con formato): ' + filename);
-    }catch(e){
-      console.error(e);
-      setStatus('Error al generar el Excel: ' + (e.message || e));
+      XLSX.writeFile(wb,filename);
+
+      setStatus("Excel exportado correctamente.");
+      
+    } catch(err){
+      console.error(err);
+      setStatus("Error: " + err.message);
     }
   }
 
-  /* ==== FOTOS ==== */
 
-  async function handleExportPhotos(){
-    try{
-      setStatus('Cargando apuntes del mes…');
-      var ctx  = window.__APPCTX__ || {};
-      var st   = ctx.storage;
-      var auth = ctx.auth;
-      var user = auth && auth.currentUser;
+  /* ================== EXPORTAR FOTOS ================== */
 
-      var res = await getMonthEntries();
-      var entries = res.entries;
-      var range   = res.range;
+  async function exportPhotos(){
+    setStatus("Descargando fotos…");
 
-      if (!entries.length){
-        setStatus('No hay apuntes para ese mes.');
-        renderPreview([]);
-        return;
-      }
+    const entries = await getEntries();
+    const photos = entries.filter(e=> e.photoURL);
 
-      renderPreview(entries);
-
-      var photos = [];
-      for (var i=0; i<entries.length; i++){
-        var e = entries[i];
-        if (e.photoURL){
-          photos.push({ entry: e, url: e.photoURL });
-        } else if (e.photoPath && st && user){
-          try{
-            var ref = st.ref(e.photoPath);
-            var url = await ref.getDownloadURL();
-            photos.push({ entry: e, url: url });
-          }catch(err){
-            console.warn('No se pudo obtener URL de', e.photoPath, err);
-          }
-        }
-      }
-
-      if (!photos.length){
-        setStatus('No hay fotos asociadas a los apuntes de este mes.');
-        return;
-      }
-
-      setStatus('Descargando ' + photos.length + ' fotos…');
-
-      photos.forEach(function(obj, idx){
-        var e = obj.entry;
-        var url = obj.url;
-        var d = e._date || new Date(e.date);
-        var fecha = formatDateISO(d);
-        var prov  = slugify(e.provider || 'ticket');
-        var name  = fecha + '_' + prov + '_' + String(idx+1) + '.jpg';
-
-        setTimeout(function(){
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }, idx * 350);
-      });
-    }catch(e){
-      console.error(e);
-      setStatus('Error al descargar las fotos: ' + (e.message || e));
+    if (!photos.length){
+      setStatus("No hay fotos este mes.");
+      return;
     }
+
+    photos.forEach((e,i)=>{
+      const a = document.createElement("a");
+      a.href = e.photoURL;
+      a.download = `${formatISO(e._date)}_${(e.provider||"ticket").replace(/\W+/g,"_")}.jpg`;
+      document.body.appendChild(a);
+      setTimeout(()=>{ a.click(); document.body.removeChild(a); }, i*300);
+    });
+
+    setStatus(`${photos.length} fotos descargadas.`);
   }
 
-  /* ==== KM PERSONALES ==== */
 
-  async function getMonthKmEntries(){
-    var ctx  = window.__APPCTX__ || {};
-    var auth = ctx.auth;
-    var db   = ctx.db;
-    var user = auth && auth.currentUser;
+  /* ================== KM PERSONALES ================== */
 
-    var range = getMonthRange();
-    var start = range.start;
-    var end   = range.end;
+  async function exportKmPersonal(){
+    const {auth,db} = window.__APPCTX__;
+    const user = auth.currentUser;
 
-    var kms = [];
+    const {start,end,m,y} = getRange();
+    const kms=[];
 
-    if (user && db){
-      try{
-        var snap = await db.collection('users/' + user.uid + '/kms')
-          .orderBy('date','asc')
-          .get();
-
-        snap.forEach(function(doc){
-          var e = doc.data();
-          var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
-          if (d >= start && d < end){
-            e._id   = doc.id;
-            e._date = d;
-            kms.push(e);
-          }
-        });
-      }catch(e){
-        console.warn('Error leyendo kms de Firestore', e);
-      }
-    } else {
-      var arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
-      arr.forEach(function(e){
-        var d = new Date(e.date);
-        if (d >= start && d < end){
-          e._date = d;
-          kms.push(e);
-        }
+    if (user){
+      const snap = await db.collection(`users/${user.uid}/kms`).orderBy("date","asc").get();
+      snap.forEach(doc=>{
+        const e=doc.data();
+        const d=e.date?.toDate?.() ?? new Date(e.date);
+        if (d>=start&&d<end) kms.push({...e,_date:d});
       });
     }
 
-    return { kms, range };
-  }
-
-  function isPersonalKm(entry){
-    var type = (entry.type || entry.kind || entry.category || '').toString().toLowerCase();
-    return (
-      type.includes('perso') ||
-      type.includes('parti') ||
-      type.includes('priv')
+    const personal = kms.filter(k =>
+      (k.type||"").toLowerCase().includes("pers") ||
+      (k.type||"").toLowerCase().includes("priv")
     );
-  }
 
-  async function handleExportKmPersonal(){
-    try{
-      setStatus('Cargando KM del mes…');
-      var res = await getMonthKmEntries();
-      var kms = res.kms;
-      var range = res.range;
-
-      if (!kms.length){
-        setStatus('No hay registros de KM para este mes.');
-        return;
-      }
-
-      var personales = kms.filter(isPersonalKm);
-      if (!personales.length){
-        setStatus('No hay KM personales en este mes.');
-        return;
-      }
-
-      var data = [];
-      data.push(['DATE', 'KM', 'TYPE', 'FUEL PRICE', 'KM TOTAL', 'NOTES']);
-
-      personales.forEach(function(e){
-        var d = e._date || new Date(e.date);
-        var fecha = formatDateISO(d);
-        var km    = (typeof e.km === 'number') ? e.km : Number(e.km || e.distance || 0);
-        var type  = e.type || e.kind || '';
-        var fuel  = (typeof e.fuelPrice === 'number') ? e.fuelPrice : Number(e.fuelPrice || 0);
-        var totalKm = (typeof e.totalKm === 'number') ? e.totalKm : Number(e.totalKm || e.odo || e.kmTotal || 0);
-        var notes = e.notes || '';
-
-        data.push([fecha, km, type, fuel, totalKm, notes]);
-      });
-
-      var ws = XLSX.utils.aoa_to_sheet(data);
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'KM personales');
-
-      var mm = String(range.m).padStart(2,'0');
-      var filename = 'kms_personales_' + range.y + '-' + mm + '.xlsx';
-
-      XLSX.writeFile(wb, filename);
-      setStatus('Excel KM personales generado: ' + filename);
-    }catch(e){
-      console.error(e);
-      setStatus('Error al generar Excel de KM personales: ' + (e.message || e));
+    if (!personal.length){
+      setStatus("No hay KM personales.");
+      return;
     }
+
+    const data=[
+      ["DATE","KM","TYPE","FUEL PRICE","KM TOTAL","NOTES"]
+    ];
+
+    personal.forEach(k=>{
+      data.push([
+        formatISO(k._date),
+        k.km||"",
+        k.type||"",
+        k.fuelPrice||"",
+        k.totalKm||"",
+        k.notes||""
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"KM personales");
+
+    const mm = String(m).padStart(2,"0");
+    XLSX.writeFile(wb,`kms_personales_${y}-${mm}.xlsx`);
+
+    setStatus("KM personales exportados.");
   }
 
-  /* Listeners */
-  if ($('btnExportExcel')){
-    $('btnExportExcel').addEventListener('click', handleExportExcel);
-  }
-  if ($('btnExportPhotos')){
-    $('btnExportPhotos').addEventListener('click', handleExportPhotos);
-  }
-  if ($('btnExportKmPersonal')){
-    $('btnExportKmPersonal').addEventListener('click', handleExportKmPersonal);
-  }
 
-  function refreshPreview(){
-    getMonthEntries()
-      .then(function(res){
-        renderPreview(res.entries);
-        if (!res.entries.length){
-          setStatus('Sin apuntes para ese mes.');
-        } else {
-          setStatus('');
-        }
-      })
-      .catch(function(e){
-        console.error(e);
-        setStatus('Error cargando apuntes: ' + (e.message || e));
-      });
-  }
+  /* ================== EVENTOS ================== */
 
-  if ($('selMonth')) $('selMonth').addEventListener('change', refreshPreview);
-  if ($('selYear'))  $('selYear').addEventListener('change', refreshPreview);
+  $('btnExportExcel').onclick = exportExcel;
+  $('btnExportPhotos').onclick = exportPhotos;
+  $('btnExportKmPersonal').onclick = exportKmPersonal;
 
-  document.addEventListener('auth-changed', function(){ refreshPreview(); }, false);
+  $('selMonth').onchange = ()=> getEntries().then(renderPreview);
+  $('selYear').onchange  = ()=> getEntries().then(renderPreview);
 
-  // Primera carga
-  refreshPreview();
+  document.addEventListener("auth-changed",()=> getEntries().then(renderPreview));
+
 })();
 </script>
 
