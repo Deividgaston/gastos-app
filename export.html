@@ -13,19 +13,71 @@
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage-compat.js"></script>
 
-  <!-- XLSX con soporte de estilos (xlsx-js-style) -->
-  <script src="https://unpkg.com/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <!-- SheetJS para Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- JSZip + FileSaver para ZIP de imágenes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
   <!-- Config Firebase -->
   <script src="config.js"></script>
-</head>
 
+  <style>
+    .entry-row {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      padding:6px 8px;
+      border-radius:8px;
+      margin-bottom:4px;
+      background:rgba(0,0,0,0.08);
+    }
+    .entry-main {
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      font-size:12px;
+    }
+    .entry-main strong {
+      font-size:12px;
+    }
+    .entry-meta {
+      font-size:11px;
+      opacity:0.8;
+    }
+    .entry-amount {
+      font-weight:600;
+      font-size:12px;
+      white-space:nowrap;
+      margin-left:8px;
+    }
+    .entry-actions {
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:4px;
+      margin-left:8px;
+    }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      padding:2px 6px;
+      border-radius:999px;
+      font-size:10px;
+      border:1px solid rgba(255,255,255,0.2);
+      gap:4px;
+    }
+  </style>
+</head>
 <body>
+
 <header class="topbar">
   <h1>
     <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:4px;">
     Gastos 2N · Export
   </h1>
+
   <a class="badge" href="index.html">🏠 Inicio</a>
   <a class="badge" href="kms.html">🚗 KM</a>
   <a class="badge active" href="export.html">📤 Export</a>
@@ -40,104 +92,112 @@
 
 <main class="content">
   <div class="grid">
-    <div class="card">
-      <h2>Exportar gastos</h2>
 
-      <div class="row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <!-- FILTROS + TOTALES -->
+    <div class="card">
+      <h2>Exportar por mes</h2>
+      <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
         <div>
           <label>Mes</label><br>
-          <select id="selMonth">
-            <option value="1">Enero</option>
-            <option value="2">Febrero</option>
-            <option value="3">Marzo</option>
-            <option value="4">Abril</option>
-            <option value="5">Mayo</option>
-            <option value="6">Junio</option>
-            <option value="7">Julio</option>
-            <option value="8">Agosto</option>
-            <option value="9">Septiembre</option>
-            <option value="10">Octubre</option>
-            <option value="11">Noviembre</option>
-            <option value="12">Diciembre</option>
-          </select>
+          <input id="monthInput" type="month" style="min-width:140px">
         </div>
-
-        <div>
-          <label>Año</label><br>
-          <input id="selYear" type="number" style="width:120px">
-        </div>
-
-        <div style="flex:1;min-width:200px">
-          <div class="small">
-            Se exportan los apuntes del mes seleccionado usando la plantilla oficial de 2N.
-          </div>
+        <div class="small">
+          Se exportan los gastos y KM correspondientes al mes seleccionado.<br>
+          Usa el listado para revisar y borrar apuntes antes de exportar.
         </div>
       </div>
 
-      <div class="row" style="margin-top:16px;gap:8px;flex-wrap:wrap">
-        <button id="btnExportExcel" class="btn primary">📥 Exportar Excel (plantilla 2N)</button>
-        <button id="btnExportPhotos" class="btn">🖼 Descargar fotos</button>
-        <button id="btnExportKmPersonal" class="btn">🚶 KM personales</button>
+      <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
+        <div class="pill">
+          💶 Total gastos mes:
+          <span id="totGastos" style="font-weight:600;margin-left:4px">0,00 €</span>
+        </div>
+        <div class="pill">
+          🧾 Pagado con mi dinero:
+          <span id="totPersonalPaid" style="font-weight:600;margin-left:4px">0,00 €</span>
+        </div>
+        <div class="pill">
+          🧍 KM personales:
+          <span id="totKmPer" style="font-weight:600;margin-left:4px">0,0 km</span>
+        </div>
       </div>
-
-      <div id="exportStatus" class="small" style="margin-top:10px;min-height:2em"></div>
     </div>
 
+    <!-- LISTADO CON BOTÓN BORRAR -->
     <div class="card">
-      <h2>Vista previa</h2>
-      <div id="previewList" class="list small"></div>
+      <h2>Registros del mes</h2>
+      <div id="entriesList" class="list small" style="max-height:320px;overflow:auto;"></div>
+      <div id="exportStatus" class="small" style="margin-top:6px;min-height:1.5em;"></div>
     </div>
+
+    <!-- ACCIONES EXPORT -->
+    <div class="card">
+      <h2>Acciones de exportación</h2>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <button id="btnExcelGastos" class="btn primary">📊 Descargar Excel gastos (plantilla 2N)</button>
+      </div>
+      <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">
+        <button id="btnExcelKmPersonal" class="btn">🚗 Descargar Excel KM personales</button>
+        <button id="btnZipFotos" class="btn">🖼 Descargar ZIP fotos tickets</button>
+      </div>
+      <div class="small" style="margin-top:8px">
+        • El Excel de gastos usa la plantilla <b>assets/plantilla-2n.xlsx</b> y rellena las líneas con los apuntes del mes.<br>
+        • El Excel de KM personales incluye km, precio €/L y coste calculado (km × €/L × 6L/100km).<br>
+        • El ZIP descarga todas las fotos de tickets del mes (si las hay).
+      </div>
+    </div>
+
   </div>
 </main>
 
-<!-- ======================= FIREBASE AUTH ======================== -->
+<!-- FIREBASE + AUTH -->
 <script>
 (function(){
   try{
-    if (!firebase.apps.length){
+    if (!firebase.apps.length) {
       firebase.initializeApp(window.__FBCONFIG__);
     }
 
-    const auth = firebase.auth();
+    var auth = firebase.auth();
 
-    if (firebase.auth.Auth.Persistence){
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    if (firebase.auth.Auth.Persistence) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
     }
-    if (auth.getRedirectResult){
-      auth.getRedirectResult().catch(()=>{});
+    if (auth.getRedirectResult) {
+      auth.getRedirectResult().catch(function(){});
     }
 
-    function updateUser(user){
-      const who   = document.getElementById('whoami');
-      const btnIn = document.getElementById('btnLogin');
-      const btnOut= document.getElementById('btnLogout');
+    function updateUser(u){
+      var who = document.getElementById('whoami');
+      var bL  = document.getElementById('btnLogin');
+      var bO  = document.getElementById('btnLogout');
 
-      if (user){
-        if (who)   who.textContent = 'Conectado: ' + (user.email || user.uid);
-        if (btnIn) btnIn.style.display = 'none';
-        if (btnOut)btnOut.style.display= '';
+      if (u){
+        if (who) who.textContent = 'Conectado: ' + (u.email || u.uid);
+        if (bL)  bL.style.display = 'none';
+        if (bO)  bO.style.display = '';
       } else {
-        if (who)   who.textContent = 'No autenticado';
-        if (btnIn) btnIn.style.display = '';
-        if (btnOut)btnOut.style.display= 'none';
+        if (who) who.textContent = 'No autenticado';
+        if (bL)  bL.style.display = '';
+        if (bO)  bO.style.display = 'none';
       }
 
       try{
-        document.dispatchEvent(new CustomEvent('auth-changed',{detail:{user}}));
+        document.dispatchEvent(new CustomEvent('auth-changed',{ detail:{ user:u } }));
       }catch(e){}
     }
 
     auth.onAuthStateChanged(updateUser);
 
     window.__APPCTX__ = {
-      auth,
-      db: firebase.firestore(),
+      auth   : auth,
+      db     : firebase.firestore(),
       storage: firebase.storage()
     };
 
-    const prov   = new firebase.auth.GoogleAuthProvider();
-    const btnIn  = document.getElementById('btnLogin');
-    const btnOut = document.getElementById('btnLogout');
+    var prov   = new firebase.auth.GoogleAuthProvider();
+    var btnIn  = document.getElementById('btnLogin');
+    var btnOut = document.getElementById('btnLogout');
 
     if (btnIn){
       btnIn.addEventListener('click', function(){
@@ -156,407 +216,426 @@
         auth.signOut();
       });
     }
-
   }catch(e){
     console.error(e);
   }
 })();
 </script>
 
-<!-- ======================= EXPORT LOGIC ========================= -->
+<!-- LÓGICA EXPORT -->
 <script>
 (function(){
-
   function $(id){ return document.getElementById(id); }
 
-  // Inicializar mes y año actuales
-  (function initMonthYear(){
-    const now = new Date();
-    if ($('selMonth')) $('selMonth').value = String(now.getMonth()+1);
-    if ($('selYear'))  $('selYear').value  = String(now.getFullYear());
-  })();
+  let currentEntries = [];
+  let currentKms     = [];
 
   function setStatus(msg){
     const el = $('exportStatus');
     if (el) el.textContent = msg || '';
   }
 
-  function formatISO(date){
-    if (!(date instanceof Date)) date = new Date(date);
-    return date.toISOString().slice(0,10);
+  // Mes actual por defecto
+  (function initMonth(){
+    const m = $('monthInput');
+    if (!m) return;
+    const now = new Date();
+    const iso = now.toISOString().slice(0,7); // YYYY-MM
+    m.value = iso;
+  })();
+
+  function getMonthRange(ym){
+    if (!ym) return null;
+    const parts = ym.split('-');
+    const y = parseInt(parts[0],10);
+    const m = parseInt(parts[1],10)-1;
+    const start = new Date(Date.UTC(y,m,1,0,0,0));
+    const end   = new Date(Date.UTC(y,m+1,1,0,0,0));
+    return { start, end };
   }
 
-  function slugify(str){
-    return (str || '')
-      .toString()
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,'-')
-      .replace(/-+/g,'-')
-      .replace(/^-|-$/g,'') || 'ticket';
-  }
-
-  function getRange(){
-    const m = parseInt($('selMonth').value,10);
-    const y = parseInt($('selYear').value,10);
-    const start = new Date(Date.UTC(y, m-1, 1));
-    const end   = new Date(Date.UTC(y, m,   1));
-    return { m, y, start, end };
-  }
-
-  /* ============ LECTURA DE ENTRIES ============ */
-  async function getEntries(){
+  async function loadDataForMonth(){
     const ctx  = window.__APPCTX__ || {};
     const auth = ctx.auth;
     const db   = ctx.db;
     const user = auth && auth.currentUser;
-    const {start,end} = getRange();
-    const entries = [];
 
+    const monthValue = $('monthInput').value;
+    const range = getMonthRange(monthValue);
+    if (!range){
+      return { entries:[], kms:[] };
+    }
+
+    let entries = [];
+    let kms     = [];
+
+    // --- GASTOS ---
     if (user && db){
-      const snap = await db.collection('users/' + user.uid + '/entries')
-        .orderBy('date','asc')
-        .get();
-
+      const snap = await db.collection('users/'+user.uid+'/entries')
+                           .where('date','>=', range.start)
+                           .where('date','<',  range.end)
+                           .orderBy('date','desc')
+                           .get();
       snap.forEach(doc=>{
-        const e = doc.data();
-        const d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
-        if (d >= start && d < end){
-          e._date = d;
-          entries.push(e);
-        }
+        const o = doc.data();
+        o.id    = doc.id;
+        o._src  = 'remote';
+        o.dateJs = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
+        entries.push(o);
       });
     } else {
       const arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
-      arr.forEach(e=>{
-        const d = new Date(e.date);
-        if (d >= start && d < end){
-          e._date = d;
-          entries.push(e);
-        }
-      });
+      entries = arr.map((e, idx)=>{
+        e.dateJs = new Date(e.date);
+        e._src   = 'local';
+        e._localIndex = idx;
+        return e;
+      }).filter(e=> e.dateJs >= range.start && e.dateJs < range.end)
+        .sort((a,b)=>b.dateJs - a.dateJs);
     }
-    return entries;
+
+    // --- KM ---
+    if (user && db){
+      const snapKm = await db.collection('users/'+user.uid+'/kms')
+                             .where('date','>=', range.start)
+                             .where('date','<',  range.end)
+                             .orderBy('date','desc')
+                             .get();
+      snapKm.forEach(doc=>{
+        const o = doc.data();
+        o.id    = doc.id;
+        o._src  = 'remote';
+        o.dateJs = o.date && o.date.toDate ? o.date.toDate() : new Date(o.date);
+        kms.push(o);
+      });
+    } else {
+      const kArr = JSON.parse(localStorage.getItem('kms_local') || '[]');
+      kms = kArr.map((e, idx)=>{
+        e.dateJs = new Date(e.date);
+        e._src   = 'local';
+        e._localIndex = idx;
+        return e;
+      }).filter(e=> e.dateJs >= range.start && e.dateJs < range.end)
+        .sort((a,b)=>b.dateJs - a.dateJs);
+    }
+
+    return { entries, kms };
   }
 
-  function renderPreview(entries){
-    const cont = $('previewList');
+  function formatEuro(v){
+    return (v || 0).toFixed(2).replace('.',',') + ' €';
+  }
+  function formatKm(v){
+    return (v || 0).toFixed(1).replace('.',',') + ' km';
+  }
+
+  function renderTotals(entries, kms){
+    let tot = 0;
+    let totPersonal = 0;
+    entries.forEach(e=>{
+      const a = Number(e.amount || 0);
+      tot += a;
+      if ((e.paidWith || '').toLowerCase() === 'personal'){
+        totPersonal += a;
+      }
+    });
+
+    let kmPer = 0;
+    kms.forEach(k=>{
+      const km = Number(k.km || k.distance || 0) || 0;
+      if ((k.type || '').toLowerCase().includes('per')){
+        kmPer += km;
+      }
+    });
+
+    $('totGastos').textContent      = formatEuro(tot);
+    $('totPersonalPaid').textContent= formatEuro(totPersonal);
+    $('totKmPer').textContent       = formatKm(kmPer);
+  }
+
+  function renderEntriesList(entries){
+    currentEntries = entries || [];
+    const cont = $('entriesList');
     if (!cont) return;
     cont.innerHTML = '';
 
     if (!entries.length){
-      cont.innerHTML = "<div class='small'>Sin apuntes para este mes.</div>";
+      cont.innerHTML = '<div class="small">Sin gastos en este mes.</div>';
       return;
     }
 
-    entries.slice(0,10).forEach(e=>{
-      const d = e._date || new Date(e.date);
-      const div = document.createElement('div');
-      div.className = 'small';
-      div.textContent =
-        formatISO(d) + ' · ' +
-        (e.provider || '-') + ' · ' +
-        (e.amount || 0) + '€ · ' +
-        (e.category || '');
-      cont.appendChild(div);
+    entries.forEach(e=>{
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+
+      const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
+      const fecha = d.toISOString().slice(0,10);
+
+      const main = document.createElement('div');
+      main.className = 'entry-main';
+
+      const l1 = document.createElement('strong');
+      l1.textContent = fecha + ' · ' + (e.provider || '-');
+
+      const meta = document.createElement('div');
+      meta.className = 'entry-meta';
+      const parts = [];
+      if (e.category) parts.push('Cat: ' + e.category);
+      if (e.paidWith) parts.push('Pago: ' + e.paidWith);
+      if (e.notes) parts.push('Notas: ' + e.notes);
+      meta.textContent = parts.join(' · ');
+
+      main.appendChild(l1);
+      if (parts.length) main.appendChild(meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'entry-actions';
+
+      const amt = document.createElement('div');
+      amt.className = 'entry-amount';
+      amt.textContent = formatEuro(Number(e.amount || 0));
+
+      const btnDel = document.createElement('button');
+      btnDel.className = 'btn danger';
+      btnDel.textContent = '🗑';
+      btnDel.style.padding = '2px 8px';
+      btnDel.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        deleteEntry(e);
+      });
+
+      actions.appendChild(amt);
+      actions.appendChild(btnDel);
+
+      row.appendChild(main);
+      row.appendChild(actions);
+      cont.appendChild(row);
     });
   }
 
-  /* ============ MAPEO CATEGORÍAS → COLUMNAS PLANTILLA ============ */
-  function mapTo2N(e){
-    const cat = (e.category || '').toLowerCase();
-    const amt = Number(e.amount || 0);
-
-    if (!amt) return null;
-    if (cat === 'ingreso') return null;
-
-    const cols = {
-      C: 0, // Peajes
-      D: 0, // Hotel
-      E: 0, // Gasolina
-      F: 0, // Tickets
-      G: 0, // Transporte/otros
-      H: 0, // Invitaciones
-      I: 0, // Comidas
-      J: 0  // Varios
-    };
-
-    if (cat.includes('peaje')) cols.C = amt;
-    else if (cat.includes('aloj') || cat.includes('hotel')) cols.D = amt;
-    else if (cat.includes('gasol') || cat.includes('fuel') || cat.includes('diesel')) cols.E = amt;
-    else if (cat.includes('ticket')) cols.F = amt;
-    else if (cat.includes('transp') || cat.includes('taxi') || cat.includes('uber') || cat.includes('cabify')) cols.G = amt;
-    else if (cat.includes('invit')) cols.H = amt;
-    else if (cat.includes('comida') || cat.includes('meal') || cat.includes('rest')) cols.I = amt;
-    else cols.J = amt;
-
-    return cols;
-  }
-
-  // 👉 NO tocamos estilos ni formatos, solo valores
-  function setCell(ws, addr, value){
-    let cell = ws[addr];
-    if (!cell){
-      cell = {};
-      ws[addr] = cell;
+  async function deleteEntry(entry){
+    if (!confirm('¿Seguro que quieres borrar este gasto?')){
+      return;
     }
-    const hadFormula = !!cell.f;
 
-    if (!hadFormula){
-      if (typeof value === 'number'){
-        cell.t = 'n';
-        cell.v = value;
-      } else {
-        cell.t = 's';
-        cell.v = (value == null ? '' : value);
-      }
-    }
-    // cell.s, cell.z y cell.f se dejan tal cual vengan de la plantilla
-  }
-
-  /* ============ EXPORTAR EXCEL ============ */
-  async function exportExcel(){
-    try{
-      setStatus('Cargando apuntes…');
-      const entries = await getEntries();
-      if (!entries.length){
-        setStatus('No hay apuntes para ese mes.');
-        renderPreview([]);
-        return;
-      }
-
-      renderPreview(entries);
-
-      const valid = [];
-      entries.forEach(e=>{
-        const m = mapTo2N(e);
-        if (m) valid.push({e,m});
-      });
-
-      if (!valid.length){
-        setStatus('Solo hay ingresos o apuntes sin importe. Nada que exportar.');
-        return;
-      }
-
-      setStatus('Cargando plantilla 2N…');
-
-      const tplRes = await fetch('assets/plantilla-2n.xlsx');
-      if (!tplRes.ok){
-        throw new Error('No se puede cargar assets/plantilla-2n.xlsx (HTTP ' + tplRes.status + ')');
-      }
-      const ab = await tplRes.arrayBuffer();
-      const wb = XLSX.read(ab,{type:'array'});
-      const ws = wb.Sheets['NDF'] || wb.Sheets[wb.SheetNames[0]];
-
-      // === Cabecera con tus datos ===
-      setCell(ws,'B2','Gaston');      // NOM
-      setCell(ws,'B3','David');       // PRENOM
-      setCell(ws,'D3','iberia team'); // COST CENTER
-
-      // IMPORTANTE:
-      // Para que se mantenga TODO el formato de la tabla (bordes, rayas, etc.),
-      // deja en la plantilla 2N las filas de datos (por ejemplo A7:L100) ya formateadas.
-      // Aquí solo cambiamos el valor; los estilos vienen de la plantilla.
-
-      let row = 7; // fila de inicio de datos en tu NDF
-      valid.forEach(({e,m})=>{
-        setCell(ws,`A${row}`,formatISO(e._date));   // DATE
-        setCell(ws,`B${row}`,e.provider || '');     // CLIENT / PROVIDER
-
-        setCell(ws,`C${row}`,m.C);
-        setCell(ws,`D${row}`,m.D);
-        setCell(ws,`E${row}`,m.E);
-        setCell(ws,`F${row}`,m.F);
-        setCell(ws,`G${row}`,m.G);
-        setCell(ws,`H${row}`,m.H);
-        setCell(ws,`I${row}`,m.I);
-        setCell(ws,`J${row}`,m.J);
-        // K = TOTAL → tiene fórmula en la plantilla, no tocamos valor
-        setCell(ws,`L${row}`,e.notes || '');        // DESCRIPTION
-
-        row++;
-      });
-
-      const {m,y} = getRange();
-      const mm = String(m).padStart(2,'0');
-      const filename = `gastos_2n_${y}-${mm}.xlsx`;
-
-      XLSX.writeFile(wb, filename);
-      setStatus('Excel generado correctamente a partir de la plantilla 2N (respetando todo el formato).');
-    }catch(e){
-      console.error(e);
-      setStatus('Error al generar el Excel: ' + (e.message || e));
-    }
-  }
-
-  /* ============ EXPORTAR FOTOS ============ */
-  async function exportPhotos(){
-    try{
-      setStatus('Cargando apuntes…');
-      const ctx  = window.__APPCTX__ || {};
-      const st   = ctx.storage;
-      const auth = ctx.auth;
-      const user = auth && auth.currentUser;
-
-      const entries = await getEntries();
-      if (!entries.length){
-        setStatus('No hay apuntes para ese mes.');
-        renderPreview([]);
-        return;
-      }
-
-      renderPreview(entries);
-
-      const photos = [];
-      for (let i=0; i<entries.length; i++){
-        const e = entries[i];
-        if (e.photoURL){
-          photos.push({entry:e,url:e.photoURL});
-        } else if (e.photoPath && st && user){
-          try{
-            const ref = st.ref(e.photoPath);
-            const url = await ref.getDownloadURL();
-            photos.push({entry:e,url});
-          }catch(err){
-            console.warn('No se pudo obtener URL de', e.photoPath, err);
-          }
-        }
-      }
-
-      if (!photos.length){
-        setStatus('No hay fotos asociadas a los apuntes de este mes.');
-        return;
-      }
-
-      setStatus('Descargando ' + photos.length + ' fotos…');
-
-      photos.forEach((obj,idx)=>{
-        const e   = obj.entry;
-        const url = obj.url;
-        const d   = e._date || new Date(e.date);
-        const fecha = formatISO(d);
-        const prov  = slugify(e.provider || 'ticket');
-        const name  = `${fecha}_${prov}_${idx+1}.jpg`;
-
-        setTimeout(()=>{
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }, idx*350);
-      });
-
-    }catch(e){
-      console.error(e);
-      setStatus('Error al descargar las fotos: ' + (e.message || e));
-    }
-  }
-
-  /* ============ KM PERSONALES ============ */
-  async function getKmEntries(){
     const ctx  = window.__APPCTX__ || {};
     const auth = ctx.auth;
     const db   = ctx.db;
     const user = auth && auth.currentUser;
-    const {start,end} = getRange();
-    const kms = [];
 
-    if (user && db){
-      try{
-        const snap = await db.collection('users/' + user.uid + '/kms')
-          .orderBy('date','asc')
-          .get();
+    setStatus('Borrando apunte…');
 
-        snap.forEach(doc=>{
-          const e = doc.data();
-          const d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
-          if (d >= start && d < end){
-            e._date = d;
-            kms.push(e);
-          }
-        });
-      }catch(e){
-        console.warn('Error leyendo kms de Firestore', e);
-      }
-    } else {
-      const arr = JSON.parse(localStorage.getItem('kms_local') || '[]');
-      arr.forEach(e=>{
-        const d = new Date(e.date);
-        if (d >= start && d < end){
-          e._date = d;
-          kms.push(e);
-        }
-      });
-    }
-
-    return kms;
-  }
-
-  function isPersonalKm(entry){
-    const t = (entry.type || entry.kind || entry.category || '').toLowerCase();
-    return t.includes('perso') || t.includes('priv') || t.includes('parti');
-  }
-
-  async function exportKmPersonal(){
     try{
-      setStatus('Cargando KM del mes…');
-      const kms = await getKmEntries();
-      if (!kms.length){
-        setStatus('No hay KM para este mes.');
-        return;
+      if (user && db && entry._src === 'remote' && entry.id){
+        await db.collection('users/'+user.uid+'/entries').doc(entry.id).delete();
+      } else {
+        const arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
+        if (typeof entry._localIndex === 'number'){
+          if (entry._localIndex >= 0 && entry._localIndex < arr.length){
+            arr.splice(entry._localIndex, 1);
+          }
+        } else {
+          const idx = arr.findIndex(x =>
+            x.date === entry.date &&
+            Number(x.amount || 0) === Number(entry.amount || 0) &&
+            (x.provider || '') === (entry.provider || '')
+          );
+          if (idx >= 0) arr.splice(idx,1);
+        }
+        localStorage.setItem('entries_local', JSON.stringify(arr));
       }
 
-      const personales = kms.filter(isPersonalKm);
-      if (!personales.length){
-        setStatus('No hay KM personales este mes.');
-        return;
-      }
-
-      const data = [];
-      data.push(['DATE','KM','TYPE','FUEL PRICE','KM TOTAL','NOTES']);
-
-      personales.forEach(e=>{
-        data.push([
-          formatISO(e._date),
-          e.km || e.distance || '',
-          e.type || e.kind || '',
-          e.fuelPrice || '',
-          e.totalKm || e.kmTotal || e.odo || '',
-          e.notes || ''
-        ]);
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'KM personales');
-
-      const {m,y} = getRange();
-      const mm = String(m).padStart(2,'0');
-      const filename = `kms_personales_${y}-${mm}.xlsx`;
-
-      XLSX.writeFile(wb, filename);
-      setStatus('KM personales exportados correctamente.');
+      setStatus('Apunte eliminado ✅');
+      document.dispatchEvent(new CustomEvent('entries-updated'));
+      await refreshAll();
     }catch(e){
       console.error(e);
-      setStatus('Error al generar Excel de KM personales: ' + (e.message || e));
+      alert('Error al borrar el gasto: ' + (e && e.message || ''));
+      setStatus('Error al borrar el gasto.');
     }
   }
 
-  /* ============ EVENTOS ============ */
-  if ($('btnExportExcel'))      $('btnExportExcel').addEventListener('click', exportExcel);
-  if ($('btnExportPhotos'))     $('btnExportPhotos').addEventListener('click', exportPhotos);
-  if ($('btnExportKmPersonal')) $('btnExportKmPersonal').addEventListener('click', exportKmPersonal);
+  async function refreshAll(){
+    setStatus('Cargando datos…');
+    try{
+      const data = await loadDataForMonth();
+      currentEntries = data.entries;
+      currentKms     = data.kms;
+      renderTotals(data.entries, data.kms);
+      renderEntriesList(data.entries);
+      setStatus('');
+    }catch(e){
+      console.error(e);
+      setStatus('Error cargando datos.');
+    }
+  }
 
-  if ($('selMonth')) $('selMonth').addEventListener('change', ()=>{ getEntries().then(renderPreview); });
-  if ($('selYear'))  $('selYear').addEventListener('change',  ()=>{ getEntries().then(renderPreview); });
+  /* =================== EXPORT EXCEL GASTOS (PLANTILLA) =================== */
+  async function exportExcelGastos(){
+    if (!currentEntries.length){
+      alert('No hay gastos en este mes.');
+      return;
+    }
 
-  document.addEventListener('auth-changed', ()=>{ getEntries().then(renderPreview); }, false);
+    try{
+      setStatus('Generando Excel de gastos…');
+      const resp = await fetch('assets/plantilla-2n.xlsx');
+      if (!resp.ok){
+        throw new Error('No se puede cargar "plantilla-2n.xlsx" (HTTP ' + resp.status + ')');
+      }
+      const data = await resp.arrayBuffer();
+      const wb   = XLSX.read(data, { type:'array' });
+
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+
+      // Rellenamos la tabla de líneas.
+      // Ajusta startRow si tu plantilla empieza en otra fila.
+      const startRow = 17;
+      currentEntries.forEach((e, idx)=>{
+        const r = startRow + idx;
+        const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
+        const iso = d.toISOString().slice(0,10); // YYYY-MM-DD
+        const [yyyy,mm,dd] = iso.split('-');
+
+        function setCell(addr, val){
+          const cellRef = addr.replace('{ROW}', r);
+          if (!ws[cellRef]) ws[cellRef] = {};
+          ws[cellRef].v = val;
+          ws[cellRef].t = (typeof val === 'number') ? 'n' : 's';
+        }
+
+        // Ejemplo de mapeo:
+        // A = Día, B = Mes, C = Año, D = Proveedor, E = Concepto/Notas, F = Importe, G = Medio de pago
+        setCell('A{ROW}', Number(dd));
+        setCell('B{ROW}', Number(mm));
+        setCell('C{ROW}', Number(yyyy));
+        setCell('D{ROW}', e.provider || '');
+        setCell('E{ROW}', e.notes || '');
+        setCell('F{ROW}', Number(e.amount || 0));
+        setCell('G{ROW}', e.paidWith || '');
+      });
+
+      const month = $('monthInput').value || '';
+      const filename = 'gastos-2n-' + (month || 'mes') + '.xlsx';
+
+      // Escribe el archivo manteniendo estilos de la plantilla
+      XLSX.writeFile(wb, filename);
+      setStatus('Excel de gastos generado ✅');
+    }catch(e){
+      console.error(e);
+      alert('Error al generar el Excel: ' + (e && e.message || ''));
+      setStatus('Error al generar el Excel de gastos.');
+    }
+  }
+
+  /* =================== EXPORT EXCEL KM PERSONALES =================== */
+  async function exportExcelKmPersonal(){
+    const kmsPer = currentKms.filter(k =>
+      (k.type || '').toLowerCase().includes('per')
+    );
+    if (!kmsPer.length){
+      alert('No hay KM personales en este mes.');
+      return;
+    }
+
+    try{
+      setStatus('Generando Excel de KM personales…');
+
+      const rows = kmsPer.map(k=>{
+        const d = k.dateJs instanceof Date ? k.dateJs : new Date(k.dateJs || k.date);
+        const fecha = d.toISOString().slice(0,10);
+        const km = Number(k.km || k.distance || 0) || 0;
+        const fuel = (k.fuelPrice != null && k.fuelPrice !== '')
+          ? Number(k.fuelPrice)
+          : NaN;
+        const cost = (!isNaN(fuel) && fuel > 0)
+          ? km * fuel * 6 / 100
+          : 0;
+
+        return {
+          Fecha: fecha,
+          KM: km,
+          '€/L': (!isNaN(fuel) && fuel > 0) ? fuel : '',
+          'Coste km pers. (km×€/L×6/100)': cost
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'KM_personales');
+
+      const month = $('monthInput').value || '';
+      XLSX.writeFile(wb, 'km-personales-' + (month || 'mes') + '.xlsx');
+      setStatus('Excel de KM personales generado ✅');
+    }catch(e){
+      console.error(e);
+      alert('Error al generar el Excel de KM personales: ' + (e && e.message || ''));
+      setStatus('Error al generar Excel de KM personales.');
+    }
+  }
+
+  /* =================== EXPORT ZIP FOTOS TICKETS =================== */
+  async function exportZipFotos(){
+    const entriesWithPhoto = currentEntries.filter(e => e.photoURL || e.photoPath);
+    if (!entriesWithPhoto.length){
+      alert('No hay tickets con foto en este mes.');
+      return;
+    }
+
+    try{
+      setStatus('Preparando ZIP de fotos…');
+
+      const zip = new JSZip();
+      const month = $('monthInput').value || '';
+
+      for (let i=0; i<entriesWithPhoto.length; i++){
+        const e = entriesWithPhoto[i];
+        const url = e.photoURL;
+        if (!url) continue;
+        const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
+        const iso = d.toISOString().slice(0,10);
+
+        const filenameSafeProv = (e.provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+        const fname = iso + '_' + filenameSafeProv + '_' + i + '.jpg';
+
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        zip.file(fname, blob);
+      }
+
+      const content = await zip.generateAsync({ type:'blob' });
+      saveAs(content, 'tickets-' + (month || 'mes') + '.zip');
+
+      setStatus('ZIP de fotos generado ✅');
+    }catch(e){
+      console.error(e);
+      alert('Error al generar el ZIP de fotos: ' + (e && e.message || ''));
+      setStatus('Error al generar ZIP de fotos.');
+    }
+  }
+
+  // Eventos
+  if ($('monthInput')){
+    $('monthInput').addEventListener('change', refreshAll);
+  }
+  if ($('btnExcelGastos')){
+    $('btnExcelGastos').addEventListener('click', exportExcelGastos);
+  }
+  if ($('btnExcelKmPersonal')){
+    $('btnExcelKmPersonal').addEventListener('click', exportExcelKmPersonal);
+  }
+  if ($('btnZipFotos')){
+    $('btnZipFotos').addEventListener('click', exportZipFotos);
+  }
+
+  document.addEventListener('auth-changed', refreshAll, false);
+  document.addEventListener('entries-updated', refreshAll, false);
+  document.addEventListener('kms-updated', refreshAll, false);
 
   // Primera carga
-  getEntries().then(renderPreview);
-
+  refreshAll();
 })();
 </script>
 
