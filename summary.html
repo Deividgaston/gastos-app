@@ -580,6 +580,38 @@
       headStyles:{ fillColor:[0,0,0] }
     });
 
+    // -------- Tabla KM --------
+    var finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 66;
+
+    var rowsKm = currentKms.map(function(k){
+      var d = k.dateJs instanceof Date ? k.dateJs.toISOString().slice(0,10) : (k.date || '');
+      var km = Number(k.km || k.distance || 0) || 0;
+      var fuel = (k.fuelPrice != null && k.fuelPrice !== '')
+        ? Number(k.fuelPrice)
+        : NaN;
+      var type = (k.type || '').toLowerCase().includes('per') ? 'Personal' : 'Empresa';
+      var costPers = 0;
+      if (type === 'Personal' && !isNaN(fuel) && fuel > 0){
+        costPers = km * fuel * 6 / 100;
+      }
+
+      return [
+        d,
+        type,
+        km.toFixed(1),
+        !isNaN(fuel) && fuel > 0 ? fuel.toFixed(2) : '',
+        costPers ? costPers.toFixed(2) : ''
+      ];
+    });
+
+    doc.autoTable({
+      startY: finalY + 6,
+      head: [['Fecha','Tipo','KM','€/L','Coste km pers.']],
+      body: rowsKm,
+      styles:{ fontSize:8 },
+      headStyles:{ fillColor:[30,30,30] }
+    });
+
     doc.save('gastos-2n-summary-'+(month||'')+'.pdf');
   }
 
