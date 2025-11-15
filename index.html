@@ -447,6 +447,21 @@
     return out;
   }
 
+  /* ========= UTILIDAD: ArrayBuffer → base64 (sin reventar la pila) ========= */
+
+  function arrayBufferToBase64(ab){
+    var bytes = new Uint8Array(ab);
+    var len   = bytes.length;
+    var chunk = 0x8000; // 32KB por trozo
+    var binary = '';
+
+    for (var i = 0; i < len; i += chunk){
+      var sub = bytes.subarray(i, i + chunk);
+      binary += String.fromCharCode.apply(null, sub);
+    }
+    return btoa(binary);
+  }
+
   /* ========= KEY PARA OCR ========= */
 
   async function ensureKey(){
@@ -473,7 +488,8 @@
       if (!key || !file) return;
 
       var ab  = await file.arrayBuffer();
-      var b64 = btoa(String.fromCharCode.apply(null,new Uint8Array(ab)));
+      // 🔧 CAMBIO: antes se usaba apply con todos los bytes a la vez y reventaba la pila.
+      var b64 = arrayBufferToBase64(ab);
 
       var body = {
         contents: [{
