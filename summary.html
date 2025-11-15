@@ -96,6 +96,39 @@
       border:1px solid rgba(255,255,255,0.2);
       gap:4px;
     }
+
+    /* NUEVO: cuadro grande para los totales económicos */
+    .big-total-card {
+      flex:1 1 100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(0,0,0,0.35);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:13px;
+    }
+    .big-total-header {
+      font-size:12px;
+      font-weight:600;
+      opacity:0.9;
+      margin-bottom:4px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .big-total-row {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .big-total-row span.label {
+      opacity:0.85;
+    }
+    .big-total-row span.value {
+      font-weight:600;
+    }
   </style>
 </head>
 <body>
@@ -135,27 +168,38 @@
       <button id="btnPdf" class="btn primary">📄 Descargar PDF</button>
     </div>
 
+    <!-- NUEVO: cuadro grande con los totales económicos -->
     <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
-      <div class="pill">
-        💶 Total gastos: <span id="totGastos" style="font-weight:600;margin-left:4px">0,00 €</span>
+      <div class="big-total-card">
+        <div class="big-total-header">
+          💶 Resumen económico del mes
+        </div>
+        <div class="big-total-row">
+          <span class="label">Total gastos:</span>
+          <span class="value" id="totGastos">0,00 €</span>
+        </div>
+        <div class="big-total-row">
+          <span class="label">Pagado con mi dinero:</span>
+          <span class="value" id="totPersonalPaid">0,00 €</span>
+        </div>
+        <div class="big-total-row">
+          <span class="label">Coste KM personales:</span>
+          <span class="value" id="totKmPerCost">0,00 €</span>
+        </div>
+        <div class="big-total-row">
+          <span class="label">Lo que me debe la empresa:</span>
+          <span class="value" id="totOwed">0,00 €</span>
+        </div>
       </div>
-      <div class="pill">
-        🧾 Pagado con mi dinero:
-        <span id="totPersonalPaid" style="font-weight:600;margin-left:4px">0,00 €</span>
-      </div>
+    </div>
+
+    <!-- KM en pastillas pequeñas -->
+    <div class="row" style="margin-top:8px;gap:12px;flex-wrap:wrap">
       <div class="pill">
         🏢 KM empresa: <span id="totKmEmp" style="font-weight:600;margin-left:4px">0,0 km</span>
       </div>
       <div class="pill">
         🧍 KM personales: <span id="totKmPer" style="font-weight:600;margin-left:4px">0,0 km</span>
-      </div>
-      <div class="pill">
-        ⛽ Coste KM personales:
-        <span id="totKmPerCost" style="font-weight:600;margin-left:4px">0,00 €</span>
-      </div>
-      <div class="pill">
-        💼 Lo que me debe la empresa:
-        <span id="totOwed" style="font-weight:600;margin-left:4px">0,00 €</span>
       </div>
     </div>
   </div>
@@ -580,7 +624,7 @@
       headStyles:{ fillColor:[0,0,0] }
     });
 
-    // -------- Tabla KM --------
+    // -------- Tabla KM (con notas) --------
     var finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 66;
 
     var rowsKm = currentKms.map(function(k){
@@ -594,19 +638,21 @@
       if (type === 'Personal' && !isNaN(fuel) && fuel > 0){
         costPers = km * fuel * 6 / 100;
       }
+      var notesKm = (k.notes || '').toString();
 
       return [
         d,
         type,
         km.toFixed(1),
         !isNaN(fuel) && fuel > 0 ? fuel.toFixed(2) : '',
-        costPers ? costPers.toFixed(2) : ''
+        costPers ? costPers.toFixed(2) : '',
+        notesKm.slice(0,60)
       ];
     });
 
     doc.autoTable({
       startY: finalY + 6,
-      head: [['Fecha','Tipo','KM','€/L','Coste km pers.']],
+      head: [['Fecha','Tipo','KM','€/L','Coste km pers.','Notas']],
       body: rowsKm,
       styles:{ fontSize:8 },
       headStyles:{ fillColor:[30,30,30] }
