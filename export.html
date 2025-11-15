@@ -64,6 +64,25 @@
       border:1px solid rgba(255,255,255,0.2);
       gap:4px;
     }
+    /* Total gastos más grande y protagonista (pensado para móvil) */
+    .pill-total {
+      font-size:16px;
+      padding:8px 14px;
+      border-width:2px;
+      flex:1 1 100%;
+      justify-content:space-between;
+    }
+    .pill-total span {
+      font-size:18px;
+    }
+    @media (max-width:600px){
+      .pill-total {
+        font-size:18px;
+      }
+      .pill-total span {
+        font-size:20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -104,9 +123,10 @@
       </div>
 
       <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
-        <div class="pill">
+        <!-- TOTAL GASTOS MUCHO MÁS GRANDE -->
+        <div class="pill pill-total">
           💶 Total gastos mes:
-          <span id="totGastos" style="font-weight:600;margin-left:4px">0,00 €</span>
+          <span id="totGastos" style="font-weight:700;margin-left:4px">0,00 €</span>
         </div>
         <div class="pill">
           🧾 Pagado con mi dinero:
@@ -470,7 +490,7 @@
     }
   }
 
-  /* =================== EXPORT EXCEL GASTOS (PLANTILLA, FILA 7) =================== */
+  /* =================== EXPORT EXCEL GASTOS (PLANTILLA 2N, FECHA EN UNA CELDA) =================== */
   async function exportExcelGastos(){
     if (!currentEntries.length){
       alert('No hay gastos en este mes.');
@@ -489,18 +509,20 @@
       const sheetName = wb.SheetNames[0];
       const ws = wb.Sheets[sheetName];
 
-      // Rellenar cabecera PRENOM / NOM / COST CENTER
-      // Ajusta C3/C4/C5 si en tu plantilla van en otras celdas.
+      // Cabecera fiel a la plantilla:
+      // Row2: A2 = "NOM", B2 = valor
+      // Row3: A3 = "PRENOM:", B3 = valor
+      //       C3 = "COST CENTER:", D3 = valor
       function setHeaderCell(ref, val){
         if (!ws[ref]) ws[ref] = {};
         ws[ref].v = val;
         ws[ref].t = 's';
       }
-      setHeaderCell('C3', PRENOM);
-      setHeaderCell('C4', NOM);
-      setHeaderCell('C5', COST_CENTER);
+      setHeaderCell('B2', NOM);          // NOM
+      setHeaderCell('B3', PRENOM);       // PRENOM
+      setHeaderCell('D3', COST_CENTER);  // COST CENTER
 
-      // Rellenamos desde la fila 7 (requisito)
+      // Rellenamos desde la fila 7 (como pide la plantilla 2N)
       const startRow = 7;
 
       currentEntries.forEach((e, idx)=>{
@@ -509,22 +531,60 @@
         const iso = d.toISOString().slice(0,10); // YYYY-MM-DD
         const [yyyy,mm,dd] = iso.split('-');
 
-        function setCell(col, val){
+        function setCell(col, val, typeOverride){
           const cellRef = col + String(r);
           if (!ws[cellRef]) ws[cellRef] = {};
           ws[cellRef].v = val;
-          ws[cellRef].t = (typeof val === 'number') ? 'n' : 's';
+          if (typeOverride){
+            ws[cellRef].t = typeOverride;
+          } else {
+            ws[cellRef].t = (typeof val === 'number') ? 'n' : 's';
+          }
         }
 
-        // Mapeo básico (ajusta columnas si tu plantilla tiene otro orden):
-        // A = Día, B = Mes, C = Año, D = Proveedor, E = Concepto/Notas, F = Importe, G = Medio de pago
-        setCell('A', Number(dd));
-        setCell('B', Number(mm));
-        setCell('C', Number(yyyy));
-        setCell('D', e.provider || '');
-        setCell('E', e.notes || '');
-        setCell('F', Number(e.amount || 0));
-        setCell('G', e.paidWith || '');
+        // FECHA en UNA sola celda (columna A, cabecera "DATE")
+        const fechaTexto = dd + '/' + mm + '/' + yyyy;
+        setCell('A', fechaTexto);  // una sola celda para la fecha
+
+        // CLIENT / PROVIDER en columna B
+        setCell('B', e.provider || '');
+
+        // Concepto: añadimos notas al lado del proveedor (si las hay)
+        if (e.notes){
+          const current = (e.provider || '').trim();
+          const combined = current
+            ? (current + ' - ' + e.notes)
+            : e.notes;
+          setCell('B', combined);
+        }
+
+        // Importe según categoría, intentando respetar cabeceras:
+        // C = TOLLS & PARKINGS
+        // D = HOTEL
+        // E = GASOLINE
+        // G = OTHER TRANSPORTS (Taxi)
+        // I = MEALS (TRAVELING)
+        // J = VARIOUS
+        const amount = Number(e.amount || 0);
+        const cat = (e.category || '').toLowerCase();
+        let colAmount = 'J'; // por defecto, VARIOUS
+
+        if (cat === 'peajes') {
+          colAmount = 'C';
+        } else if (cat === 'alojamiento') {
+          colAmount = 'D';
+        } else if (cat === 'gasolina') {
+          colAmount = 'E';
+        } else if (cat === 'transporte') {
+          colAmount = 'G';
+        } else if (cat === 'comida') {
+          colAmount = 'I';
+        } else {
+          colAmount = 'J';
+        }
+
+        setCell(colAmount, amount);  // importe en la columna de su categoría
+        setCell('K', amount);        // TOTAL de la línea (columna K)
       });
 
       const month = $('monthInput').value || '';
@@ -595,8 +655,6 @@
 
     try{
       setStatus('Lanzando descargas de fotos…');
-
-      const month = $('monthInput').value || '';
 
       entriesWithPhoto.forEach((e, i)=>{
         const url = e.photoURL;
