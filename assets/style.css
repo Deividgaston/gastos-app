@@ -28,7 +28,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -40,11 +41,7 @@ body {
   background: radial-gradient(circle at top, #14172a 0, #05060a 55%);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
-}
-
-/* Mejor feeling táctil en iOS */
-body {
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: transparent; /* mejor feeling tactil */
 }
 
 /* =========================
@@ -103,13 +100,6 @@ header.topbar h1 img {
   gap: 12px;
 }
 
-@media (min-width: 768px) {
-  .grid {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-    align-items: flex-start;
-  }
-}
-
 /* =========================
    CARDS / CONTENEDORES
    ========================= */
@@ -153,7 +143,7 @@ header.topbar h1 img {
   flex-wrap: wrap;
 }
 
-/* En móvil, que las filas se rompan en varias líneas cómoda */
+/* En móvil, que las filas se rompan cómodas */
 @media (max-width: 600px) {
   .row {
     flex-wrap: wrap;
@@ -171,10 +161,10 @@ button,
   cursor: pointer;
   font-family: inherit;
   font-weight: 600;
-  font-size: 15px;            /* más grande para dedo */
+  font-size: 15px;            /* grande para dedo */
   border-radius: 14px;
   padding: 10px 14px;
-  min-height: 44px;           /* estándar Apple para táctil */
+  min-height: 44px;           /* estándar táctil Apple */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -183,7 +173,10 @@ button,
   color: var(--text-main);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease,
+    background 0.12s ease;
 }
 
 .btn.primary {
@@ -288,7 +281,7 @@ button:disabled,
 }
 
 /* =========================
-   PREVIEW IMAGEN (Summary)
+   PREVIEW IMAGEN (Summary / index)
    ========================= */
 
 .preview-img,
@@ -342,7 +335,7 @@ button:disabled,
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(16px);
   display: none;
-  align-items: flex-end; /* estilo “bottom sheet” para móvil */
+  align-items: flex-end; /* estilo “bottom sheet” en móvil */
   justify-content: center;
   z-index: 40;
 }
@@ -364,7 +357,7 @@ button:disabled,
   box-shadow: var(--shadow-hard);
 }
 
-/* En pantallas grandes, que el modal sea centrado tipo cuadro */
+/* En pantallas grandes, modal centrado tipo cuadro */
 @media (min-width: 720px) {
   .modal {
     align-items: center;
@@ -374,7 +367,9 @@ button:disabled,
   }
 }
 
-/* Inputs en modal / formularios */
+/* =========================
+   FORMULARIOS / INPUTS
+   ========================= */
 
 input[type="text"],
 input[type="number"],
@@ -391,7 +386,10 @@ textarea {
   background: rgba(4, 5, 10, 0.85);
   color: var(--text-main);
   outline: none;
-  transition: border 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition:
+    border 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
 }
 
 input:focus,
@@ -408,10 +406,9 @@ label {
 }
 
 /* =========================
-   KMS / LAYOUTS ESPECÍFICOS
+   LAYOUT SUMMARY (vista summary.html)
    ========================= */
 
-/* layout-summary (Summary) */
 .layout-summary {
   display: flex;
   gap: 12px;
@@ -442,7 +439,7 @@ label {
   background: rgba(0, 0, 0, 0.22);
 }
 
-/* En móvil, que los paneles se apilen y ocupen todo el ancho */
+/* En móvil, stack vertical */
 @media (max-width: 700px) {
   .layout-summary {
     flex-direction: column;
@@ -455,10 +452,9 @@ label {
 }
 
 /* =========================
-   SCROLL / DETALLES
+   SCROLLBARS DISCRETAS
    ========================= */
 
-/* Scroll fino y discreto en listas */
 .list-panel::-webkit-scrollbar,
 #entriesList::-webkit-scrollbar {
   width: 6px;
@@ -484,4 +480,40 @@ a {
 }
 a:hover {
   text-decoration: underline;
+}
+
+/* =========================
+   VERSIÓN ESCRITORIO
+   (ajustes solo para pantallas anchas)
+   ========================= */
+
+@media (min-width: 900px) {
+  body {
+    font-size: 15px;
+  }
+
+  .content {
+    padding: 16px 20px 24px;
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: flex-start;
+  }
+
+  /* Botones un poco más compactos para que no parezcan gigantes en desktop */
+  .btn {
+    font-size: 14px;
+    min-height: 38px;
+    padding: 8px 12px;
+  }
+
+  .pill-total {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .pill-total span {
+    font-size: 16px;
+  }
 }
