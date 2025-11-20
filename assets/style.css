@@ -1,273 +1,487 @@
-:root{
-  --bg:#05070a;
-  --bg2:#0b0f15;
-  --card:#11161f;
-  --border:#1b2430;
-  --text:#ecf2ff;
-  --muted:#9fb1c7;
-  --accent:#09d49a;
-  --danger:#ff6b6b;
+/* =========================
+   BASE / TIPOGRAFÍA
+   ========================= */
+
+:root {
+  --bg-main: #05060a;
+  --bg-card: #11131a;
+  --bg-card-soft: #151824;
+  --bg-elevated: #181b29;
+  --accent: #00c896;
+  --accent-soft: rgba(0, 200, 150, 0.2);
+  --accent-strong: rgba(0, 200, 150, 0.35);
+  --danger: #ff4b5c;
+  --danger-soft: rgba(255, 75, 92, 0.2);
+  --text-main: #f8fafc;
+  --text-muted: #a1a5b5;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --radius-card: 18px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 14px 40px rgba(0, 0, 0, 0.35);
+  --shadow-hard: 0 18px 50px rgba(0, 0, 0, 0.55);
 }
 
-*{box-sizing:border-box;}
-
-html,body{
-  margin:0;
-  padding:0;
-  height:100%;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-body{
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,Roboto,Arial,sans-serif;
-  background:radial-gradient(circle at top,#151b2c,#05070a);
-  color:var(--text);
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
 }
 
-/* TOP BAR */
-
-.topbar{
-  padding:12px 16px;
-  border-bottom:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  gap:8px;
-  background:rgba(5,7,10,0.96);
-  position:sticky;
-  top:0;
-  z-index:20;
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #14172a 0, #05060a 55%);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
 }
 
-.topbar h1{
-  margin:0;
-  font-size:18px;
-  display:flex;
-  align-items:center;
-  gap:8px;
+/* Mejor feeling táctil en iOS */
+body {
+  -webkit-tap-highlight-color: transparent;
 }
 
-.badge{
-  display:inline-flex;
-  align-items:center;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  color:var(--muted);
-  font-size:13px;
-  text-decoration:none;
-  background:rgba(10,14,20,0.9);
+/* =========================
+   LAYOUT GENERAL
+   ========================= */
+
+header.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 6, 10, 0.96),
+    rgba(5, 6, 10, 0.88),
+    transparent
+  );
+  backdrop-filter: blur(22px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.header-actions{
-  margin-left:auto;
-  display:flex;
-  gap:8px;
-  align-items:center;
+header.topbar h1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 18px;
+  font-weight: 650;
+  margin: 0;
+  padding: 0;
+  letter-spacing: 0.02em;
 }
 
-/* BOTONES */
-
-.btn{
-  border-radius:999px;
-  border:1px solid transparent;
-  padding:9px 14px;
-  font-size:13px;
-  cursor:pointer;
-  background:#182232;
-  color:var(--text);
+header.topbar h1 img {
+  height: 22px;
 }
 
-.btn.primary{
-  background:var(--accent);
-  color:#020304;
-  font-weight:600;
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn.danger{
-  background:#33131a;
-  border-color:#52202c;
-  color:#ffe3ea;
+.content {
+  padding: 10px 12px 20px;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-/* LAYOUT PRINCIPAL */
-
-main.content{
-  padding:16px;
+/* Grid adaptable: en móvil 1 columna, en pantalla grande 2+ */
+.grid {
+  display: grid;
+  gap: 12px;
 }
 
-.grid{
-  max-width:1024px;
-  margin:0 auto;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: flex-start;
+  }
 }
 
-.card{
-  background:linear-gradient(145deg,#0b1018,#05070a);
-  border-radius:18px;
-  border:1px solid var(--border);
-  padding:16px 18px;
-  box-shadow:0 18px 40px rgba(0,0,0,0.45);
+/* =========================
+   CARDS / CONTENEDORES
+   ========================= */
+
+.card {
+  background: radial-gradient(circle at top left, #1b1d2b, #10121b 55%, #090a11);
+  border-radius: var(--radius-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-soft);
+  padding: 14px 14px 12px;
 }
 
-.card h2{
-  margin-top:0;
-  margin-bottom:10px;
-  font-size:18px;
+.card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  letter-spacing: 0.01em;
 }
 
-.row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
+/* =========================
+   TIPOGRAFÍA PEQUEÑA
+   ========================= */
+
+.small {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 
-.small{
-  font-size:12px;
-  color:var(--muted);
+/* =========================
+   FILAS / DISTRIBUCIÓN
+   ========================= */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* FORMULARIOS */
+.row.wrap {
+  flex-wrap: wrap;
+}
 
-input,
+/* En móvil, que las filas se rompan en varias líneas cómoda */
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+}
+
+/* =========================
+   BOTONES / BADGES
+   ========================= */
+
+button,
+.btn {
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 15px;            /* más grande para dedo */
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-height: 44px;           /* estándar Apple para táctil */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent), #23e0b1);
+  color: #02110b;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, var(--danger), #ff7a88);
+  color: #1b0507;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+button:active,
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+button:disabled,
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Badges (tabs superiores, info pequeña) */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.badge.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-strong);
+}
+
+/* =========================
+   LISTAS / PREVIEW
+   ========================= */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Usado en summary / export para filas de apuntes */
+.entry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.entry-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.entry-row.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-strong);
+}
+
+.entry-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entry-main span:first-child {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.entry-main span:last-child {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.entry-amount {
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* =========================
+   PREVIEW IMAGEN (Summary)
+   ========================= */
+
+.preview-img,
+.thumb {
+  max-width: 100%;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #05060a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* =========================
+   PASTILLAS / RESÚMENES
+   ========================= */
+
+.pill,
+.pill-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Totales muy visibles (Summary / Export) */
+.pill-total {
+  padding: 10px 14px;
+  font-size: 14px;
+  background: radial-gradient(circle at top left, var(--accent-soft), #10131d);
+  border-width: 2px;
+  box-shadow: var(--shadow-soft);
+  justify-content: space-between;
+  width: 100%;
+}
+
+.pill-total span {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* =========================
+   MODALES
+   ========================= */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+  display: none;
+  align-items: flex-end; /* estilo “bottom sheet” para móvil */
+  justify-content: center;
+  z-index: 40;
+}
+
+.modal.open {
+  display: flex;
+}
+
+/* Panel interno del modal */
+.modal .panel {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #181b29, #090b11);
+  border-radius: 18px 18px 0 0;
+  padding: 14px 14px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-hard);
+}
+
+/* En pantallas grandes, que el modal sea centrado tipo cuadro */
+@media (min-width: 720px) {
+  .modal {
+    align-items: center;
+  }
+  .modal .panel {
+    border-radius: 18px;
+  }
+}
+
+/* Inputs en modal / formularios */
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="month"],
 select,
-textarea{
-  background:#05070a;
-  border-radius:12px;
-  border:1px solid #202a39;
-  color:var(--text);
-  padding:8px 10px;
-  font:inherit;
+textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(4, 5, 10, 0.85);
+  color: var(--text-main);
+  outline: none;
+  transition: border 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
-textarea{
-  width:100%;
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 200, 150, 0.45);
+  background: #050711;
 }
 
-/* MINIATURA IMAGEN */
-
-.thumb{
-  width:100px;
-  height:100px;
-  border-radius:12px;
-  border:1px solid #202a39;
-  object-fit:cover;
-  background:#05070a;
+label {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
-/* LISTA ÚLTIMOS APUNTES */
+/* =========================
+   KMS / LAYOUTS ESPECÍFICOS
+   ========================= */
 
-.list{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  font-size:13px;
+/* layout-summary (Summary) */
+.layout-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-/* MODALES */
-
-.modal{
-  position:fixed;
-  inset:0;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  background:rgba(0,0,0,0.6);
-  z-index:50;
+.layout-summary .list-panel {
+  flex: 1 1 55%;
+  min-width: 260px;
+  max-height: 420px;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.22);
 }
 
-.modal.open{
-  display:flex;
+.layout-summary .preview-panel {
+  flex: 1 1 35%;
+  min-width: 220px;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.22);
 }
 
-.modal .panel{
-  background:#05070a;
-  border-radius:18px;
-  border:1px solid var(--border);
-  padding:16px;
-  width:min(640px,100% - 32px);
-}
-
-/* KPI */
-
-.kpi-row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-}
-
-.kpi{
-  flex:1;
-  min-width:150px;
-  padding:12px;
-  border-radius:16px;
-  border:1px solid var(--border);
-  background:#05070a;
-}
-
-.kpi b{
-  display:block;
-  margin-bottom:4px;
-  font-size:13px;
-}
-
-.kpi div{
-  font-size:18px;
-  font-weight:600;
-}
-
-/* TABLAS */
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-
-th,
-td{
-  padding:6px 4px;
-  border-bottom:1px solid #202838;
-}
-
-th{
-  text-align:left;
-  color:var(--muted);
-  font-weight:500;
-}
-
-/* RESPONSIVE iPHONE 16 PRO MAX (y móviles en general) */
-
-@media (max-width:480px){
-  .topbar{
-    flex-wrap:wrap;
-    gap:6px;
+/* En móvil, que los paneles se apilen y ocupen todo el ancho */
+@media (max-width: 700px) {
+  .layout-summary {
+    flex-direction: column;
   }
-
-  .topbar h1{
-    font-size:16px;
-    flex-basis:100%;
+  .layout-summary .list-panel,
+  .layout-summary .preview-panel {
+    min-width: 100%;
+    max-height: none;
   }
+}
 
-  .header-actions{
-    width:100%;
-    justify-content:flex-end;
-  }
+/* =========================
+   SCROLL / DETALLES
+   ========================= */
 
-  main.content{
-    padding:10px;
-  }
+/* Scroll fino y discreto en listas */
+.list-panel::-webkit-scrollbar,
+#entriesList::-webkit-scrollbar {
+  width: 6px;
+}
 
-  .card{
-    padding:14px;
-  }
+.list-panel::-webkit-scrollbar-track,
+#entriesList::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-  .btn{
-    padding:8px 10px;
-  }
+.list-panel::-webkit-scrollbar-thumb,
+#entriesList::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
 
-  .row{
-    gap:8px;
-  }
+/* =========================
+   ENLACES
+   ========================= */
+
+a {
+  color: var(--accent);
+}
+a:hover {
+  text-decoration: underline;
 }
