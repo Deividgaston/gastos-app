@@ -41,7 +41,7 @@ body {
   background: radial-gradient(circle at top, #14172a 0, #05060a 55%);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent; /* mejor feeling tactil */
+  -webkit-tap-highlight-color: transparent; /* mejor feeling táctil */
 }
 
 /* =========================
@@ -281,7 +281,7 @@ button:disabled,
 }
 
 /* =========================
-   PREVIEW IMAGEN (Summary / index)
+   PREVIEW IMAGEN
    ========================= */
 
 .preview-img,
@@ -406,7 +406,7 @@ label {
 }
 
 /* =========================
-   LAYOUT SUMMARY (vista summary.html)
+   LAYOUT SUMMARY
    ========================= */
 
 .layout-summary {
@@ -483,8 +483,59 @@ a:hover {
 }
 
 /* =========================
+   MODO MÓVIL: NAV COMO BOTONES GRANDES
+   ========================= */
+
+@media (max-width: 600px) {
+  header.topbar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  header.topbar h1 {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Solo los enlaces de navegación (KM / Export / Summary) */
+  header.topbar > a.badge {
+    flex: 1 1 calc(50% - 6px);
+    font-size: 14px;
+    min-height: 72px;
+    padding: 12px;
+    border-radius: 16px;
+    justify-content: center;
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Mantener "whoami" como badge pequeño */
+  #whoami.badge {
+    flex: 0 0 auto;
+    min-height: auto;
+    padding: 4px 8px;
+    font-size: 11px;
+    box-shadow: none;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  /* En la tarjeta principal de index: botones enormes */
+  .card:first-of-type .row .btn {
+    flex: 1 1 calc(50% - 6px);
+    font-size: 16px;
+    min-height: 72px;
+    padding: 14px 10px;
+    border-radius: 18px;
+  }
+}
+
+/* =========================
    VERSIÓN ESCRITORIO
-   (ajustes solo para pantallas anchas)
    ========================= */
 
 @media (min-width: 900px) {
@@ -501,7 +552,7 @@ a:hover {
     align-items: flex-start;
   }
 
-  /* Botones un poco más compactos para que no parezcan gigantes en desktop */
+  /* Botones un poco más compactos para desktop */
   .btn {
     font-size: 14px;
     min-height: 38px;
