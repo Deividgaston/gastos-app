@@ -21,121 +21,174 @@
   <script src="config.js"></script>
 
   <style>
-    .layout-summary {
+    /* Solo estética específica Summary (Lightning + móvil) */
+
+    .layout-summary{
       display:flex;
-      gap:16px;
+      gap:14px;
       flex-wrap:wrap;
+      align-items:flex-start;
     }
-    .layout-summary .list-panel {
-      flex:1 1 55%;
-      min-width:260px;
-      max-height:420px;
+
+    .layout-summary .list-panel{
+      flex: 1 1 520px;
+      min-width: 260px;
+      max-height: 440px;
       overflow:auto;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.06);
-      padding:8px;
+      border-radius: 14px;
+      border: 1px solid rgba(208, 213, 229, 0.9);
+      background: var(--bg-card-soft);
+      padding: 10px;
     }
-    .layout-summary .preview-panel {
-      flex:1 1 35%;
-      min-width:220px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.06);
-      padding:8px;
+
+    .layout-summary .preview-panel{
+      flex: 0 1 360px;
+      min-width: 240px;
+      border-radius: 14px;
+      border: 1px solid rgba(208, 213, 229, 0.9);
+      background: var(--bg-card-soft);
+      padding: 10px;
       display:flex;
       flex-direction:column;
-      gap:8px;
+      gap:10px;
       align-items:center;
       justify-content:flex-start;
     }
-    .entry-row {
+
+    .entry-row{
       display:flex;
       justify-content:space-between;
       align-items:center;
-      padding:6px 8px;
-      border-radius:8px;
+      gap:10px;
+      padding:10px 12px;
+      border-radius: 12px;
       cursor:pointer;
+      border: 1px solid rgba(208, 213, 229, 0.6);
+      background: rgba(255,255,255,0.55);
+      transition: box-shadow .15s ease, transform .05s ease;
+      margin-bottom:8px;
     }
-    .entry-row:hover {
-      background:rgba(255,255,255,0.04);
+    .entry-row:hover{
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10);
     }
-    .entry-row.active {
-      background:rgba(0,200,120,0.18);
+    .entry-row:active{
+      transform: translateY(1px);
     }
-    .entry-main {
+    .entry-row.active{
+      outline: 2px solid rgba(1,118,211,0.35);
+      border-color: rgba(1,118,211,0.35);
+      background: rgba(1,118,211,0.08);
+    }
+
+    .entry-main{
       display:flex;
       flex-direction:column;
       gap:2px;
+      min-width:0;
     }
-    .entry-main span:first-child {
-      font-weight:600;
-      font-size:13px;
+    .entry-main span:first-child{
+      font-weight: 750;
+      font-size: 13px;
+      color: var(--text-main);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width: 100%;
     }
-    .entry-main span:last-child {
-      font-size:11px;
-      opacity:0.8;
+    .entry-main span:last-child{
+      font-size: 12px;
+      color: var(--text-muted);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
-    .entry-amount {
-      font-weight:600;
-      font-size:13px;
+
+    .entry-amount{
+      font-weight: 800;
+      font-size: 13px;
       white-space:nowrap;
       margin-left:6px;
     }
-    .preview-img {
-      max-width:100%;
-      max-height:260px;
-      border-radius:12px;
-      object-fit:contain;
-      background:#111;
-    }
-    .pill {
-      display:inline-flex;
-      align-items:center;
-      padding:2px 6px;
-      border-radius:999px;
-      font-size:10px;
-      border:1px solid rgba(255,255,255,0.2);
-      gap:4px;
+
+    .preview-img{
+      width:100%;
+      max-height: 320px;
+      border-radius: 14px;
+      object-fit: contain;
+      border: 1px solid rgba(208, 213, 229, 0.8);
+      background: #fff;
     }
 
-    /* NUEVO: cuadro grande para los totales económicos */
-    .big-total-card {
-      flex:1 1 100%;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.18);
-      background:rgba(0,0,0,0.35);
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      padding: 6px 10px;
+      border-radius:999px;
+      font-size: 12px;
+      border: 1px solid rgba(208, 213, 229, 0.9);
+      background: rgba(255,255,255,0.6);
+      gap:6px;
+      font-weight: 650;
+    }
+
+    .big-total-card{
+      flex: 1 1 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(208, 213, 229, 0.9);
+      background: rgba(255,255,255,0.6);
       display:flex;
       flex-direction:column;
-      gap:4px;
-      font-size:13px;
+      gap: 6px;
+      font-size: 13px;
     }
-    .big-total-header {
-      font-size:12px;
-      font-weight:600;
-      opacity:0.9;
-      margin-bottom:4px;
+
+    .big-total-header{
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-main);
       display:flex;
       align-items:center;
-      gap:6px;
+      gap:8px;
+      margin-bottom:2px;
     }
-    .big-total-row {
+
+    .big-total-row{
       display:flex;
       justify-content:space-between;
       align-items:center;
+      gap:10px;
     }
-    .big-total-row span.label {
-      opacity:0.85;
+    .big-total-row span.label{
+      color: var(--text-muted);
+      font-weight: 650;
     }
-    .big-total-row span.value {
-      font-weight:600;
+    .big-total-row span.value{
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 700px){
+      .layout-summary .list-panel{
+        max-height:none;
+      }
+      .layout-summary .preview-panel{
+        flex: 1 1 100%;
+      }
+      .preview-img{
+        max-height: 360px;
+      }
+      #btnPdf{
+        width:100%;
+      }
     }
   </style>
 </head>
-<body>
 
+<body>
 <header class="topbar">
   <h1>
-    <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:4px;">
+    <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:6px;">
     Gastos 2N · Summary
   </h1>
 
@@ -155,65 +208,66 @@
 
   <div class="card">
     <h2>Resumen mensual</h2>
+
     <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
-      <div>
+      <div style="min-width:180px">
         <label>Mes</label><br>
-        <input id="monthInput" type="month" style="min-width:140px">
+        <input id="monthInput" type="month" style="min-width:170px">
       </div>
+
       <div class="small">
         Se muestran gastos y KM del mes seleccionado.<br>
-        Recuerda iniciar sesión para ver los datos sincronizados.
+        Inicia sesión para ver los datos sincronizados.
       </div>
+
       <div style="flex:1"></div>
       <button id="btnPdf" class="btn primary">📄 Descargar PDF</button>
     </div>
 
-    <!-- NUEVO: cuadro grande con los totales económicos -->
+    <!-- Totales económicos -->
     <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
       <div class="big-total-card">
-        <div class="big-total-header">
-          💶 Resumen económico del mes
-        </div>
+        <div class="big-total-header">💶 Resumen económico del mes</div>
+
         <div class="big-total-row">
-          <span class="label">Total gastos:</span>
+          <span class="label">Total gastos</span>
           <span class="value" id="totGastos">0,00 €</span>
         </div>
+
         <div class="big-total-row">
-          <span class="label">Pagado con mi dinero:</span>
+          <span class="label">Pagado con mi dinero</span>
           <span class="value" id="totPersonalPaid">0,00 €</span>
         </div>
+
         <div class="big-total-row">
-          <span class="label">Coste KM personales:</span>
+          <span class="label">Coste KM personales</span>
           <span class="value" id="totKmPerCost">0,00 €</span>
         </div>
+
         <div class="big-total-row">
-          <span class="label">Lo que me debe la empresa:</span>
+          <span class="label">Lo que me debe la empresa</span>
           <span class="value" id="totOwed">0,00 €</span>
         </div>
       </div>
     </div>
 
-    <!-- KM en pastillas pequeñas -->
-    <div class="row" style="margin-top:8px;gap:12px;flex-wrap:wrap">
-      <div class="pill">
-        🏢 KM empresa: <span id="totKmEmp" style="font-weight:600;margin-left:4px">0,0 km</span>
-      </div>
-      <div class="pill">
-        🧍 KM personales: <span id="totKmPer" style="font-weight:600;margin-left:4px">0,0 km</span>
-      </div>
+    <!-- KM pills -->
+    <div class="row" style="margin-top:10px;gap:10px;flex-wrap:wrap">
+      <div class="pill">🏢 KM empresa: <span id="totKmEmp" style="font-weight:900;margin-left:4px">0,0 km</span></div>
+      <div class="pill">🧍 KM personales: <span id="totKmPer" style="font-weight:900;margin-left:4px">0,0 km</span></div>
     </div>
   </div>
 
   <div class="card">
     <h2>Detalle gastos + tickets</h2>
+
     <div class="layout-summary">
-      <div class="list-panel" id="listPanel">
-        <!-- filas de apuntes -->
-      </div>
+      <div class="list-panel" id="listPanel"></div>
+
       <div class="preview-panel">
-        <div style="font-size:12px;font-weight:600;width:100%;">Vista previa ticket</div>
+        <div style="font-size:12px;font-weight:800;width:100%;">Vista previa ticket</div>
         <img id="ticketPreview" class="preview-img" alt="Ticket">
-        <div id="previewMeta" class="small" style="width:100%;"></div>
+        <div id="previewMeta" class="small" style="width:100%;white-space:pre-wrap;"></div>
       </div>
     </div>
   </div>
@@ -387,31 +441,30 @@
   }
 
   function renderSummaryTotals(entries, kms){
-    let totG   = 0;
-    let totPersonalPaid = 0;
+    var totG = 0;
+    var totPersonalPaid = 0;
 
     entries.forEach(function(e){
-      const amount = Number(e.amount || 0);
+      var amount = Number(e.amount || 0);
       totG += amount;
       if ((e.paidWith || '').toLowerCase() === 'personal'){
         totPersonalPaid += amount;
       }
     });
 
-    let kmEmp = 0;
-    let kmPer = 0;
-    let costPer = 0;
+    var kmEmp = 0;
+    var kmPer = 0;
+    var costPer = 0;
 
     kms.forEach(function(k){
-      const km = Number(k.km || k.distance || 0) || 0;
-      const fuel = (k.fuelPrice != null && k.fuelPrice !== '')
+      var km = Number(k.km || k.distance || 0) || 0;
+      var fuel = (k.fuelPrice != null && k.fuelPrice !== '')
         ? Number(k.fuelPrice)
         : NaN;
 
-      if ((k.type || '').toLowerCase().includes('per')){ // personales
+      if ((k.type || '').toLowerCase().includes('per')){
         kmPer += km;
         if (!isNaN(fuel) && fuel > 0){
-          // coste = km * €/L * 6L/100km
           costPer += km * fuel * 6 / 100;
         }
       } else {
@@ -419,19 +472,19 @@
       }
     });
 
-    const owed = totPersonalPaid - costPer;
+    var owed = totPersonalPaid - costPer;
 
-    $('totGastos').textContent      = formatEuro(totG);
-    $('totPersonalPaid').textContent= formatEuro(totPersonalPaid);
-    $('totKmEmp').textContent       = formatKm(kmEmp);
-    $('totKmPer').textContent       = formatKm(kmPer);
-    $('totKmPerCost').textContent   = formatEuro(costPer);
-    $('totOwed').textContent        = formatEuro(owed);
+    $('totGastos').textContent       = formatEuro(totG);
+    $('totPersonalPaid').textContent = formatEuro(totPersonalPaid);
+    $('totKmEmp').textContent        = formatKm(kmEmp);
+    $('totKmPer').textContent        = formatKm(kmPer);
+    $('totKmPerCost').textContent    = formatEuro(costPer);
+    $('totOwed').textContent         = formatEuro(owed);
   }
 
-  let currentEntries = [];
-  let currentKms     = [];
-  let currentSelectedIdx = -1;
+  var currentEntries = [];
+  var currentKms     = [];
+  var currentSelectedIdx = -1;
 
   function renderList(entries){
     currentEntries = entries || [];
@@ -457,13 +510,16 @@
 
       var main = document.createElement('div');
       main.className = 'entry-main';
+
       var s1 = document.createElement('span');
       s1.textContent = (e.provider || '-');
+
       var s2 = document.createElement('span');
       s2.textContent =
         fecha + ' · ' +
         (e.category || '-') + ' · ' +
         (e.paidWith || '');
+
       main.appendChild(s1);
       main.appendChild(s2);
 
@@ -491,10 +547,9 @@
 
     Array.prototype.forEach.call(
       panel.querySelectorAll('.entry-row'),
-      function(n){
-        n.classList.remove('active');
-      }
+      function(n){ n.classList.remove('active'); }
     );
+
     var sel = panel.querySelector('.entry-row[data-idx="'+idx+'"]');
     if (sel) sel.classList.add('active');
 
@@ -506,21 +561,18 @@
     }
 
     var img = $('ticketPreview');
-    if (e.photoURL){
-      img.src = e.photoURL;
-    } else {
-      img.src = '';
-    }
+    img.src = e.photoURL ? e.photoURL : '';
 
     var fecha = e.dateJs instanceof Date
       ? e.dateJs.toISOString().slice(0,10)
       : (e.date || '');
 
-    var meta = fecha + ' · ' + (e.provider||'-') +
+    var meta =
+      fecha + ' · ' + (e.provider||'-') +
       ' · ' + formatEuro(Number(e.amount||0)) +
-      '\nCat: ' + (e.category||'-') +
-      ' · Pagado con: ' + (e.paidWith || '-') +
-      (e.notes ? '\nNotas: ' + e.notes : '');
+      '\nCategory: ' + (e.category||'-') +
+      ' · Paid with: ' + (e.paidWith || '-') +
+      (e.notes ? '\nNotes: ' + e.notes : '');
 
     $('previewMeta').textContent = meta;
   }
@@ -538,33 +590,33 @@
     }
   }
 
-  // -------- PDF --------
+  // -------- PDF (ENGLISH) --------
   async function buildPdf(){
+    var month = $('monthInput').value || '';
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    var month = $('monthInput').value || '';
-
     doc.setFontSize(16);
-    doc.text('Gastos 2N - Resumen mensual', 14, 16);
+    doc.text('2N Expenses - Monthly Summary', 14, 16);
     doc.setFontSize(11);
-    doc.text('Mes: ' + (month || 'N/D'), 14, 24);
+    doc.text('Month: ' + (month || 'N/A'), 14, 24);
 
-    let totG   = 0;
-    let totPersonalPaid = 0;
+    var totG = 0;
+    var totPersonalPaid = 0;
 
-    currentEntries.forEach(e => {
-      const amount = Number(e.amount || 0);
+    currentEntries.forEach(function(e){
+      var amount = Number(e.amount || 0);
       totG += amount;
       if ((e.paidWith || '').toLowerCase() === 'personal'){
         totPersonalPaid += amount;
       }
     });
 
-    let kmEmp = 0, kmPer = 0, costPer = 0;
-    currentKms.forEach(k=>{
-      const km = Number(k.km || k.distance || 0) || 0;
-      const fuel = (k.fuelPrice != null && k.fuelPrice !== '')
+    var kmEmp = 0, kmPer = 0, costPer = 0;
+    currentKms.forEach(function(k){
+      var km = Number(k.km || k.distance || 0) || 0;
+      var fuel = (k.fuelPrice != null && k.fuelPrice !== '')
         ? Number(k.fuelPrice)
         : NaN;
 
@@ -578,32 +630,31 @@
       }
     });
 
-    const owed = totPersonalPaid - costPer;
+    var owed = totPersonalPaid - costPer;
 
-    // Caja gastos
+    // Summary boxes
     doc.setDrawColor(200);
     doc.setLineWidth(0.3);
+
+    // Expenses box
     doc.roundedRect(12, 30, 90, 32, 3, 3);
     doc.setFontSize(11);
-    doc.text('Resumen gastos', 16, 36);
+    doc.text('Expenses summary', 16, 36);
     doc.setFontSize(10);
-    doc.text('Total gastos: ' + formatEuro(totG), 16, 44);
-    doc.text('Pagado con mi dinero: ' + formatEuro(totPersonalPaid), 16, 50);
-    doc.text('Lo que me debe la empresa: ' + formatEuro(owed), 16, 56);
+    doc.text('Total expenses: ' + formatEuro(totG), 16, 44);
+    doc.text('Paid with my money: ' + formatEuro(totPersonalPaid), 16, 50);
+    doc.text('Company owes me: ' + formatEuro(owed), 16, 56);
 
-    // Caja KM
+    // Mileage box
     doc.roundedRect(110, 30, 88, 32, 3, 3);
     doc.setFontSize(11);
-    doc.text('Resumen KM', 114, 36);
+    doc.text('Mileage summary', 114, 36);
     doc.setFontSize(10);
-    doc.text('KM empresa: ' + formatKm(kmEmp), 114, 44);
-    doc.text('KM personales: ' + formatKm(kmPer), 114, 50);
-    doc.text(
-      'Coste km pers. (km × €/L × 6L/100km): ' + formatEuro(costPer),
-      114, 56
-    );
+    doc.text('Company mileage: ' + formatKm(kmEmp), 114, 44);
+    doc.text('Personal mileage: ' + formatKm(kmPer), 114, 50);
+    doc.text('Personal mileage cost (km × €/L × 6L/100km): ' + formatEuro(costPer), 114, 56);
 
-    // Tabla gastos
+    // Expenses table
     var rows = currentEntries.map(function(e){
       var d = e.dateJs instanceof Date ? e.dateJs.toISOString().slice(0,10) : (e.date || '');
       return [
@@ -618,13 +669,13 @@
 
     doc.autoTable({
       startY: 66,
-      head: [['Fecha','Proveedor','Cat.','Pago','Notas','Importe']],
+      head: [['Date','Provider','Category','Paid with','Notes','Amount']],
       body: rows,
       styles:{ fontSize:8 },
       headStyles:{ fillColor:[0,0,0] }
     });
 
-    // -------- Tabla KM (con notas) --------
+    // Mileage table
     var finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 66;
 
     var rowsKm = currentKms.map(function(k){
@@ -633,7 +684,8 @@
       var fuel = (k.fuelPrice != null && k.fuelPrice !== '')
         ? Number(k.fuelPrice)
         : NaN;
-      var type = (k.type || '').toLowerCase().includes('per') ? 'Personal' : 'Empresa';
+
+      var type = (k.type || '').toLowerCase().includes('per') ? 'Personal' : 'Company';
       var costPers = 0;
       if (type === 'Personal' && !isNaN(fuel) && fuel > 0){
         costPers = km * fuel * 6 / 100;
@@ -644,7 +696,7 @@
         d,
         type,
         km.toFixed(1),
-        !isNaN(fuel) && fuel > 0 ? fuel.toFixed(2) : '',
+        (!isNaN(fuel) && fuel > 0) ? fuel.toFixed(2) : '',
         costPers ? costPers.toFixed(2) : '',
         notesKm.slice(0,60)
       ];
@@ -652,13 +704,14 @@
 
     doc.autoTable({
       startY: finalY + 6,
-      head: [['Fecha','Tipo','KM','€/L','Coste km pers.','Notas']],
+      head: [['Date','Type','KM','€/L','Personal cost','Notes']],
       body: rowsKm,
       styles:{ fontSize:8 },
       headStyles:{ fillColor:[30,30,30] }
     });
 
-    doc.save('gastos-2n-summary-'+(month||'')+'.pdf');
+    // ENGLISH filename
+    doc.save('monthly-summary-2n-' + (month || 'month') + '.pdf');
   }
 
   if ($('monthInput')){
