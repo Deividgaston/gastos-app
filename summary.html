@@ -379,6 +379,9 @@
     var monthValue = $('monthInput').value;
     var range = getMonthRange(monthValue);
 
+    // ✅ FIX: si no hay rango, no rompas filtros/local
+    if (!range) return { entries: [], kms: [] };
+
     var entries = [];
     var kms     = [];
 
@@ -567,12 +570,13 @@
       ? e.dateJs.toISOString().slice(0,10)
       : (e.date || '');
 
+    // ✅ FIX: preview en ESPAÑOL (solo el PDF queda en inglés)
     var meta =
       fecha + ' · ' + (e.provider||'-') +
       ' · ' + formatEuro(Number(e.amount||0)) +
-      '\nCategory: ' + (e.category||'-') +
-      ' · Paid with: ' + (e.paidWith || '-') +
-      (e.notes ? '\nNotes: ' + e.notes : '');
+      '\nCategoría: ' + (e.category||'-') +
+      ' · Pagado con: ' + (e.paidWith || '-') +
+      (e.notes ? '\nNotas: ' + e.notes : '');
 
     $('previewMeta').textContent = meta;
   }
