@@ -15,11 +15,56 @@
 
   <!-- Config Firebase -->
   <script src="config.js"></script>
+
+  <style>
+    /* Solo mejoras visuales locales (sin tocar lógica) */
+
+    /* Lista de notas en cards (mejor en móvil) */
+    #lista .note-item{
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(208, 213, 229, 0.9);
+      background: var(--bg-card-soft);
+    }
+
+    /* Barra de acciones rápida: dos botones grandes, especialmente en móvil */
+    .quick-actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .quick-actions .btn{
+      flex: 1 1 220px;
+    }
+
+    /* Thumbnail del modal */
+    #revThumb{
+      width: 64px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      background: #fff;
+    }
+
+    /* En móvil: botones aún más grandes y layout del modal más cómodo */
+    @media (max-width: 600px){
+      .quick-actions .btn{
+        flex: 1 1 100%;
+      }
+      #revThumb{
+        width: 84px;
+        height: 84px;
+      }
+    }
+  </style>
 </head>
+
 <body>
 <header class="topbar">
   <h1>
-    <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:4px;">
+    <img src="assets/2n-logo-black.png" alt="2N" style="height:20px;border-radius:6px;">
     Gastos 2N
   </h1>
 
@@ -39,11 +84,13 @@
   <div class="grid">
     <div class="card">
       <h2>Acciones rápidas</h2>
-      <div class="row">
+
+      <div class="quick-actions">
         <button id="scanBtn" class="btn primary">📸 Escanear ticket</button>
         <button id="manualBtn" class="btn">＋ Ingreso manual</button>
       </div>
-      <div class="small">
+
+      <div class="small" style="margin-top:8px">
         Si no hay login, los apuntes se guardan localmente en este navegador.
       </div>
     </div>
@@ -64,22 +111,22 @@
     </div>
 
     <div class="row" style="margin-top:10px">
-      <div>
+      <div style="flex:1;min-width:160px">
         <label>Fecha</label><br>
         <input id="revDate" type="date">
       </div>
-      <div>
+      <div style="flex:1;min-width:140px">
         <label>Importe (€)</label><br>
         <input id="revAmount" type="number" step="0.01">
       </div>
     </div>
 
-    <div class="row">
-      <div style="flex:1;min-width:150px">
+    <div class="row" style="margin-top:8px">
+      <div style="flex:1;min-width:160px">
         <label>Proveedor</label><br>
         <input id="revProvider">
       </div>
-      <div>
+      <div style="flex:1;min-width:150px">
         <label>Categoría</label><br>
         <select id="revCategory">
           <option value="comida">Comida</option>
@@ -93,7 +140,7 @@
           <option value="ingreso">Ingreso</option>
         </select>
       </div>
-      <div>
+      <div style="flex:1;min-width:150px">
         <label>Pagado con</label><br>
         <select id="revPaidWith">
           <option value="empresa" selected>Tarjeta empresa</option>
@@ -102,15 +149,15 @@
       </div>
     </div>
 
-    <div class="row">
-      <textarea id="revNotes" rows="3" placeholder="Notas"></textarea>
+    <div class="row" style="margin-top:8px;align-items:flex-start">
+      <textarea id="revNotes" rows="3" placeholder="Notas" style="flex:1;min-width:200px"></textarea>
       <img id="revThumb" class="thumb" alt="preview">
     </div>
 
-    <div id="revFileInfo" class="small"></div>
+    <div id="revFileInfo" class="small" style="margin-top:6px"></div>
 
-    <div class="row" style="justify-content:space-between;margin-top:10px">
-      <div class="row">
+    <div class="row" style="justify-content:space-between;margin-top:12px;flex-wrap:wrap">
+      <div class="row" style="gap:10px;flex-wrap:wrap">
         <button id="btnPick" class="btn">📎 Adjuntar foto</button>
         <button id="btnCam" class="btn">📷 Tomar foto</button>
       </div>
@@ -136,9 +183,9 @@
       </div>
     </div>
 
-    <div class="row" style="justify-content:space-between;margin-top:12px">
+    <div class="row" style="justify-content:space-between;margin-top:12px;flex-wrap:wrap">
       <button id="btnTestKey" class="btn">Probar clave</button>
-      <div class="row">
+      <div class="row" style="gap:10px;flex-wrap:wrap">
         <button id="btnSaveKey" class="btn primary">Guardar clave</button>
         <button id="btnClearKey" class="btn danger">Borrar clave</button>
       </div>
@@ -488,7 +535,6 @@
       if (!key || !file) return;
 
       var ab  = await file.arrayBuffer();
-      // 🔧 CAMBIO: antes se usaba apply con todos los bytes a la vez y reventaba la pila.
       var b64 = arrayBufferToBase64(ab);
 
       var body = {
@@ -631,14 +677,14 @@
         .get()
         .then(function(snap){
           if (snap.empty){
-            cont.innerHTML = '<div class="small">Sin apuntes aún.</div>';
+            cont.innerHTML = '<div class="small note-item">Sin apuntes aún.</div>';
             return;
           }
           snap.forEach(function(doc){
             var e = doc.data();
             var d = e.date && e.date.toDate ? e.date.toDate() : new Date(e.date);
             var div = document.createElement('div');
-            div.className = 'small';
+            div.className = 'small note-item';
             div.textContent =
               d.toISOString().slice(0,10) + ' · ' +
               (e.provider || '-') + ' · ' +
@@ -649,12 +695,12 @@
     } else {
       var arr = JSON.parse(localStorage.getItem('entries_local') || '[]');
       if (!arr.length){
-        cont.innerHTML = '<div class="small">Sin apuntes aún.</div>';
+        cont.innerHTML = '<div class="small note-item">Sin apuntes aún.</div>';
         return;
       }
       arr.slice(-5).reverse().forEach(function(e){
         var div = document.createElement('div');
-        div.className = 'small';
+        div.className = 'small note-item';
         div.textContent =
           e.date + ' · ' + (e.provider || '-') + ' · ' + (e.amount || 0) + '€';
         cont.appendChild(div);
