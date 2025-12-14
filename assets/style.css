@@ -318,6 +318,16 @@ textarea:focus {
   box-shadow: 0 0 0 2px rgba(1, 118, 211, 0.18);
 }
 
+/* Ticket thumb (index modal) */
+.thumb {
+  width: 120px;
+  height: 120px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(208, 213, 229, 0.9);
+  background: #ffffff;
+}
+
 /* =========================
    LIST + ENTRY ROWS
    (Export / Summary / Index)
@@ -440,6 +450,16 @@ textarea:focus {
   padding: 14px 14px 12px;
 }
 
+/* Desktop: modal centrado (mejor UX) */
+@media (min-width: 700px) {
+  .modal {
+    align-items: center;
+  }
+  .modal .panel {
+    border-radius: 18px;
+  }
+}
+
 /* =========================
    RESPONSIVE: MOBILE FIRST UX
    - botones grandes
@@ -478,10 +498,12 @@ textarea:focus {
     border-color: var(--accent);
   }
 
+  /* ✅ FIX: header-actions puede tener 2 o 3 botones (Config + Login/Logout) */
   .header-actions {
     width: 100%;
     gap: 8px;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   #whoami.badge {
@@ -497,6 +519,8 @@ textarea:focus {
     font-size: 15px;
     padding: 10px 14px;
   }
+
+  /* Si hay 3 botones visibles, cae naturalmente a 2 filas sin romper */
 
   .content {
     padding: 12px 12px 18px;
@@ -543,6 +567,12 @@ textarea:focus {
   .modal .panel {
     border-radius: 18px 18px 0 0;
   }
+
+  .thumb {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
 }
 
 /* =========================
@@ -558,8 +588,9 @@ textarea:focus {
     padding: 18px 20px 26px;
   }
 
+  /* ✅ FIX: grid adaptable (1/2/3 cols según espacio y cards) */
   .grid {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     align-items: start;
   }
 }
