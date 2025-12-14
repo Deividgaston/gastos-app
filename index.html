@@ -25,6 +25,12 @@
       border-radius: 12px;
       border: 1px solid rgba(208, 213, 229, 0.9);
       background: var(--bg-card-soft);
+      /* ✅ micro-fix para textos largos */
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      word-break: break-word;
     }
 
     /* Barra de acciones rápida: dos botones grandes, especialmente en móvil */
@@ -73,10 +79,10 @@
   <a class="badge" href="summary.html">📄 Summary</a>
 
   <div class="header-actions">
-    <button id="btnConfigOCR" class="btn">⚙️ Config OCR</button>
+    <button id="btnConfigOCR" class="btn" type="button">⚙️ Config OCR</button>
     <span id="whoami" class="badge">No autenticado</span>
-    <button id="btnLogin" class="btn">Iniciar sesión</button>
-    <button id="btnLogout" class="btn danger" style="display:none">Salir</button>
+    <button id="btnLogin" class="btn" type="button">Iniciar sesión</button>
+    <button id="btnLogout" class="btn danger" type="button" style="display:none">Salir</button>
   </div>
 </header>
 
@@ -86,8 +92,8 @@
       <h2>Acciones rápidas</h2>
 
       <div class="quick-actions">
-        <button id="scanBtn" class="btn primary">📸 Escanear ticket</button>
-        <button id="manualBtn" class="btn">＋ Ingreso manual</button>
+        <button id="scanBtn" class="btn primary" type="button">📸 Escanear ticket</button>
+        <button id="manualBtn" class="btn" type="button">＋ Ingreso manual</button>
       </div>
 
       <div class="small" style="margin-top:8px">
@@ -107,7 +113,7 @@
   <div class="panel">
     <div class="row" style="justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:16px">Revisar y guardar</h2>
-      <button id="closeReview" class="btn">Cerrar</button>
+      <button id="closeReview" class="btn" type="button">Cerrar</button>
     </div>
 
     <div class="row" style="margin-top:10px">
@@ -158,10 +164,10 @@
 
     <div class="row" style="justify-content:space-between;margin-top:12px;flex-wrap:wrap">
       <div class="row" style="gap:10px;flex-wrap:wrap">
-        <button id="btnPick" class="btn">📎 Adjuntar foto</button>
-        <button id="btnCam" class="btn">📷 Tomar foto</button>
+        <button id="btnPick" class="btn" type="button">📎 Adjuntar foto</button>
+        <button id="btnCam" class="btn" type="button">📷 Tomar foto</button>
       </div>
-      <button id="saveReview" class="btn primary">Guardar</button>
+      <button id="saveReview" class="btn primary" type="button">Guardar</button>
     </div>
   </div>
 </div>
@@ -171,7 +177,7 @@
   <div class="panel">
     <div class="row" style="justify-content:space-between;align-items:center">
       <h2 style="margin:0;font-size:16px">Configurar OCR (Gemini)</h2>
-      <button id="closeOCR" class="btn">Cerrar</button>
+      <button id="closeOCR" class="btn" type="button">Cerrar</button>
     </div>
 
     <div style="margin-top:10px">
@@ -184,10 +190,10 @@
     </div>
 
     <div class="row" style="justify-content:space-between;margin-top:12px;flex-wrap:wrap">
-      <button id="btnTestKey" class="btn">Probar clave</button>
+      <button id="btnTestKey" class="btn" type="button">Probar clave</button>
       <div class="row" style="gap:10px;flex-wrap:wrap">
-        <button id="btnSaveKey" class="btn primary">Guardar clave</button>
-        <button id="btnClearKey" class="btn danger">Borrar clave</button>
+        <button id="btnSaveKey" class="btn primary" type="button">Guardar clave</button>
+        <button id="btnClearKey" class="btn danger" type="button">Borrar clave</button>
       </div>
     </div>
 
