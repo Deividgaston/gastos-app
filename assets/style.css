@@ -1,9 +1,9 @@
 /* =========================
-   TEMA BASE · SALESFORCE-LIKE
+   BASE / TIPOGRAFÍA
    ========================= */
 
 :root {
-  /* Colores base */
+  /* Colores base claros, estilo Salesforce */
   --bg-main: #f3f5fb;
   --bg-card: #ffffff;
   --bg-card-alt: #f9fafb;
@@ -11,10 +11,6 @@
   --border-subtle: #d0d5e5;
   --border-strong: #b0b8d1;
 
-  --text-main: #1f2937;
-  --text-muted: #6b7280;
-
-  /* Accentos tipo Salesforce */
   --accent: #0176d3;
   --accent-strong: #0250a3;
   --accent-soft: #e3f2ff;
@@ -22,9 +18,12 @@
   --danger: #c23934;
   --danger-soft: #fceaea;
 
-  /* Radios y sombras */
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
+
   --radius-card: 12px;
   --radius-pill: 999px;
+
   --shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.06);
   --shadow-strong: 0 10px 30px rgba(15, 23, 42, 0.18);
 }
@@ -39,6 +38,11 @@ html,
 body {
   margin: 0;
   padding: 0;
+}
+
+html,
+body {
+  height: 100%;
 }
 
 body {
@@ -58,7 +62,7 @@ header.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 14px;
   background: linear-gradient(to bottom, #ffffff, #f6f7fb);
   border-bottom: 1px solid var(--border-subtle);
@@ -89,7 +93,8 @@ header.topbar h1 img {
   gap: 8px;
 }
 
-/* Badges de navegación (Export, KMs, Summary, etc.) */
+/* Badges navegación (Inicio / KM / Export / Summary / info usuario) */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -175,7 +180,6 @@ header.topbar h1 img {
   align-items: center;
 }
 
-/* Para filas que tengan varios bloques tipo formulario */
 .row > div {
   flex: 1 1 0;
   min-width: 0;
@@ -187,20 +191,12 @@ header.topbar h1 img {
   color: var(--text-muted);
 }
 
-/* Lista de apuntes */
+/* Listas en general (.list se usa en index, export, summary) */
 .list {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-top: 4px;
-}
-
-/* Cada item de la lista, si desde JS se usa .row dentro de .list */
-.list .row {
-  background: var(--bg-card-alt);
-  border-radius: 10px;
-  padding: 8px 10px;
-  border: 1px solid rgba(208, 213, 229, 0.6);
 }
 
 /* =========================
@@ -287,6 +283,7 @@ input[type="text"],
 input[type="number"],
 input[type="date"],
 input[type="email"],
+input[type="month"],
 select,
 textarea {
   width: 100%;
@@ -350,7 +347,7 @@ textarea:focus {
   font-size: 17px;
 }
 
-/* En páginas de resumen donde se usa .big-total-card */
+/* Tarjeta grande usada en summary (big totals) */
 .big-total-card {
   background: var(--bg-card);
   border-radius: 18px;
@@ -377,7 +374,7 @@ textarea:focus {
 }
 
 /* =========================
-   MODALES
+   MODALES (index.html)
    ========================= */
 
 .modal {
@@ -413,7 +410,7 @@ textarea:focus {
 }
 
 /* =========================
-   LAYOUT SUMMARY (export / summary)
+   LAYOUT SUMMARY / EXPORT
    ========================= */
 
 .layout-summary {
@@ -474,18 +471,20 @@ a:hover {
 }
 
 /* =========================
-   SCROLLBARS SUAVES
+   SCROLLBAR SUAVE
    ========================= */
 
 .list-panel::-webkit-scrollbar,
 .preview-panel::-webkit-scrollbar,
-.modal .panel::-webkit-scrollbar {
+.modal .panel::-webkit-scrollbar,
+#lista::-webkit-scrollbar {
   width: 6px;
 }
 
 .list-panel::-webkit-scrollbar-thumb,
 .preview-panel::-webkit-scrollbar-thumb,
-.modal .panel::-webkit-scrollbar-thumb {
+.modal .panel::-webkit-scrollbar-thumb,
+#lista::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.8);
   border-radius: 999px;
 }
@@ -510,7 +509,6 @@ a:hover {
     justify-content: flex-start;
   }
 
-  /* Nav como “botones” grandes en móvil */
   header.topbar > a.badge,
   header.topbar .header-actions .badge {
     flex: 1 1 calc(50% - 5px);
@@ -531,7 +529,6 @@ a:hover {
     flex-wrap: wrap;
   }
 
-  /* Botones principales a ancho completo en bloques típicos */
   .card .row > .btn,
   .card .row > button {
     flex: 1 1 100%;
