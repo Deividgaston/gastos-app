@@ -625,62 +625,48 @@
   }
 
   /* =================== DOWNLOAD TICKET PHOTOS (FORCE DOWNLOAD) =================== */
-  async function exportFotosTickets(){
-    const entriesWithPhoto = currentEntries.filter(e => e.photoURL);
-    if (!entriesWithPhoto.length){
-      alert('No hay tickets con foto en este mes.');
-      return;
-    }
-
-    try{
-      setStatus('Descargando fotos… (una a una)');
-
-      // secuencial -> menos bloqueos del navegador y menos picos de memoria
-      for (let i = 0; i < entriesWithPhoto.length; i++){
-        const e = entriesWithPhoto[i];
-        const url = e.photoURL;
-        if (!url) continue;
-
-        const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
-        const iso = d.toISOString().slice(0,10);
-
-        const safeProv = (e.provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
-
-        // intenta respetar extensión por content-type
-        const resp = await fetch(url, { mode:'cors' });
-        if (!resp.ok){
-          throw new Error('No se pudo descargar una foto (HTTP ' + resp.status + ')');
-        }
-        const blob = await resp.blob();
-        const ct = (blob && blob.type) ? blob.type.toLowerCase() : '';
-        let ext = 'jpg';
-        if (ct.includes('png')) ext = 'png';
-        else if (ct.includes('webp')) ext = 'webp';
-        else if (ct.includes('heic') || ct.includes('heif')) ext = 'heic';
-
-        const fname = 'ticket_' + iso + '_' + safeProv + '_' + i + '.' + ext;
-
-        const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objUrl;
-        a.download = fname;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        // liberar memoria
-        setTimeout(function(){ URL.revokeObjectURL(objUrl); }, 2000);
-
-        setStatus('Descargando fotos… ' + (i+1) + '/' + entriesWithPhoto.length);
-      }
-
-      setStatus('Descarga de fotos completada ✅');
-    }catch(e){
-      console.error(e);
-      alert('Error al descargar fotos: ' + (e && (e.message || e)));
-      setStatus('Error al descargar fotos.');
-    }
+async function exportFotosTickets(){
+  const entriesWithPhoto = currentEntries.filter(e => e.photoURL);
+  if (!entriesWithPhoto.length){
+    alert('No hay tickets con foto en este mes.');
+    return;
   }
+
+  try{
+    setStatus('Lanzando descargas de fotos…');
+
+    entriesWithPhoto.forEach((e, i)=>{
+      const url = e.photoURL;
+      if (!url) return;
+
+      const d = e.dateJs instanceof Date ? e.dateJs : new Date(e.dateJs || e.date);
+      const iso = d.toISOString().slice(0,10);
+
+      const safeProv = (e.provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
+
+      // nombre: usa extensión "jpg" por defecto (si quieres, luego lo mejoramos con photoPath)
+      const fname = 'ticket_' + iso + '_' + safeProv + '_' + i + '.jpg';
+
+      // 🔥 fuerza "attachment" en Firebase Storage (GCS)
+      const disp = 'attachment; filename="' + fname + '"';
+      const sep  = url.indexOf('?') >= 0 ? '&' : '?';
+      const forcedUrl = url + sep + 'response-content-disposition=' + encodeURIComponent(disp);
+
+      const a = document.createElement('a');
+      a.href = forcedUrl;
+      a.download = fname; // ayuda, aunque lo fuerte es response-content-disposition
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    setStatus('Descarga lanzada ✅ (el navegador puede pedir confirmación).');
+  }catch(e){
+    console.error(e);
+    alert('Error al descargar fotos: ' + (e && (e.message || e)));
+    setStatus('Error al descargar fotos.');
+  }
+}
 
   if ($('monthInput')){
     $('monthInput').addEventListener('change', refreshAll);
