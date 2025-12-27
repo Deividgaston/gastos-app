@@ -614,15 +614,28 @@
       var photoURL  = null;
       var photoPath = null;
 
+      // ✅ cambio mínimo: si hay foto pero no hay login, avisa (la foto nunca se sube ni aparece en Summary)
+      if (file && !user){
+        alert('Para subir la foto necesitas iniciar sesión.');
+        return;
+      }
+
+      // ✅ cambio mínimo: subida robusta (ref().child + metadata + extensión real)
       if (file && user && st){
         var yyyyMM   = dateISO.slice(0,7);
         var safeProv = (provider || 'ticket').replace(/[^a-z0-9-_]/gi,'_').toLowerCase();
-        var name     = dateISO + '_' + safeProv + '_' + Date.now() + '.jpg';
+
+        var ext = 'jpg';
+        if (file.type === 'image/png') ext = 'png';
+        else if (file.type === 'image/webp') ext = 'webp';
+        else if (file.type === 'image/heic' || file.type === 'image/heif') ext = 'heic';
+
+        var name     = dateISO + '_' + safeProv + '_' + Date.now() + '.' + ext;
         photoPath    = 'tickets/' + user.uid + '/' + yyyyMM + '/' + name;
 
-        var ref = st.ref(photoPath);
-        await ref.put(file);
-        photoURL = await ref.getDownloadURL();
+        var ref = st.ref().child(photoPath);
+        var snap = await ref.put(file, { contentType: file.type || 'image/jpeg' });
+        photoURL = await snap.ref.getDownloadURL();
       }
 
       if (user && db){
@@ -657,7 +670,8 @@
       document.dispatchEvent(new CustomEvent('entries-updated'));
       renderList();
     }catch(e){
-      alert('Error guardando: ' + (e && e.message || ''));
+      // ✅ cambio mínimo: mostrar código real de Firebase (rules/bucket/auth)
+      alert('Error guardando: ' + (e && (e.code || '')) + ' ' + (e && e.message || ''));
       console.error(e);
     }
   }
